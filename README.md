@@ -1,2 +1,2 @@
-# McRemote
-Remote control plugin for Minecraft  Servers, not Rcon
+# JuicyRaspberryPie
+RaspberryJuice with a Python command server
