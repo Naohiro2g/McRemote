@@ -13,7 +13,6 @@ import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.network.chat.TextComponent;
-import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
@@ -280,21 +279,21 @@ public class ApiHandler {
                 sb.setLength(sb.length() - 1);
             }
             sendLine(sb.toString());
-        } else if (cmd.startsWith("events.projectile.hists")) {
+        } else if (cmd.startsWith("events.projectile.hits")) {
             StringBuilder sb = new StringBuilder();
             ProjectileImpactEvent event;
             while((event = projectileHitQueue.poll())!= null){
-                Arrow arrow = (Arrow) event.getProjectile();
-                BlockPos pos = arrow.blockPosition();
+                Projectile projectile = event.getProjectile();
+                BlockPos pos = projectile.blockPosition();
                 sb.append(blockPosToRelative(pos)).append(",");
-                //Entity shooter = arrow.getShooter();
-                Entity shooter = arrow.getOwner();
-                if(shooter != null) {
-                    sb.append(shooter.getStringUUID()).append(",");
-                }else{
-                    sb.append("Nobody");
+
+                Entity owner = projectile.getOwner();
+                if (owner instanceof Player) {
+                    sb.append(owner.getStringUUID()).append(",");
+                } else {
+                    sb.append("Nobody,");
                 }
-                sb.append(",");
+
                 //TODO: hit what? entity or block
                 sb.append(event.getRayTraceResult().getType().name());
                 sb.append("|");

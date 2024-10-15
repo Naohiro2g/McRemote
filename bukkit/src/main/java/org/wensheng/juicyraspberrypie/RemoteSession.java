@@ -6,7 +6,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
-import org.bukkit.entity.Arrow;
+import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -116,9 +116,11 @@ class RemoteSession {
         return false;
     }
 
-    void queueProjectileHitEvent(ProjectileHitEvent event){
-        Arrow arrow = (Arrow) event.getEntity();
-        if(arrow.getShooter() instanceof Player){
+    void queueProjectileHitEvent(ProjectileHitEvent event) {
+        Projectile projectile = event.getEntity();
+
+        if (projectile.getShooter() instanceof Player) {
+            Player shooter = (Player) projectile.getShooter();
             projectileHitQueue.add(event);
         }
     }
@@ -157,14 +159,14 @@ class RemoteSession {
     }
 
     private void handleCommand(String c, String[] args) {
-        
+
         try {
             World world = origin.getWorld();
             if(world == null){
                 send("Could not get world");
                 return;
             }
-            
+
             if (c.equals("world.getBlock")) {
                 Location loc = parseRelativeBlockLocation(args[0], args[1], args[2]);
                 send(world.getBlockAt(loc).getType().name());
@@ -337,12 +339,12 @@ class RemoteSession {
                 send(b.toString());
             } else if (c.equals("events.projectile.hits")) {
                 StringBuilder b = new StringBuilder();
-                 ProjectileHitEvent event;
+                ProjectileHitEvent event;
                 while ((event = projectileHitQueue.poll()) != null) {
-                    Arrow arrow = (Arrow) event.getEntity();
-                    Player player = (Player) arrow.getShooter();
+                    Projectile projectile = event.getEntity();
+                    Player player = (Player) projectile.getShooter();
                     if(player != null) {
-                        Block block = arrow.getLocation().getBlock();
+                        Block block = projectile.getLocation().getBlock();
                         Location loc = block.getLocation();
                         b.append(blockLocationToRelative(loc));
                         b.append(",");
@@ -389,11 +391,11 @@ class RemoteSession {
                 send("Fail");
             }
         } catch (Exception e) {
-            
+
             plugin.logger.warning("Error occured handling command");
             e.printStackTrace();
             send("Fail");
-            
+
         }
     }
 
@@ -549,7 +551,7 @@ class RemoteSession {
         }
         block.setBlockData(blockData);
     }
-    
+
     private void updateBlock(World world, int x, int y, int z, Material blockType, BlockFace blockFace) {
         Location loc = new Location(world, x, y, z);
         updateBlock(world, loc, blockType, blockFace);
@@ -601,7 +603,7 @@ class RemoteSession {
         loc.setYaw(yaw);
         return loc;
     }
-    
+
     private String blockLocationToRelative(Location loc) {
         return (loc.getBlockX() - origin.getBlockX()) + "," + (loc.getBlockY() - origin.getBlockY()) + "," +
             (loc.getBlockZ() - origin.getBlockZ());
