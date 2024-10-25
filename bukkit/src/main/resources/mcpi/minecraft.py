@@ -294,8 +294,8 @@ class Minecraft:
         """Set a world setting (setting, status). keys: world_immutable, nametags_visible"""
         self.conn.send(b"world.setting", setting, 1 if bool(status) else 0)
 
-    def setPlayer(self, name):
-        return self.conn.sendReceive(b"setPlayer", name)
+    def setPlayer(self, *args):
+        return self.conn.sendReceive(b"setPlayer", *args)
 
     @staticmethod
     def create(address="localhost", port=4711, debug=False):

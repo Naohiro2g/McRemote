@@ -21,12 +21,12 @@ import java.util.*;
 import java.util.logging.Logger;
 
 public class JuicyRaspberryPie extends JavaPlugin implements Listener{
-    final Logger logger = Logger.getLogger("Minecraft");
+    final Logger logger = Logger.getLogger("MCR");
     private static final Set<Material> blockBreakDetectionTools = EnumSet.of(
             Material.DIAMOND_SWORD,
             Material.GOLDEN_SWORD,
-            Material.IRON_SWORD, 
-            Material.STONE_SWORD, 
+            Material.IRON_SWORD,
+            Material.STONE_SWORD,
             Material.WOODEN_SWORD);
 
     private ServerListenerThread serverThread;
@@ -73,12 +73,12 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
             }
         }
     }
-    
+
     public void onEnable(){
         this.saveDefaultConfig();
         int port = this.getConfig().getInt("api_port");
         boolean start_pyserver = this.getConfig().getBoolean("start_cmdsvr");
-        
+
         //create new tcp listener thread
         try {
             serverThread = new ServerListenerThread(this, new InetSocketAddress(port));
@@ -115,7 +115,7 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
         }
 
     }
-    
+
     public void onDisable(){
         int port = this.getConfig().getInt("cmdsvr_port");
         // cmdsvr_host is not used, always "localhost" for now
@@ -152,22 +152,22 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         serverThread = null;
     }
-    
+
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args){
         String cmdString;
         int port = this.getConfig().getInt("cmdsvr_port");
-        
+
         if(args.length<1){
             return false;
         }
-        
+
         if(port==0){
             port = 4731;
         }
-        
+
         try {
             Socket socket = new Socket("localhost", port);
             DataOutputStream toPyServer = new DataOutputStream(socket.getOutputStream());
@@ -187,7 +187,7 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
         }
         return true;
     }
-    
+
     private class TickHandler implements Runnable {
         public void run() {
             Iterator<RemoteSession> sI = sessions.iterator();
@@ -202,7 +202,7 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
             }
         }
     }
-    
+
     @EventHandler(ignoreCancelled=true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
@@ -216,7 +216,7 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
             session.queuePlayerInteractEvent(event);
         }
     }
-    
+
     @EventHandler
     public void onChatPosted(AsyncPlayerChatEvent event) {
         for (RemoteSession session: sessions) {
