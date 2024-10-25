@@ -19,6 +19,9 @@
                <includes>
                    <include>**/*</include>
                </includes>
+               <excludes>
+                  <exclude>**/__pycache__/**</exclude>
+               </excludes>
            </resource>
        </resources>
        <plugins>
