@@ -5,8 +5,11 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 
 import java.util.UUID;
+import java.util.logging.Logger;
 
 public class EntityCommands {
+    private static final Logger logger = Logger.getLogger("MCR_Entity"); // Logger for logging messages
+
     private RemoteSession session;
 
     public EntityCommands(RemoteSession session) {

@@ -12,7 +12,7 @@ import java.util.UUID;
 import java.util.logging.Logger;
 
 public class PlayerCommands {
-    private static final Logger logger = Logger.getLogger("PlayerCommands"); // Logger for logging messages
+    private static final Logger logger = Logger.getLogger("MCR_Player"); // Logger for logging messages
     private RemoteSession session;
 
     public PlayerCommands(RemoteSession session) {
@@ -59,7 +59,7 @@ public class PlayerCommands {
             y = customOrigin.getBlockY();
             z = customOrigin.getBlockZ();
             worldName = customOrigin.getWorld().getName();
-            logger.info("Custom origin found for player: " + playerName + " at location: " + customOrigin + " in world: " + worldName);
+            logger.info("Custom origin found for player: " + playerName + " at " + customOrigin);
         }
 
         // If the command arguments are 4 or 5, overwrite with the arguments.

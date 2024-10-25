@@ -9,7 +9,7 @@ import java.util.Collection;
 import java.util.logging.Logger;
 
 public class MiscCommands {
-    private static final Logger logger = Logger.getLogger("MCR_MiscSession"); // Logger for logging messages
+    private static final Logger logger = Logger.getLogger("MCR_Misc"); // Logger for logging messages
 
     private RemoteSession session;
 

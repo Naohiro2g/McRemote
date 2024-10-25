@@ -2,8 +2,11 @@ package org.wensheng.juicyraspberrypie;
 
 import java.io.*;
 import java.net.*;
+import java.util.logging.Logger;
 
 public class ServerListenerThread implements Runnable {
+	private static final Logger logger = Logger.getLogger("MCR_Server"); // Logger for logging messages
+
 	ServerSocket serverSocket;
 	boolean running = true;
 	private JuicyRaspberryPie plugin;
@@ -24,7 +27,7 @@ public class ServerListenerThread implements Runnable {
 			} catch (Exception e) {
 				// if the server thread is still running raise an error
 				if (running) {
-					plugin.getLogger().warning("Error creating new connection");
+					logger.warning("Error creating new connection");
 					e.printStackTrace();
 				}
 			}
@@ -32,7 +35,7 @@ public class ServerListenerThread implements Runnable {
 		try {
 			serverSocket.close();
 		} catch (Exception e) {
-			plugin.getLogger().warning("Error closing server socket");
+			logger.warning("Error closing server socket");
 			e.printStackTrace();
 		}
 	}

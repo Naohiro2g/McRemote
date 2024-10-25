@@ -11,7 +11,7 @@ import org.bukkit.Location;
 import java.util.logging.Logger;
 
 public class BlockCommands {
-    private static final Logger logger = Logger.getLogger("MCR_BlockCommands"); // Logger for logging messages
+    private static final Logger logger = Logger.getLogger("MCR_Block"); // Logger for logging messages
     private RemoteSession session;
     private MiscCommands miscCommands;
 
