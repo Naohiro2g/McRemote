@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 public class PlayerCommands {
     private static final Logger logger = Logger.getLogger("MCR_Player"); // Logger for logging messages
     private RemoteSession session;
+    private OfflinePlayer attachedPlayer;
 
     public PlayerCommands(RemoteSession session) {
         this.session = session;
@@ -28,28 +29,29 @@ public class PlayerCommands {
         }
 
         String playerName = args[0];
-        Player attachedPlayer = Bukkit.getPlayer(playerName);
-
-        // Check if the player is online.
-        if (attachedPlayer == null) {
-            // If the player is offline, search for the player in the server data.
-            UUID playerUUID = getPlayerUUID(playerName);
-            if (playerUUID != null) {
-                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
-                if (offlinePlayer.hasPlayedBefore()) {
-                    attachedPlayer = offlinePlayer.getPlayer();
+        logger.info("Player " + playerName + " is requesting new session.");
+        UUID playerUUID = getPlayerUUID(playerName); // Get the player's UUID from the player name.
+        Location customOrigin = null;
+        Player onlinePlayer = null;
+        OfflinePlayer offlinePlayer = null;
+        if (playerUUID == null) {
+            session.send("Error: Player " + playerName + " not found. Bye");
+            return;
+        } else {
+            logger.info("Player " + playerName + " found with UUID: " + playerUUID);
+            offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
+            if (offlinePlayer.hasPlayedBefore()) {
+                attachedPlayer = offlinePlayer;
+                if (offlinePlayer.isOnline()) {  // online player
+                    onlinePlayer = (Player)offlinePlayer;
+                    logger.info("Player " + playerName + " is online.");
+                    customOrigin = getCustomOriginLocation(onlinePlayer);
+                } else {                        // offline player
+                    logger.info("Player " + playerName + " is offline but has played before.");
                 }
-            }
-            // If not found, return an error message "No record of the player visiting."
-            if (attachedPlayer == null) {
-                logger.warning("No record of the player visiting.");
-                session.send("Error: No record of the player visiting. Bye.");
-                return;
             }
         }
 
-        // If attachedPlayer is set, get the custom origin. It may not exist.
-        Location customOrigin = getCustomOriginLocation(attachedPlayer);
         int x = 0, y = 0, z = 0;
         String worldName = "world";
 
@@ -60,13 +62,27 @@ public class PlayerCommands {
             z = customOrigin.getBlockZ();
             worldName = customOrigin.getWorld().getName();
             logger.info("Custom origin found for player: " + playerName + " at " + customOrigin);
+        } else {
+            logger.info("Player: " + playerName + " does not have a custom origin, or is offline.");
+            // needs x, y, z at least
+            if (args.length == 1) {
+                session.send("Error: x, y, z must be set when you are offline.");
+                logger.warning("x, y, z must be set when you are offline.");
+                return;
+            }
         }
 
         // If the command arguments are 4 or 5, overwrite with the arguments.
         if (args.length >= 4) {
-            x = Integer.parseInt(args[1]);
-            y = Integer.parseInt(args[2]);
-            z = Integer.parseInt(args[3]);
+            try {
+                x = Integer.parseInt(args[1]);
+                y = Integer.parseInt(args[2]);
+                z = Integer.parseInt(args[3]);
+            } catch (NumberFormatException e) {
+                session.send("Error: x, y, z must be integers.");
+                logger.warning("Invalid x, y, z values for setPlayer command.");
+                return;
+            }
         }
 
         if (args.length == 5) {
@@ -82,7 +98,9 @@ public class PlayerCommands {
         // Create a Location, call setCustomOriginLocation, and update.
         World world = Bukkit.getWorld(worldName);
         Location location = new Location(world, x, y, z);
-        setCustomOriginLocation(attachedPlayer, location);
+        if (onlinePlayer != null) {  // Player can use custom origin only when online
+            setCustomOriginLocation(onlinePlayer, location);
+        }
 
         // Set the Location to the session's origin.
         session.setOrigin(location);
@@ -94,8 +112,11 @@ public class PlayerCommands {
     }
 
     private UUID getPlayerUUID(String playerName) {
+        if (playerName == null || playerName.isEmpty()) {
+            return null;
+        }
         for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {
-            if (offlinePlayer.getName().equalsIgnoreCase(playerName)) {
+            if (offlinePlayer.getName() != null && offlinePlayer.getName().equalsIgnoreCase(playerName)) {
                 return offlinePlayer.getUniqueId();
             }
         }
