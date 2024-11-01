@@ -8,29 +8,14 @@ import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
-import java.util.Collection;
-import java.util.UUID;
 import java.util.logging.Logger;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.Sign;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Particle;
 
 public class RemoteSession {
     private static final Logger logger = Logger.getLogger("MCR_RemoteSession");
@@ -89,18 +74,6 @@ public class RemoteSession {
         logger.info("Started input and output threads.");
     }
 
-    /**
-     * Sets the default origin.
-     */
-    private void setDefaultOrigin() {
-        World defaultWorld = Bukkit.getWorlds().get(0);
-        if (defaultWorld != null) {
-            origin = defaultWorld.getSpawnLocation();
-            logger.info("Default origin set to: " + origin);
-        } else {
-            logger.warning("No default world found.");
-        }
-    }
 
     public void setOrigin(Location origin) {
         this.origin = origin;

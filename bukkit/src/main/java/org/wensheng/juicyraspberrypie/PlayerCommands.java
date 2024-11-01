@@ -14,7 +14,6 @@ import java.util.logging.Logger;
 public class PlayerCommands {
     private static final Logger logger = Logger.getLogger("MCR_Player"); // Logger for logging messages
     private RemoteSession session;
-    private OfflinePlayer attachedPlayer;
 
     public PlayerCommands(RemoteSession session) {
         this.session = session;
@@ -41,7 +40,6 @@ public class PlayerCommands {
             logger.info("Player " + playerName + " found with UUID: " + playerUUID);
             offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
             if (offlinePlayer.hasPlayedBefore()) {
-                attachedPlayer = offlinePlayer;
                 if (offlinePlayer.isOnline()) {  // online player
                     onlinePlayer = (Player)offlinePlayer;
                     logger.info("Player " + playerName + " is online.");

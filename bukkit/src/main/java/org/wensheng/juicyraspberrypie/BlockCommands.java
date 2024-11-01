@@ -39,7 +39,8 @@ public class BlockCommands {
                 handleSetBlocks(world, args);
                 break;
             default:
-                session.send("No such block command");
+                session.send("No such block command: " + command);
+                logger.warning("No such block command: " + command);
                 break;
         }
     }
@@ -47,6 +48,7 @@ public class BlockCommands {
     public void handleGetBlock(World world, String[] args) {
         if (args.length != 3) {
             session.send("Invalid arguments for world.getBlock command.");
+            logger.warning("Invalid arguments for world.getBlock command.");
             return;
         }
         try {
@@ -55,12 +57,14 @@ public class BlockCommands {
             session.send(block.getType().name());
         } catch (NumberFormatException e) {
             session.send("Invalid coordinates for world.getBlock command.");
+            logger.warning("Invalid coordinates for world.getBlock command.");
         }
     }
 
     public void handleGetBlocks(World world, String[] args) {
         if (args.length != 6) {
             session.send("Invalid arguments for world.getBlocks command.");
+            logger.warning("Invalid arguments for world.getBlocks command.");
             return;
         }
         try {
@@ -86,12 +90,14 @@ public class BlockCommands {
             session.send(blocks.toString());
         } catch (NumberFormatException e) {
             session.send("Invalid coordinates for world.getBlocks command.");
+            logger.warning("Invalid coordinates for world.getBlocks command.");
         }
     }
 
     public void handleGetBlockWithData(World world, String[] args) {
         if (args.length != 3) {
             session.send("Invalid arguments for world.getBlockWithData command.");
+            logger.warning("Invalid arguments for world.getBlockWithData command.");
             return;
         }
         try {
@@ -106,6 +112,7 @@ public class BlockCommands {
     public void handleSetBlock(World world, String[] args) {
         if (args.length < 4) {
             session.send("Invalid arguments for world.setBlock command.");
+            logger.warning("Invalid arguments for world.setBlock command.");
             return;
         }
         try {
@@ -113,21 +120,25 @@ public class BlockCommands {
             Material material = Material.matchMaterial(args[3]);
             if (material == null) {
                 material = Material.valueOf("SANDSTONE");
+                logger.warning("non such material: " + args[3]);
             }
             int facing = args.length > 4 ? Integer.parseInt(args[4]) : 0;
             BlockFace blockFace = BlockFace.values()[facing];
             updateBlock(world, loc, material, blockFace);
-            session.send("Block set successfully.");
+            // session.send("Block set successfully.");
         } catch (NumberFormatException e) {
             session.send("Invalid coordinates or facing for world.setBlock command.");
+            logger.warning("Invalid coordinates or facing for world.setBlock command.");
         } catch (IllegalArgumentException e) {
             session.send("Invalid material for world.setBlock command.");
+            logger.warning("Invalid material for world.setBlock command.");
         }
     }
 
     public void handleSetBlocks(World world, String[] args) {
         if (args.length < 7) {
             session.send("Invalid arguments for world.setBlocks command.");
+            logger.warning("Invalid arguments for world.setBlocks command.");
             return;
         }
         try {
@@ -143,8 +154,10 @@ public class BlockCommands {
             // session.send("Blocks set successfully.");
         } catch (NumberFormatException e) {
             session.send("Invalid coordinates or facing for world.setBlocks command.");
+            logger.warning("Invalid coordinates or facing for world.setBlocks command.");
         } catch (IllegalArgumentException e) {
             session.send("Invalid material for world.setBlocks command.");
+            logger.warning("Invalid material for world.setBlocks command.");
         }
     }
 
