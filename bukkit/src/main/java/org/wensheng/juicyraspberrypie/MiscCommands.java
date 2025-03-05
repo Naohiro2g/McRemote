@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import net.kyori.adventure.text.Component;
 
 import java.util.Collection;
 import java.util.logging.Logger;
@@ -45,11 +46,12 @@ public class MiscCommands {
         for (String arg : args) {
             sb.append(arg).append(" ");
         }
-        Bukkit.broadcastMessage(sb.toString().trim());
+        Bukkit.broadcast(Component.text(sb.toString().trim()));
     }
 
     // private Location parseRelativeBlockLocation(String x, String y, String z) {
-    //     return new Location(null, Double.parseDouble(x), Double.parseDouble(y), Double.parseDouble(z));
+    // return new Location(null, Double.parseDouble(x), Double.parseDouble(y),
+    // Double.parseDouble(z));
     // }
 
     Location parseRelativeBlockLocation(String xstr, String ystr, String zstr) {
@@ -85,13 +87,13 @@ public class MiscCommands {
     public String blockLocationToRelative(Location loc) {
         Location origin = session.getOrigin();
         return (loc.getBlockX() - origin.getBlockX()) + "," + (loc.getBlockY() - origin.getBlockY()) + "," +
-            (loc.getBlockZ() - origin.getBlockZ());
+                (loc.getBlockZ() - origin.getBlockZ());
     }
 
     public String locationToRelative(Location loc) {
         Location origin = session.getOrigin();
         return (loc.getX() - origin.getX()) + "," + (loc.getY() - origin.getY()) + "," +
-            (loc.getZ() - origin.getZ());
+                (loc.getZ() - origin.getZ());
     }
 
 }

@@ -1,4 +1,4 @@
-api_port: 4711
+api_port: 25575
 start_cmdsvr: false
 cmdsvr_host: "localhost"
 cmdsvr_port: 4731

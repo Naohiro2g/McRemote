@@ -3,6 +3,7 @@ package org.wensheng.juicyraspberrypie;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -11,9 +12,11 @@ public class EntityCommands {
     private static final Logger logger = Logger.getLogger("MCR_Entity"); // Logger for logging messages
 
     private RemoteSession session;
+    private MiscCommands miscCommands;
 
-    public EntityCommands(RemoteSession session) {
+    public EntityCommands(RemoteSession session, MiscCommands miscCommands) {
         this.session = session;
+        this.miscCommands = miscCommands;
     }
 
     public void handleEntityCommand(String c, String[] args) {
@@ -57,13 +60,27 @@ public class EntityCommands {
         }
     }
 
+
+    public void handleSpawnEntity(String[] args) {
+        Location loc = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
+        EntityType entityType;
+        try {
+            entityType = EntityType.valueOf(args[3].toUpperCase());
+        } catch (Exception exc) {
+            entityType = EntityType.valueOf("COW");
+        }
+        Entity entity = session.getOrigin().getWorld().spawnEntity(loc, entityType);
+        session.send(entity.getUniqueId().toString());
+    }
+
+
     private void handleEntityGetPos(Entity entity) {
         Location loc = entity.getLocation();
         session.send(loc.getX() + "," + loc.getY() + "," + loc.getZ());
     }
 
     private void handleEntitySetPos(Entity entity, String[] args) {
-        Location loc = parseRelativeBlockLocation(args[1], args[2], args[3]);
+        Location loc = miscCommands.parseRelativeBlockLocation(args[1], args[2], args[3]);
         entity.teleport(loc);
     }
 
@@ -101,9 +118,5 @@ public class EntityCommands {
 
     private void handleEntityRemove(Entity entity) {
         entity.remove();
-    }
-
-    private Location parseRelativeBlockLocation(String x, String y, String z) {
-        return new Location(null, Double.parseDouble(x), Double.parseDouble(y), Double.parseDouble(z));
     }
 }

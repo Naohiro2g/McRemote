@@ -14,8 +14,11 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.entity.ProjectileHitEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
+// import org.bukkit.event.player.AsyncPlayerChatEvent;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import net.kyori.adventure.text.Component;
+
 
 public class RemoteSession {
     private static final Logger logger = Logger.getLogger("MCR_RemoteSession");
@@ -32,7 +35,7 @@ public class RemoteSession {
     private boolean running = true;
     private JuicyRaspberryPie plugin;
     private ArrayDeque<PlayerInteractEvent> interactEventQueue = new ArrayDeque<>();
-    private ArrayDeque<AsyncPlayerChatEvent> chatPostedQueue = new ArrayDeque<>();
+    private ArrayDeque<AsyncChatEvent> chatPostedQueue = new ArrayDeque<>();
     private ArrayDeque<ProjectileHitEvent> projectileHitQueue = new ArrayDeque<>();
     private int maxCommandsPerTick = 9000; // Maximum number of commands to process per tick
 
@@ -46,7 +49,7 @@ public class RemoteSession {
         this.socket = socket;
         this.playerCommands = new PlayerCommands(this);
         this.miscCommands = new MiscCommands(this);
-        this.entityCommands = new EntityCommands(this);
+        this.entityCommands = new EntityCommands(this, miscCommands);
         this.blockCommands = new BlockCommands(this, miscCommands);
         init();
     }
@@ -107,6 +110,9 @@ public class RemoteSession {
                 case "world.setBlocks":
                     blockCommands.handleCommand(c, args);
                     break;
+                case "world.spawnEntity":
+                    entityCommands.handleSpawnEntity(args);
+                    break;
                 case "world.getNearbyEntities":
                     miscCommands.handleGetNearbyEntities(origin.getWorld(), args);
                     break;
@@ -163,7 +169,7 @@ public class RemoteSession {
     public void close() {
         running = false;
         pendingRemoval = true;
-         //wait for threads to stop
+        //wait for threads to stop
         try {
             inThread.join(2000);
             outThread.join(2000);
@@ -190,26 +196,15 @@ public class RemoteSession {
 
     public void kick(String reason) {
         if (attachedPlayer != null) {
-            attachedPlayer.kickPlayer(reason);
+            attachedPlayer.kick(Component.text(reason));
             logger.info("Player " + attachedPlayer.getName() + " was kicked for: " + reason);
             attachedPlayer = null;
         }
     }
 
-    private Location parseRelativeBlockLocation(String x, String y, String z) {
-        return new Location(
-            this.origin.getWorld(),
-            this.origin.getX() + Double.parseDouble(x),
-            this.origin.getY() + Double.parseDouble(y),
-            this.origin.getZ() + Double.parseDouble(z)
-        );
-    }
-
     void queueProjectileHitEvent(ProjectileHitEvent event) {
         Projectile projectile = event.getEntity();
-
         if (projectile.getShooter() instanceof Player) {
-            Player shooter = (Player) projectile.getShooter();
             projectileHitQueue.add(event);
         }
     }
@@ -218,7 +213,7 @@ public class RemoteSession {
         interactEventQueue.add(event);
     }
 
-    void queueChatPostedEvent(AsyncPlayerChatEvent event) {
+    void queueChatPostedEvent(AsyncChatEvent event) {
         chatPostedQueue.add(event);
     }
 
@@ -230,7 +225,7 @@ public class RemoteSession {
             processedCount++;
             if (processedCount >= maxCommandsPerTick) {
                 plugin.logger.warning("Over " + maxCommandsPerTick +
-                    " commands were queued - deferring " + inQueue.size() + " to next tick");
+                        " commands were queued - deferring " + inQueue.size() + " to next tick");
                 break;
             }
         }

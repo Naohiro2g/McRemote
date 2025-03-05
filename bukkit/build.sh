@@ -2,7 +2,7 @@
 
 if [ ! -n "$1" ]
 then
-    echo 'Must provide Spigot Version number such as "build.sh 1.13.2"'
+    echo 'Must provide PaperMC Version number such as "build.sh 1.21.4"'
 else
-    mvn -DSpigotVersion=$1 clean package
+    mvn -DPaperVersion=$1 clean package
 fi
