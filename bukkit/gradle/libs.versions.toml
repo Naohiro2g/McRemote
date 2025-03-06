@@ -1,0 +1,5 @@
+[versions]
+io-papermc-paper-paper-api = "1.21.4-R0.1-SNAPSHOT"
+
+[libraries]
+io-papermc-paper-paper-api = { module = "io.papermc.paper:paper-api", version.ref = "io-papermc-paper-paper-api" }
