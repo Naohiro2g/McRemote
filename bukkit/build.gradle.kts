@@ -3,6 +3,13 @@ version = "1.21.4"
 description = "juicyraspberrypie"
 java.sourceCompatibility = JavaVersion.VERSION_21
 
+
+tasks.processResources {
+    filesMatching("plugin.yml") {
+        expand(mapOf("project" to project))
+    }
+}
+
 plugins {
     `java-library`
     `maven-publish`
