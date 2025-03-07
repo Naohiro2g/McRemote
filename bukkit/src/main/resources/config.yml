@@ -1,4 +1,10 @@
+# port for Minecraft Remote
 api_port: 25575
+# permission nodes of LuckPerms
+permissions:
+  online: "mcr.online"
+  offline: "mcr.offline"
+# legaccy settings
 start_cmdsvr: false
 cmdsvr_host: "localhost"
 cmdsvr_port: 4731

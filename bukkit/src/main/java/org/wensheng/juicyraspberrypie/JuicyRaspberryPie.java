@@ -98,6 +98,9 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
 
         this.save_resources();
 
+        // PermissionManager initialization to check LuckPerms availability
+        getLogger().info(PermissionManager.init(this));
+
         if(start_pyserver){
             String pyexe = getConfig().getString("pyexe", "python.exe");
             //String pypath = this.getConfig().getString("pypath", "C:\\Python37");

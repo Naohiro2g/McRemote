@@ -7,7 +7,6 @@ import org.bukkit.World;
 import java.util.UUID;
 import java.util.logging.Logger;
 
-import static org.wensheng.juicyraspberrypie.PermissionManager.isLuckPermsAvailable;
 
 public class PlayerCommands {
     private static final Logger logger = Logger.getLogger("MCR_Player"); // Logger for logging messages
@@ -32,7 +31,7 @@ public class PlayerCommands {
         logger.info("Player " + playerName + " with UUID: " + playerUUID + " is requesting new session.");
         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
 
-        if (isLuckPermsAvailable()) {
+        if (PermissionManager.isLuckPermsAvailable()) {
             if (offlinePlayer.isOnline()) {  // player is online
                 //                    onlinePlayer = (Player)offlinePlayer;
                 if (PermissionManager.canConstructOnline(offlinePlayer.getPlayer())) {
