@@ -48,7 +48,7 @@ public class PlayerCommands {
                     logger.info("  and allowed Minecraft Remote even offline.");
                 } else {
                     logger.warning("Player " + playerName + " is not allowed Minecraft Remote offline. Bye.");
-                    session.send("Player " + playerName + " is not allowed Minecraft Remote offline. Bye.");
+                    session.send("Error: Player " + playerName + " is not allowed Minecraft Remote offline. Bye.");
                     return;  // disconnect
                 }
             }
