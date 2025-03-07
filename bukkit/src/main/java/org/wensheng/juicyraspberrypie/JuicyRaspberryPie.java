@@ -13,6 +13,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jspecify.annotations.NullMarked;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -86,7 +87,9 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
             new Thread(serverThread).start();
             logger.info("ThreadListener Started");
         } catch (Exception e) {
-            e.printStackTrace();
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            logger.warning(sw.toString());
             logger.warning("Failed to start ThreadListener");
             return;
         }
@@ -144,19 +147,24 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
                 session.close();
             } catch (Exception e) {
                 logger.warning("Failed to close RemoteSession");
-                e.printStackTrace();
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.warning(sw.toString());
             }
         }
         serverThread.running = false;
         try {
             serverThread.serverSocket.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            logger.warning(sw.toString());
         }
 
         serverThread = null;
     }
 
+    @NullMarked
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args){
         String cmdString;
         int port = this.getConfig().getInt("cmdsvr_port");

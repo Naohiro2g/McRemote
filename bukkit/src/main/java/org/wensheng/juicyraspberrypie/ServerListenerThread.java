@@ -9,10 +9,10 @@ public class ServerListenerThread implements Runnable {
 
 	ServerSocket serverSocket;
 	boolean running = true;
-	private JuicyRaspberryPie plugin;
+	private static JuicyRaspberryPie plugin;
 
 	ServerListenerThread(JuicyRaspberryPie plugin, SocketAddress bindAddress) throws IOException {
-		this.plugin = plugin;
+		ServerListenerThread.plugin = plugin;
 		serverSocket = new ServerSocket();
 		serverSocket.setReuseAddress(true);
 		serverSocket.bind(bindAddress);
@@ -28,7 +28,9 @@ public class ServerListenerThread implements Runnable {
 				// if the server thread is still running raise an error
 				if (running) {
 					logger.warning("Error creating new connection");
-					e.printStackTrace();
+					StringWriter sw = new StringWriter();
+					e.printStackTrace(new PrintWriter(sw));
+					logger.warning(sw.toString());
 				}
 			}
 		}
@@ -36,7 +38,9 @@ public class ServerListenerThread implements Runnable {
 			serverSocket.close();
 		} catch (Exception e) {
 			logger.warning("Error closing server socket");
-			e.printStackTrace();
+			StringWriter sw = new StringWriter();
+			e.printStackTrace(new PrintWriter(sw));
+			logger.warning(sw.toString());
 		}
 	}
 }

@@ -2,7 +2,7 @@ package org.wensheng.juicyraspberrypie;
 
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.Sign;
+//import org.bukkit.block.Sign;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.Material;
@@ -12,8 +12,8 @@ import java.util.logging.Logger;
 
 public class BlockCommands {
     private static final Logger logger = Logger.getLogger("MCR_Block"); // Logger for logging messages
-    private RemoteSession session;
-    private MiscCommands miscCommands;
+    private final RemoteSession session;
+    private final MiscCommands miscCommands;
 
     public BlockCommands(RemoteSession session, MiscCommands miscCommands) {
         this.session = session;

@@ -3,7 +3,6 @@ package org.wensheng.juicyraspberrypie;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -11,8 +10,8 @@ import java.util.logging.Logger;
 public class EntityCommands {
     private static final Logger logger = Logger.getLogger("MCR_Entity"); // Logger for logging messages
 
-    private RemoteSession session;
-    private MiscCommands miscCommands;
+    private final RemoteSession session;
+    private final MiscCommands miscCommands;
 
     public EntityCommands(RemoteSession session, MiscCommands miscCommands) {
         this.session = session;
@@ -23,6 +22,7 @@ public class EntityCommands {
         Entity entity = Bukkit.getEntity(UUID.fromString(args[0]));
         if (entity == null) {
             session.send("Entity not found");
+            logger.warning("Entity not found: " + args[0]);
             return;
         }
 
@@ -58,19 +58,6 @@ public class EntityCommands {
                 session.send("Unknown entity command: " + c);
                 break;
         }
-    }
-
-
-    public void handleSpawnEntity(String[] args) {
-        Location loc = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
-        EntityType entityType;
-        try {
-            entityType = EntityType.valueOf(args[3].toUpperCase());
-        } catch (Exception exc) {
-            entityType = EntityType.valueOf("COW");
-        }
-        Entity entity = session.getOrigin().getWorld().spawnEntity(loc, entityType);
-        session.send(entity.getUniqueId().toString());
     }
 
 

@@ -1,10 +1,6 @@
 package org.wensheng.juicyraspberrypie;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
@@ -25,24 +21,24 @@ public class RemoteSession {
     boolean pendingRemoval = false;
     private Location origin = null;
     private Player attachedPlayer = null;
-    private Socket socket;
+    private final Socket socket;
     private BufferedReader in;
     private BufferedWriter out;
     private Thread inThread;
     private Thread outThread;
-    private ArrayDeque<String> inQueue = new ArrayDeque<>();
+    private final ArrayDeque<String> inQueue = new ArrayDeque<>();
     private final ArrayDeque<String> outQueue = new ArrayDeque<>();
     private boolean running = true;
-    private JuicyRaspberryPie plugin;
-    private ArrayDeque<PlayerInteractEvent> interactEventQueue = new ArrayDeque<>();
-    private ArrayDeque<AsyncChatEvent> chatPostedQueue = new ArrayDeque<>();
-    private ArrayDeque<ProjectileHitEvent> projectileHitQueue = new ArrayDeque<>();
-    private int maxCommandsPerTick = 9000; // Maximum number of commands to process per tick
+    private final JuicyRaspberryPie plugin;
+    private final ArrayDeque<PlayerInteractEvent> interactEventQueue = new ArrayDeque<>();
+    private final ArrayDeque<AsyncChatEvent> chatPostedQueue = new ArrayDeque<>();
+    private final ArrayDeque<ProjectileHitEvent> projectileHitQueue = new ArrayDeque<>();
+    private final int maxCommandsPerTick = 9000; // Maximum number of commands to process per tick
 
-    private PlayerCommands playerCommands;
-    private BlockCommands blockCommands;
-    private MiscCommands miscCommands;
-    private EntityCommands entityCommands;
+    private final PlayerCommands playerCommands;
+    private final BlockCommands blockCommands;
+    private final MiscCommands miscCommands;
+    private final EntityCommands entityCommands;
 
     RemoteSession(JuicyRaspberryPie plugin, Socket socket) throws IOException {
         this.plugin = plugin;
@@ -111,7 +107,10 @@ public class RemoteSession {
                     blockCommands.handleCommand(c, args);
                     break;
                 case "world.spawnEntity":
-                    entityCommands.handleSpawnEntity(args);
+                    miscCommands.handleSpawnEntity(args);
+                    break;
+                case "world.spawnParticle":
+                    miscCommands.handleSpawnParticle(args);
                     break;
                 case "world.getNearbyEntities":
                     miscCommands.handleGetNearbyEntities(origin.getWorld(), args);
@@ -142,7 +141,9 @@ public class RemoteSession {
                     break;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            logger.warning(sw.toString());
             close();
         }
     }
@@ -176,13 +177,17 @@ public class RemoteSession {
         }
         catch (InterruptedException e) {
             plugin.logger.warning("Failed to stop in/out thread");
-            e.printStackTrace();
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            logger.warning(sw.toString());
         }
 
         try {
             socket.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            logger.warning(sw.toString());
         }
         plugin.logger.info("Closed connection to" + socket.getRemoteSocketAddress() + ".");
     }
@@ -230,7 +235,7 @@ public class RemoteSession {
             }
         }
 
-        if (!running && inQueue.size() <= 0) {
+        if (!running && inQueue.isEmpty()) {
             pendingRemoval = true;
         }
     }
@@ -256,7 +261,9 @@ public class RemoteSession {
                     }
                 } catch (Exception e) {
                     if (running) {
-                        e.printStackTrace();
+                        StringWriter sw = new StringWriter();
+                        e.printStackTrace(new PrintWriter(sw));
+                        logger.warning(sw.toString());
                         running = false;
                         // close();
                     }
@@ -267,7 +274,9 @@ public class RemoteSession {
                 plugin.logger.warning("Closing input buffer");
             } catch (Exception e) {
                 plugin.logger.warning("Failed to close input buffer");
-                e.printStackTrace();
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.warning(sw.toString());
             }
         }
     }
@@ -288,7 +297,9 @@ public class RemoteSession {
                     Thread.sleep(1L);
                 } catch (Exception e) {
                     if (running) {
-                        e.printStackTrace();
+                        StringWriter sw = new StringWriter();
+                        e.printStackTrace(new PrintWriter(sw));
+                        logger.warning(sw.toString());
                         running = false;
                         // close();
                     }
@@ -299,7 +310,9 @@ public class RemoteSession {
                 plugin.logger.warning("Closing output buffer");
             } catch (Exception e) {
                 plugin.logger.warning("Failed to close output buffer");
-                e.printStackTrace();
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.warning(sw.toString());
             }
         }
     }
