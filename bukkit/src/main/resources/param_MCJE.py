@@ -1,65 +1,35 @@
-# Minecraft Java Edition 1.13+
-# Connection and blockID : MCJE
-# World parameters : MCJE
+# Parameters for Minecraft Java Edition
 
-# from mcje.vec3 import Vec3
-from mcpi.vec3 import Vec3
+from mcje.vec3 import Vec3
+import mcje.block_1_21_4 as block
+import mcje.entity_1_21_4 as entity
+import mcje.particle_1_21_4 as particle
 
-PLAYER_NAME = "PLAYER"  # player name in Minecraft
-PLAYER_ORIGIN = Vec3(5200, 0, 5100)  # po.x, po.y, po.z
+# PLAYER_NAME = "PLAYER_NAME"  # set your player name in Minecraft
+PLAYER_ORIGIN = Vec3(000, 0, 000)  # po.x, po.y, po.z
 print(f"param_MCJE loaded for {PLAYER_NAME} at {PLAYER_ORIGIN.x}, {PLAYER_ORIGIN.y}, {PLAYER_ORIGIN.z}")
 
 # minecraft remote connection to the host at address:port
-ADRS_MCR = "localhost"
-# PORT_MCR = 14712  # mod
-PORT_MCR = 4711  # plugin server
+ADRS_MCR = "localhost"  # or server address
+PORT_MCR = 25575
 
-
-# axis parameters
-AXIS_WIDTH = 40  # x, z: -40 .. 0 .. 40
-AXIS_TOP = 127
-AXIS_Y_V_ORG = 96  # y of virtual origin
-AXIS_BOTTOM = 63  # y: 63 .. 96 .. 127
-
-
-# vertical levels
-Y_TOP = 255  # the top where blocks can be set
-Y_CLOUD_BOTTOM = 128  # the bottom of clouds
+# vertical levels in Minecraft 1.20+
+Y_TOP = 320  # the top where blocks can be set
+Y_CLOUD_BOTTOM = 199  # the bottom of clouds
 Y_SEA = 62  # the sea level
 Y_BOTTOM = 0  # the bottom where blocks can be set
 Y_BOTTOM_STEVE = -64  # the bottom where Steve can go down
 
+# For the block IDs and entity IDs, use the script get_block_id.py and get_entity_id.py to generate the list.
+# Usage:
+#     python mcje/get_block_id.py 1.21.4  # run the script in the terminal
+#     python mcje/get_entity_id.py 1.21.4  # run the script in the terminal
+#     You will get mcje/blocks_1_21_4.py containing all the block IDs for Minecraft 1.21.4.
+#     You have to play Minecraft 1.21.4 at least once beforehand.
+#
+#     setBlock(x, y, z, block.GOLD_BLOCK)  # if you want to use the block ID in other files
+#     spawnEntity(x, y, z, entity.CREEPER)  # if you want to use the entity ID in other files
 
-# block IDs  You can find IDs here: https://minecraft-ids.grahamedgecombe.com/
-AIR = "air"
-STONE = "stone"
-GRASS_BLOCK = "grass_block"
-GOLD_BLOCK = "gold_block"
-IRON_BLOCK = "iron_block"
-GLOWSTONE = "glowstone"
-SEA_LANTERN_BLOCK = "sea_lantern"
-
-# some good blocks for grid like patterns you can count blocks easily
-GLASS = "glass"
-TNT = "tnt"
-DIAMOND_BLOCK = "diamond_block"
-FURNACE_INACTIVE = "furnace"
-FURNACE_ACTIVE = "lit_furnace"
-GLASS_PANE = "glass_pane"
-
-RED_WOOL = "red_wool"
-GREEN_WOOL = "green_wool"
-BLUE_WOOL = "blue_wool"
-YELLOW_WOOL = "yellow_wool"
-ORANGE_WOOL = "orange_wool"
-PURPLE_WOOL = "purple_wool"
-WHITE_WOOL = "white_wool"
-LIGHT_BLUE_WOOL = "light_blue_wool"
-BLACK_WOOL = "black_wool"
-BROWN_WOOL = "brown_wool"
-CYAN_WOOL = "cyan_wool"
-GRAY_WOOL = "gray_wool"
-LIGHT_GRAY_WOOL = "light_gray_wool"
-LIME_WOOL = "lime_wool"
-MAGENTA_WOOL = "magenta_wool"
-PINK_WOOL = "pink_wool"
+block.GOLD_BLOCK  # if you want to use the block ID in this file
+entity.CREEPER  # if you want to use the entity ID in this file
+particle.HEART  # if you want to use the particle ID in this file

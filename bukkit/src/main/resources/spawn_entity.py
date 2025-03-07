@@ -16,10 +16,11 @@ if "Error" in result:
 else:
     print(result)
 
-mc.postToChat("Hello, Minecraft Server!!")
-
-# axis_flat.reset_minecraft_world(mc, width=48)
-# axis_flat.clear_XYZ_axis(mc, wait=0)
-# axis_flat.draw_XYZ_axis(mc, wait=0.3)
-
-# mc.setBlocks(0, 180, 0, 5, 200, 5, param.GOLD_BLOCK)
+mc.postToChat("spawn entities")
+mc.setBlocks(-59, 65, -59, -61, 65, -61, block.SEA_LANTERN)
+for _i in range(8):
+    # mc.spawnEntity(-60, 70, -60, entity.FOX)
+    mc.spawnEntity(-60, 70, -60, entity.CAT)
+    # mc.spawnEntity(-60, 70, -60, entity.BEE)
+    mc.spawnParticle(-60, 70, -60, 1, 1, 1, particle.DRAGON_BREATH, 0.2, 10000)
+    # print(mc.spawnEntity(70, 70, 70, entity.CREEPER))

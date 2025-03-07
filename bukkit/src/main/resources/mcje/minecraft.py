@@ -1,6 +1,5 @@
 import os
 import math
-import re
 
 from .connection import Connection
 from .vec3 import Vec3
@@ -41,8 +40,7 @@ class CmdPositioner:
     def getPos(self, id):
         """Get entity position (entityId:int) => Vec3"""
         s = self.conn.sendReceive(self.pkg + b".getPos", id)
-        loc = [float(item.split("=")[1]) for item in s.split(",")[1:4]]
-        return Vec3(*loc)
+        return Vec3(*list(map(float, s.split(","))))
 
     def setPos(self, id, *args):
         """Set entity position (entityId:int, x,y,z)"""
@@ -51,8 +49,7 @@ class CmdPositioner:
     def getTilePos(self, id):
         """Get entity tile position (entityId:int) => Vec3"""
         s = self.conn.sendReceive(self.pkg + b".getTile", id)
-        loc = [int(float(item.split("=")[1])) for item in s.split(",")[1:4]]
-        return Vec3(*loc)
+        return Vec3(*list(map(int, s.split(","))))
 
     def setTilePos(self, id, *args):
         """Set entity tile position (entityId:int) => Vec3"""
@@ -247,10 +244,11 @@ class Minecraft:
 
     def spawnEntity(self, *args):
         """Spawn entity (x,y,z,id,[data])"""
-        return Entity(self.conn, self.conn.sendReceive(b"world.spawnEntity", *args), args[3])
+        # return Entity(self.conn, self.conn.sendReceive(b"world.spawnEntity", *args), args[3])
+        return self.conn.send(b"world.spawnEntity", *args)
 
     def spawnParticle(self, *args):
-        """Spawn entity (x,y,z,id,[data])"""
+        """Spawn entity (x,y,z,x1,y1,z1,id,speed,count,[force,data])"""
         return self.conn.send(b"world.spawnParticle", *args)
 
     def getNearbyEntities(self, *args):
