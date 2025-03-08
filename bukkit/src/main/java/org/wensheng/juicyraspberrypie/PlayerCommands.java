@@ -31,7 +31,7 @@ public class PlayerCommands {
         logger.info("Player " + playerName + " with UUID: " + playerUUID + " is requesting new session.");
         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
 
-        if (PermissionManager.isLuckPermsAvailable()) {
+        if (JuicyRaspberryPie.isLuckPermsEnabled()) {
             if (offlinePlayer.isOnline()) {  // player is online
                 //                    onlinePlayer = (Player)offlinePlayer;
                 if (PermissionManager.canConstructOnline(offlinePlayer.getPlayer())) {

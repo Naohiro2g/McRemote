@@ -1,5 +1,6 @@
 package org.wensheng.juicyraspberrypie;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -33,6 +34,7 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
 
     private ServerListenerThread serverThread;
     private final List<RemoteSession> sessions = new ArrayList<>();
+    private static boolean luckPermsEnabled;
 
     private void save_resources(){
         File py_init_file = new File(getDataFolder(), "config.yml");
@@ -76,6 +78,9 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
         }
     }
 
+    public static boolean isLuckPermsEnabled() {
+        return luckPermsEnabled;
+    }
     public void onEnable(){
         this.saveDefaultConfig();
         int port = this.getConfig().getInt("api_port");
@@ -98,8 +103,12 @@ public class JuicyRaspberryPie extends JavaPlugin implements Listener{
 
         this.save_resources();
 
-        // PermissionManager initialization to check LuckPerms availability
-        getLogger().info(PermissionManager.init(this));
+        // check LuckPerms availability
+        luckPermsEnabled = (Bukkit.getPluginManager().getPlugin("LuckPerms") != null);
+        if (luckPermsEnabled) {
+            PermissionManager.init(this);
+        }
+        getLogger().warning("LuckPerms enabled: " + luckPermsEnabled);
 
         if(start_pyserver){
             String pyexe = getConfig().getString("pyexe", "python.exe");

@@ -12,14 +12,15 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.logging.Logger;
 
+import static org.wensheng.juicyraspberrypie.JuicyRaspberryPie.isLuckPermsEnabled;
+
 public class PermissionManager {
     private static final Logger logger = Logger.getLogger("MCR_Permission");
-    private static LuckPerms luckPerms;
     private static String PERMISSION_ONLINE = "mcr.online";
     private static String PERMISSION_OFFLINE = "mcr.offline";
+    private static LuckPerms luckPerms = null;
 
-    public static String init(JavaPlugin plugin) {
-        String msg;
+    public static void init(JavaPlugin plugin) {
         try {
             // Load permission nodes from config
             FileConfiguration config = plugin.getConfig();
@@ -35,20 +36,13 @@ public class PermissionManager {
             RegisteredServiceProvider<LuckPerms> provider = plugin.getServer().getServicesManager().getRegistration(LuckPerms.class);
             if (provider != null) {
                 luckPerms = provider.getProvider();
-                msg = "Successfully connected to LuckPerms";
-                return msg;
+                logger.info("Successfully connected to LuckPerms");
             } else {
-                msg = "LuckPerms provider not found";
-                return msg;
+                logger.severe("LuckPerms provider not found");
             }
         } catch (Exception e) {
-            msg = "Failed to connect to LuckPerms: " + e.getMessage();
-            return msg;
+            logger.warning("Failed to connect to LuckPerms: " + e.getMessage());
         }
-    }
-
-    public static boolean isLuckPermsAvailable() {
-        return luckPerms != null;
     }
 
     public static boolean canConstructOnline(OfflinePlayer offlinePlayer) {
@@ -60,7 +54,7 @@ public class PermissionManager {
     }
 
     private static boolean hasPermission(OfflinePlayer offlinePlayer, String permission) {
-        if (luckPerms == null) {
+        if (!isLuckPermsEnabled()) {
             logger.warning("LuckPerms is not available");
             return true; // Allow by default
         }

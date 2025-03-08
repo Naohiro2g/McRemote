@@ -8,3 +8,5 @@ commands:
   p:
     description: execute python functions in pplugins
     usage: /<command> args
+soft-depend:
+  - LuckPerms

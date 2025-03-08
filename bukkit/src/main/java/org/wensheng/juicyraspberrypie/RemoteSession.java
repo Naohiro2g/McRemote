@@ -93,7 +93,7 @@ public class RemoteSession {
         try {
             if (this.origin == null && !c.equals("setPlayer")) {
                 send("Error: Player and its origin are not set, please use setPlayer(player_name, x, y, z)");
-                logger.warning("Player and its origin are not set, please use setPlayer(player_name, x, y, z)");
+                logger.warning("Player and its origin are not set.");
                 close();
                 return;
             }
