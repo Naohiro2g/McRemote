@@ -60,15 +60,20 @@ public class EntityCommands {
         }
     }
 
-
     private void handleEntityGetPos(Entity entity) {
         Location loc = entity.getLocation();
         session.send(loc.getX() + "," + loc.getY() + "," + loc.getZ());
     }
 
     private void handleEntitySetPos(Entity entity, String[] args) {
-        Location loc = miscCommands.parseRelativeBlockLocation(args[1], args[2], args[3]);
-        entity.teleport(loc);
+        try {
+            Location loc = miscCommands.parseRelativeBlockLocation(args[1], args[2], args[3]);
+            entity.teleport(loc);
+            session.send("Entity position set to: " + loc.getX() + "," + loc.getY() + "," + loc.getZ());
+        } catch (Exception e) {
+            session.send("Error setting entity position: " + e.getMessage());
+            logger.warning("Error setting entity position: " + e.getMessage());
+        }
     }
 
     private void handleEntityGetRotation(Entity entity) {
@@ -77,10 +82,16 @@ public class EntityCommands {
     }
 
     private void handleEntitySetRotation(Entity entity, String[] args) {
-        Location loc = entity.getLocation();
-        loc.setYaw(Float.parseFloat(args[1]));
-        loc.setPitch(Float.parseFloat(args[2]));
-        entity.teleport(loc);
+        try {
+            Location loc = entity.getLocation();
+            loc.setYaw(Float.parseFloat(args[1]));
+            loc.setPitch(Float.parseFloat(args[2]));
+            entity.teleport(loc);
+            session.send("Entity rotation set to: " + loc.getYaw() + "," + loc.getPitch());
+        } catch (Exception e) {
+            session.send("Error setting entity rotation: " + e.getMessage());
+            logger.warning("Error setting entity rotation: " + e.getMessage());
+        }
     }
 
     private void handleEntityGetPitch(Entity entity) {
@@ -88,9 +99,15 @@ public class EntityCommands {
     }
 
     private void handleEntitySetPitch(Entity entity, String[] args) {
-        Location loc = entity.getLocation();
-        loc.setPitch(Float.parseFloat(args[1]));
-        entity.teleport(loc);
+        try {
+            Location loc = entity.getLocation();
+            loc.setPitch(Float.parseFloat(args[1]));
+            entity.teleport(loc);
+            session.send("Entity pitch set to: " + loc.getPitch());
+        } catch (Exception e) {
+            session.send("Error setting entity pitch: " + e.getMessage());
+            logger.warning("Error setting entity pitch: " + e.getMessage());
+        }
     }
 
     private void handleEntityGetYaw(Entity entity) {
@@ -98,12 +115,24 @@ public class EntityCommands {
     }
 
     private void handleEntitySetYaw(Entity entity, String[] args) {
-        Location loc = entity.getLocation();
-        loc.setYaw(Float.parseFloat(args[1]));
-        entity.teleport(loc);
+        try {
+            Location loc = entity.getLocation();
+            loc.setYaw(Float.parseFloat(args[1]));
+            entity.teleport(loc);
+            session.send("Entity yaw set to: " + loc.getYaw());
+        } catch (Exception e) {
+            session.send("Error setting entity yaw: " + e.getMessage());
+            logger.warning("Error setting entity yaw: " + e.getMessage());
+        }
     }
 
     private void handleEntityRemove(Entity entity) {
-        entity.remove();
+        try {
+            entity.remove();
+            session.send("Entity removed successfully.");
+        } catch (Exception e) {
+            session.send("Error removing entity: " + e.getMessage());
+            logger.warning("Error removing entity: " + e.getMessage());
+        }
     }
 }

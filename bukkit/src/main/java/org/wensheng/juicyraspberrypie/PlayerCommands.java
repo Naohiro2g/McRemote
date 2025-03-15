@@ -19,8 +19,8 @@ public class PlayerCommands {
     public void handleSetPlayerCommand(String[] args) {
         // Process if the command arguments are 4, or 5. Otherwise, return an error message and exit.
         if (args.length != 4 && args.length != 5) {
-            logger.warning("Invalid arguments for setPlayer command.");
-            session.send("Error: Invalid arguments for setPlayer command.");
+            logger.warning("Invalid arguments for setPlayer command. Bye.");
+            session.send("Error: Invalid arguments for setPlayer command. Bye.");
             return;  // disconnect
         }
 
@@ -64,14 +64,14 @@ public class PlayerCommands {
             z = Integer.parseInt(args[3]);
         } catch (NumberFormatException e) {
             session.send("Error: x, y, z must be integers.");
-            logger.warning("Invalid values for setPlayer command.");
+            logger.warning("Invalid values for setPlayer command. Bye.");
             return;
         }
 
         if (args.length == 5) {
             World world = Bukkit.getWorld(args[4]);
             if (world == null) {
-                session.send("Error: " + args[4] + " is invalid world name.");
+                session.send("Error: " + args[4] + " is invalid world name. Bye.");
                 return;
             } else {
                 worldName = args[4];
@@ -83,7 +83,7 @@ public class PlayerCommands {
         session.setOrigin(location);  // this is the setPlayer command
 
         // Log the information. Start the session with player_name, x, y, z, and world.
-        logger.info("Session started for player: " + playerName + " at location: " + location);
+        logger.warning("Session started for player: " + playerName + " at \n" + location);
         session.send("Player " + playerName + " set to location: " + x + ", " + y + ", " + z + " in world \"" + worldName + "\"");
     }
 

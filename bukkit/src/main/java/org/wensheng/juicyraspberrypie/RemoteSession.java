@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.logging.Logger;
+import java.util.Arrays;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -73,7 +74,6 @@ public class RemoteSession {
         logger.info("Started input and output threads.");
     }
 
-
     public void setOrigin(Location origin) {
         this.origin = origin;
         logger.info("Origin set to: " + origin);
@@ -86,15 +86,17 @@ public class RemoteSession {
     /**
      * Handles incoming commands and executes the appropriate actions.
      *
-     * @param c The command string to handle.
+     * @param c    The command string to handle.
      * @param args The arguments for the command.
      */
     private void handleCommand(String c, String[] args) {
         try {
             if (this.origin == null && !c.equals("setPlayer")) {
-                send("Error: Player and its origin are not set, please use setPlayer(player_name, x, y, z)");
-                logger.warning("Player and its origin are not set.");
+                send("Error: Player and its origin are not set, please use setPlayer() first.");
+                logger.severe(
+                        "Player and its origin are not set. Command: " + c + ", Arguments: " + Arrays.toString(args));
                 close();
+
                 return;
             }
 
@@ -136,7 +138,7 @@ public class RemoteSession {
                     playerCommands.handleSetPlayerCommand(args);
                     break;
                 default:
-                    send("Error: No such entity/player command" + c);
+                    send("Error: No such entity/player command: " + c);
                     logger.warning("No such entity/player command: " + c);
                     break;
             }
@@ -161,35 +163,40 @@ public class RemoteSession {
     }
 
     public void send(String a) {
-        if (pendingRemoval) return;
+        if (pendingRemoval && !a.startsWith("Error:")) {
+            return;
+        }
         synchronized(outQueue) {
             outQueue.add(a);
         }
     }
 
     public void close() {
+        // if (!running) {
+        //     return; // Prevent double close
+        // }
         running = false;
         pendingRemoval = true;
         //wait for threads to stop
         try {
-            inThread.join(2000);
-            outThread.join(2000);
-        }
+                inThread.join(2000);
+                outThread.join(2000);
+            }
         catch (InterruptedException e) {
-            plugin.logger.warning("Failed to stop in/out thread");
+            logger.warning("Failed to stop in/out thread");
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
             logger.warning(sw.toString());
         }
 
         try {
-            socket.close();
+                socket.close();
         } catch (Exception e) {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
             logger.warning(sw.toString());
         }
-        plugin.logger.info("Closed connection to" + socket.getRemoteSocketAddress() + ".");
+        logger.info("Closed connection to " + socket.getRemoteSocketAddress() + ".");
     }
 
     public void handlePlayerQuitEvent() {
@@ -229,7 +236,7 @@ public class RemoteSession {
             handleLine(message);
             processedCount++;
             if (processedCount >= maxCommandsPerTick) {
-                plugin.logger.warning("Over " + maxCommandsPerTick +
+                logger.warning("Over " + maxCommandsPerTick +
                         " commands were queued - deferring " + inQueue.size() + " to next tick");
                 break;
             }
@@ -250,7 +257,7 @@ public class RemoteSession {
     private class InputThread implements Runnable {
         @Override
         public void run() {
-            plugin.logger.info("Starting input thread!");
+            logger.warning("Starting input thread!");
             while (running) {
                 try {
                     String newLine = in.readLine();
@@ -271,9 +278,9 @@ public class RemoteSession {
             }
             try {
                 in.close();
-                plugin.logger.warning("Closing input buffer");
+                // plugin.logger.warning("Closing input buffer");
             } catch (Exception e) {
-                plugin.logger.warning("Failed to close input buffer");
+                logger.warning("Failed to close input buffer");
                 StringWriter sw = new StringWriter();
                 e.printStackTrace(new PrintWriter(sw));
                 logger.warning(sw.toString());
@@ -284,7 +291,7 @@ public class RemoteSession {
     private class OutputThread implements Runnable {
         @Override
         public void run() {
-            plugin.logger.info("Starting output thread!");
+            // plugin.logger.info("Starting output thread!");
             while (running) {
                 try {
                     String line;
@@ -307,9 +314,9 @@ public class RemoteSession {
             }
             try {
                 out.close();
-                plugin.logger.warning("Closing output buffer");
+                // logger.warning("Closing output buffer");
             } catch (Exception e) {
-                plugin.logger.warning("Failed to close output buffer");
+                logger.warning("Failed to close output buffer");
                 StringWriter sw = new StringWriter();
                 e.printStackTrace(new PrintWriter(sw));
                 logger.warning(sw.toString());
