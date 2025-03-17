@@ -1,0 +1,8 @@
+name: McRemote
+version: ${project.version}
+description: Minecraft Remote Control Plugin
+database: false
+main: club.code2create.mcremote.McRemote
+api-version: 1.21.4
+soft-depend:
+  - LuckPerms

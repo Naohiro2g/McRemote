@@ -1,4 +1,0 @@
-./build.sh 1.18.2
-rm -fr  $HOME/Documents/MINECRAFT_SERVERS/PaperMC-1.21.1/plugins/JuicyRaspberryPie
-rm  $HOME/Documents/MINECRAFT_SERVERS/PaperMC-1.21.1/plugins/juicyraspberrypie-1.18.2.jar
-cp target/juicyraspberrypie-1.18.2.jar $HOME/Documents/MINECRAFT_SERVERS/PaperMC-1.21.1/plugins/
