@@ -2,7 +2,7 @@
 # or you will fail to build the plugin.
 # Becasue -PmcVersion and -PpluginVersion are required to build.
 
-MC_DIR := $${HOME}/Documents/MINECRAFT_SERVERS/PaperMC
+MC_DIR := $${HOME}/MINECRAFT_SERVERS/PaperMC
 MC_VERSION := 1.21.4
 PLUGIN_VERSION := 0.6.13
 

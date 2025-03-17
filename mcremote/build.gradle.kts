@@ -9,13 +9,12 @@ java.sourceCompatibility = JavaVersion.VERSION_21
 group = "club.code2create"
 description = "mc-remote: Minecraft Remote Control Plugin"
 
-val mcVersion: String = project.findProperty("mcVersion") as String? ?: "1.21.4"
-val pluginVersion: String = project.findProperty("pluginVersion") as String? ?: "0.6.1"
+val mcVersion: String = project.findProperty("mcVersion") as String? ?: "1.1.1"
+val pluginVersion: String = project.findProperty("pluginVersion") as String? ?: "0.0.0"
 val version = "$mcVersion-$pluginVersion"
 
 tasks.jar {
     archiveBaseName.set("mc-remote")
-    archiveVersion.set("$version")
     archiveClassifier.set("")
 }
 
