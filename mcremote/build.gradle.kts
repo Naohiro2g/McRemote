@@ -15,6 +15,7 @@ val version = "$mcVersion-$pluginVersion"
 
 tasks.jar {
     archiveBaseName.set("mc-remote")
+    archiveVersion.set("$version")
     archiveClassifier.set("")
 }
 
