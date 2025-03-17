@@ -36,20 +36,6 @@ public class McRemote extends JavaPlugin implements Listener{
         if(!py_init_file.exists()){
             this.saveResource("config.yml", false);
         }
-
-        File mcpiFolder = new File(getDataFolder(), "mc_remote");
-        if(!mcpiFolder.exists()) {
-            boolean ok = mcpiFolder.mkdir();
-            if (ok) {
-                this.saveResource("mc_remote/connection.py", false);
-                this.saveResource("mc_remote/event.py", false);
-                this.saveResource("mc_remote/minecraft.py", false);
-                this.saveResource("mc_remote/util.py", false);
-                this.saveResource("mc_remote/vec3.py", false);
-            } else {
-                logger.warning("Could not create mcpi directory in plugin.");
-            }
-        }
     }
 
     public static boolean isLuckPermsEnabled() {

@@ -15,3 +15,4 @@ out
 package-lock.json
 /others/
 build/
+bin/

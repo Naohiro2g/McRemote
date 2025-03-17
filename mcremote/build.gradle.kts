@@ -11,19 +11,20 @@ description = "mc-remote: Minecraft Remote Control Plugin"
 
 val mcVersion: String = project.findProperty("mcVersion") as String? ?: "1.21.4"
 val pluginVersion: String = project.findProperty("pluginVersion") as String? ?: "0.6.1"
-
+val version = "$mcVersion-$pluginVersion"
 
 tasks.jar {
     archiveBaseName.set("mc-remote")
-    archiveVersion.set("$mcVersion-$pluginVersion")
+    archiveVersion.set("$version")
     archiveClassifier.set("")
 }
 
 tasks.processResources {
     filesMatching("plugin.yml") {
-        expand(mapOf("project" to project))
+        expand(mapOf("project" to mapOf("version" to version)))
     }
 }
+
 
 repositories {
     mavenCentral()

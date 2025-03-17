@@ -4,7 +4,7 @@
 
 MC_DIR := $${HOME}/Documents/MINECRAFT_SERVERS/PaperMC
 MC_VERSION := 1.21.4
-PLUGIN_VERSION := 0.6.11
+PLUGIN_VERSION := 0.6.13
 
 update:
 	./gradlew clean build -PmcVersion=$(MC_VERSION) -PpluginVersion=$(PLUGIN_VERSION) && \
