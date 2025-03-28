@@ -16,3 +16,4 @@ package-lock.json
 /others/
 build/
 bin/
+ftp_settings.*
