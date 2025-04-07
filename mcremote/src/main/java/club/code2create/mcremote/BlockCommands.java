@@ -131,7 +131,7 @@ public class BlockCommands {
             BlockFace blockFace = BlockFace.values()[facing];
             updateBlock(world, loc, material, blockFace);
             if (msgError.isEmpty()) {
-                String msg = "Block " + material.name() + " Chatset successfully at: " + loc.toString();
+                String msg = "Block " + material.name() + " set successfully at: " + loc.toString();
                 session.send(msg);
             } else {
                 sendAndLogWarning(msgError);
