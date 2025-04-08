@@ -157,8 +157,11 @@ public class BlockCommands {
             if (checkRange(targetLoc)) {
                 updateBlock(world, targetLoc, material, blockFace);
             } else {
-                sendAndLogWarning("Block placement denied: out of allowed range for "
-                                  + session.getPlayerCommands().getPlayerName());
+                if (debug) {
+                    String msg = "Block placement denied: out of allowed range for "
+                            + session.getPlayerCommands().getPlayerName();
+                    session.send(msg);
+                }
                 return;
             }
 
@@ -213,8 +216,11 @@ public class BlockCommands {
                 // Check if the player is within range for both locations
                 setCuboid(world, loc1, loc2, material, blockFace);
             } else {
-                sendAndLogWarning("Block placement denied: out of allowed range for "
-                                  + session.getPlayerCommands().getPlayerName());
+                if (debug) {
+                    String msg = "Block placement denied: out of allowed range for "
+                            + session.getPlayerCommands().getPlayerName();
+                    session.send(msg);
+                }
                 return;
             }
 
