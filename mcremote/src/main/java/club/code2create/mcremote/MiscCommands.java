@@ -27,11 +27,6 @@ public class MiscCommands {
         Bukkit.broadcast(Component.text(sb.toString().trim()));
     }
 
-    // private Location parseRelativeBlockLocation(String x, String y, String z) {
-    // return new Location(null, Double.parseDouble(x), Double.parseDouble(y),
-    // Double.parseDouble(z));
-    // }
-
     Location parseRelativeBlockLocation(String xstr, String ystr, String zstr) {
         Location origin = session.getOrigin();
         int x = (int) Double.parseDouble(xstr);
@@ -39,42 +34,6 @@ public class MiscCommands {
         int z = (int) Double.parseDouble(zstr);
         return new Location(origin.getWorld(), origin.getBlockX() + x, origin.getBlockY() + y, origin.getBlockZ() + z);
     }
-
-    public Location parseRelativeLocation(String xstr, String ystr, String zstr) {
-        Location origin = session.getOrigin();
-        double x = Double.parseDouble(xstr);
-        double y = Double.parseDouble(ystr);
-        double z = Double.parseDouble(zstr);
-        return new Location(origin.getWorld(), origin.getX() + x, origin.getY() + y, origin.getZ() + z);
-    }
-
-//    public Location parseRelativeBlockLocation(String xstr, String ystr, String zstr, float pitch, float yaw) {
-//        Location loc = parseRelativeBlockLocation(xstr, ystr, zstr);
-//        loc.setPitch(pitch);
-//        loc.setYaw(yaw);
-//        return loc;
-//    }
-//
-//    public Location parseRelativeLocation(String xstr, String ystr, String zstr, float pitch, float yaw) {
-//        Location loc = parseRelativeLocation(xstr, ystr, zstr);
-//        loc.setPitch(pitch);
-//        loc.setYaw(yaw);
-//        return loc;
-//    }
-//
-//    public String blockLocationToRelative(Location loc) {
-//        Location origin = session.getOrigin();
-//        return (loc.getBlockX() - origin.getBlockX()) + "," + (loc.getBlockY() - origin.getBlockY()) + "," +
-//                (loc.getBlockZ() - origin.getBlockZ());
-//    }
-//
-//    public String locationToRelative(Location loc) {
-//        Location origin = session.getOrigin();
-//        return (loc.getX() - origin.getX()) + "," + (loc.getY() - origin.getY()) + "," +
-//                (loc.getZ() - origin.getZ());
-//    }
-
-
 
     public void handleGetHeight(World world, String[] args) {
         Location loc = parseRelativeBlockLocation(args[0], "0", args[1]);

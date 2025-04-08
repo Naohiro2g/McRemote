@@ -116,7 +116,7 @@ public class BlockCommands {
         }
 
         try {
-            Location loc = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
+            Location targetLoc = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
             Material material = Material.matchMaterial(args[3]);
             String msgError = "";
             if (material == null) {
@@ -129,9 +129,26 @@ public class BlockCommands {
                 msgError += "  Invalid facing value for setBlock command.";
             }
             BlockFace blockFace = BlockFace.values()[facing];
-            updateBlock(world, loc, material, blockFace);
+
+            // プレイヤーの起点 (origin) を取得
+            Location origin = session.getPlayerCommands().getOrigin();
+            if (origin == null) {
+                sendAndLogWarning("Player origin not set.");
+                return;
+            }
+            int allowedRange = McRemote.instance.getPermissionManager().getPlayerRange(session.getPlayerCommands().getAttachedPlayer());
+            double dx = Math.abs(targetLoc.getX() - origin.getX());
+            double dz = Math.abs(targetLoc.getZ() - origin.getZ());
+            if (dx > allowedRange || dz > allowedRange) {
+                sendAndLogWarning("Block placement denied: out of allowed range for " +
+                        session.getPlayerCommands().getPlayerName());
+                return;
+            }
+
+
+            updateBlock(world, targetLoc, material, blockFace);
             if (msgError.isEmpty()) {
-                String msg = "Block " + material.name() + " set successfully at: " + loc.toString();
+                String msg = "Block " + material.name() + " set successfully at: " + targetLoc;
                 session.send(msg);
             } else {
                 sendAndLogWarning(msgError);

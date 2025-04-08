@@ -1,6 +1,9 @@
 # port for Minecraft Remote (socket server)
 api_port: 25575
-# permission nodes of LuckPerms
-permissions:
-  online: "mcr.online"
-  offline: "mcr.offline"
+# permission nodes and meta value of LuckPerms
+luckperm_permissions:
+  online: "mcr.online"  # permission node for online players
+  offline: "mcr.offline"  # permission node for offline players
+  build.range: "mcr.build.range"  # meta value for group
+# if there is no LuckPerms, use this
+default_build_range: 128

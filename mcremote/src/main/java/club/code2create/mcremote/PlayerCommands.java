@@ -7,94 +7,124 @@ import org.bukkit.World;
 import java.util.UUID;
 import java.util.logging.Logger;
 
-
 public class PlayerCommands {
-    private static final Logger logger = Logger.getLogger("McR_Player"); // Logger for logging messages
+    private static final Logger logger = Logger.getLogger("McR_Player");
     private final RemoteSession session;
+
+    // プレイヤー情報を保持するフィールド
+    private UUID playerUUID;
+    private String playerName;
+    private int playerRange; // build.range のキャッシュ
+    private Location origin;
 
     public PlayerCommands(RemoteSession session) {
         this.session = session;
     }
 
+    /**
+     * setPlayer コマンドの処理。
+     * 形式：
+     *    setPlayer(playerName, x, y, z)
+     * または
+     *    setPlayer(playerName, x, y, z, world)
+     * オンライン／オフライン問わず、コマンドで渡された座標を採用し、
+     * RemoteSession での起点 (origin) を更新します。
+     */
     public void handleSetPlayerCommand(String[] args) {
-        // Process if the command arguments are 4, or 5. Otherwise, return an error message and exit.
+        // 引数は 4 個または 5 個でなければならない
         if (args.length != 4 && args.length != 5) {
             logger.warning("Invalid arguments for setPlayer command. Bye.");
             session.send("Error: Invalid arguments for setPlayer command. Bye.");
-            return;  // disconnect
+            return;
         }
 
-        String playerName = args[0];
-        UUID playerUUID = getPlayerUUID(playerName);
-        if (!checkPlayer(playerName, playerUUID)) {return;}  // disconnect
+        String pName = args[0];
+        UUID uuid = getPlayerUUID(pName);
+        if (!checkPlayer(pName, uuid)) {
+            return;
+        }
+
+        // プレイヤー情報のフィールドを更新
+        this.playerName = pName;
+        this.playerUUID = uuid;
 
         logger.info("Player " + playerName + " with UUID: " + playerUUID + " is requesting new session.");
         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
 
+        // build.range をキャッシュ
+        logger.info("Player " + playerName + " has played before: " + offlinePlayer.hasPlayedBefore());
+        try {
+            this.playerRange = McRemote.instance.getPermissionManager().getPlayerRange(offlinePlayer);
+        } catch (Exception e) {
+            logger.warning("Failed to get player range: " + e.getMessage());
+            session.send("Error: Failed to get player range. Bye.");
+            return;
+        }
+//        this.playerRange = PermissionManager.getPlayerRange(offlinePlayer);
+        logger.info("Player " + playerName + " has range: " + playerRange);
+
         if (McRemote.isLuckPermsEnabled()) {
-            if (offlinePlayer.isOnline()) {  // player is online
-                if (PermissionManager.canConstructOnline(offlinePlayer.getPlayer())) {
+            if (offlinePlayer.isOnline()) {
+                if (McRemote.instance.getPermissionManager().canConstructOnline(offlinePlayer)) {
                     logger.info("Player " + playerName + " is online and allowed Minecraft Remote online.");
                 } else {
                     logger.warning("Player " + playerName + " is online but not allowed Minecraft Remote even online.");
                     session.send("Error: Player " + playerName + " is online but not allowed Minecraft Remote. Bye.");
-                    return;  // disconnect
+                    return;
                 }
-            } else {                        // player is offline
+            } else {
                 logger.info("Player " + playerName + " is offline but has played before.");
-                if (PermissionManager.canConstructOffline(offlinePlayer)) {
-                    logger.info("  and allowed Minecraft Remote even offline.");
+                if (McRemote.getInstance().getPermissionManager().canConstructOffline(offlinePlayer)) {
+                    logger.info("Allowed Minecraft Remote offline for player " + playerName);
                 } else {
                     logger.warning("Player " + playerName + " is not allowed Minecraft Remote offline. Bye.");
                     session.send("Error: Player " + playerName + " is not allowed Minecraft Remote offline. Bye.");
-                    return;  // disconnect
+                    return;
                 }
             }
         } else {
             logger.warning("LuckPerms is not available. Allowing player " + playerName + " to connect.");
         }
 
+
         int x, y, z;
         String worldName = "world";
-
+        World world;
+        // オンライン・オフライン問わず、コマンド引数の座標をパースする
         try {
             x = Integer.parseInt(args[1]);
             y = Integer.parseInt(args[2]);
             z = Integer.parseInt(args[3]);
         } catch (NumberFormatException e) {
             session.send("Error: x, y, z must be integers.");
-            logger.warning("Invalid values for setPlayer command. Bye.");
+            logger.warning("Invalid coordinate values in setPlayer command. Bye.");
             return;
         }
-
         if (args.length == 5) {
-            World world = Bukkit.getWorld(args[4]);
+            world = Bukkit.getWorld(args[4]);
             if (world == null) {
-                session.send("Error: " + args[4] + " is invalid world name. Bye.");
+                session.send("Error: " + args[4] + " is an invalid world name. Bye.");
                 return;
-            } else {
-                worldName = args[4];
             }
+            worldName = args[4];
+        } else {
+            world = Bukkit.getWorld(worldName);
         }
 
-        World world = Bukkit.getWorld(worldName);
-        Location location = new Location(world, x, y, z);
-        session.setOrigin(location);  // this is the setPlayer command
+        this.origin = new Location(world, x, y, z);
+        session.setOrigin(origin);
 
-        // Log the information. Start the session with player_name, x, y, z, and world.
-        logger.warning("Session started for player: " + playerName + " at \n" + location);
+        logger.warning("Session started for player: " + playerName + " at \n" + this.origin);
         session.send("Player " + playerName + " set to location: " + x + ", " + y + ", " + z + " in world \"" + worldName + "\"");
     }
-
 
     private boolean checkPlayer(String playerName, UUID playerUUID) {
         if (playerUUID == null) {
             session.send("Error: Player " + playerName + " not found. Bye.");
             logger.warning("Player " + playerName + " not found. Bye.");
             return false;
-        } else {
-            return true;
         }
+        return true;
     }
 
     private UUID getPlayerUUID(String playerName) {
@@ -107,5 +137,36 @@ public class PlayerCommands {
             }
         }
         return null;
+    }
+
+    /**
+     * オフラインプレイヤーも含め、セッションに紐付けられた最新のプレイヤー情報を返します。
+     */
+    public OfflinePlayer getAttachedPlayer() {
+        if (playerUUID == null) {
+            return null;
+        }
+        return Bukkit.getOfflinePlayer(playerUUID);
+    }
+
+    /**
+     * セッションに紐付いたプレイヤー名を返します。
+     */
+    public String getPlayerName() {
+        return playerName;
+    }
+
+    /**
+     * セッションの起点 (origin) を返します。
+     */
+    public Location getOrigin() {
+        return origin;
+    }
+
+    /**
+     * プレイヤーの建築範囲 (build.range) をキャッシュから返します。
+     */
+    public int getPlayerRange(OfflinePlayer offlinePlayer) {
+        return playerRange;
     }
 }

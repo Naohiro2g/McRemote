@@ -4,8 +4,8 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
-import java.util.logging.Logger;
 import java.util.Arrays;
+import java.util.logging.Logger;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -16,10 +16,12 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import net.kyori.adventure.text.Component;
 
 public class RemoteSession {
+    private static final int MAX_COMMANDS_PER_TICK = 9000;
     private static final Logger logger = Logger.getLogger("McR_RemoteSession");
-    boolean pendingRemoval = false;
+
+    public boolean pendingRemoval = false;
     private Location origin = null;
-    private Player attachedPlayer = null;
+    private Player attachedPlayer = null;  // プレイヤー認証済みなら設定する想定
     private final Socket socket;
     private BufferedReader in;
     private BufferedWriter out;
@@ -29,17 +31,19 @@ public class RemoteSession {
     private final ArrayDeque<String> outQueue = new ArrayDeque<>();
     private boolean running = true;
     private final McRemote plugin;
+
+    // イベント用キュー
     private final ArrayDeque<PlayerInteractEvent> interactEventQueue = new ArrayDeque<>();
     private final ArrayDeque<AsyncChatEvent> chatPostedQueue = new ArrayDeque<>();
     private final ArrayDeque<ProjectileHitEvent> projectileHitQueue = new ArrayDeque<>();
-    private final int maxCommandsPerTick = 9000; // Maximum number of commands to process per tick
 
+    // コマンド処理担当の各クラス
     private final PlayerCommands playerCommands;
     private final BlockCommands blockCommands;
     private final MiscCommands miscCommands;
     private final EntityCommands entityCommands;
 
-    RemoteSession(McRemote plugin, Socket socket) throws IOException {
+    public RemoteSession(McRemote plugin, Socket socket) throws IOException {
         this.plugin = plugin;
         this.socket = socket;
         this.playerCommands = new PlayerCommands(this);
@@ -50,19 +54,19 @@ public class RemoteSession {
     }
 
     /**
-     * Initializes the session.
+     * セッションの初期化処理
      */
     private void init() throws IOException {
         socket.setTcpNoDelay(true);
         socket.setKeepAlive(true);
         socket.setTrafficClass(0x10);
         this.in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-        this.out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+        this.out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
         startThreads();
     }
 
     /**
-     * Starts the input and output threads.
+     * 入出力スレッドの開始
      */
     private void startThreads() {
         inThread = new Thread(new InputThread());
@@ -72,29 +76,48 @@ public class RemoteSession {
         logger.info("Started input and output threads.");
     }
 
+    public Socket getSocket() {
+        return socket;
+    }
+
+    public McRemote getPlugin() {
+        return plugin;
+    }
+
     public void setOrigin(Location origin) {
         this.origin = origin;
-        // logger.info("Origin set to: " + origin);
     }
 
     public Location getOrigin() {
         return this.origin;
     }
 
+    public PlayerCommands getPlayerCommands() {
+        return playerCommands;
+    }
+
+    public BlockCommands getBlockCommands() { return blockCommands; }
+
     /**
-     * Handles incoming commands and executes the appropriate actions.
-     *
-     * @param c    The command string to handle.
-     * @param args The arguments for the command.
+     * 受信した１行をコマンドと引数に分解し、適切な処理へ委譲する。
+     */
+    private void handleLine(String line) {
+        String[] parts = line.split("\\(", 2);
+        String command = parts[0];
+        String[] args = parts.length > 1 ? parts[1].substring(0, parts[1].length() - 1).split(",") : new String[0];
+        handleCommand(command, args);
+    }
+
+    /**
+     * コマンド文字列と引数に応じて各担当クラスの処理を呼び出す。
+     * プレイヤーの起点 (origin) が未設定の場合、setPlayer コマンド以外は拒否する。
      */
     private void handleCommand(String c, String[] args) {
         try {
             if (this.origin == null && !c.equals("setPlayer")) {
                 send("Error: Player and its origin are not set, please use setPlayer() first.");
-                logger.severe(
-                        "Player and its origin are not set. Command: " + c + ", Arguments: " + Arrays.toString(args));
+                logger.severe("Player and its origin are not set. Command: " + c + ", Arguments: " + Arrays.toString(args));
                 close();
-
                 return;
             }
 
@@ -146,14 +169,6 @@ public class RemoteSession {
         }
     }
 
-    public Socket getSocket() {
-        return socket;
-    }
-
-    public McRemote getPlugin() {
-        return plugin;
-    }
-
     public void send(Object a) {
         send(a.toString());
     }
@@ -167,13 +182,13 @@ public class RemoteSession {
         }
     }
 
+    /**
+     * セッション終了処理。
+     * - 入出力スレッドの停止を待機し、ソケットを閉じる。
+     */
     public void close() {
-        // if (!running) {
-        // return; // Prevent double close
-        // }
         running = false;
         pendingRemoval = true;
-        // wait for threads to stop
         try {
             inThread.join(2000);
             outThread.join(2000);
@@ -224,7 +239,12 @@ public class RemoteSession {
         chatPostedQueue.add(event);
     }
 
+    /**
+     * Tick 処理：入力キューからコマンドを順次処理する。
+     * 一定以上のコマンドがある場合は次回以降に延期する。
+     */
     void tick() {
+        int maxCommandsPerTick = MAX_COMMANDS_PER_TICK;
         int processedCount = 0;
         String message;
         while ((message = inQueue.poll()) != null) {
@@ -236,19 +256,12 @@ public class RemoteSession {
                 break;
             }
         }
-
         if (!running && inQueue.isEmpty()) {
             pendingRemoval = true;
         }
     }
 
-    private void handleLine(String line) {
-        String[] parts = line.split("\\(", 2);
-        String command = parts[0];
-        String[] args = parts.length > 1 ? parts[1].substring(0, parts[1].length() - 1).split(",") : new String[0];
-        handleCommand(command, args);
-    }
-
+    // --- 内部クラス: InputThread ---
     private class InputThread implements Runnable {
         @Override
         public void run() {
@@ -262,17 +275,14 @@ public class RemoteSession {
                         inQueue.add(newLine);
                     }
                 } catch (Exception e) {
-                    if (running) {
-                        StringWriter sw = new StringWriter();
-                        e.printStackTrace(new PrintWriter(sw));
-                        logger.warning(sw.toString());
-                        running = false;
-                    }
+                    StringWriter sw = new StringWriter();
+                    e.printStackTrace(new PrintWriter(sw));
+                    logger.warning(sw.toString());
+                    running = false;
                 }
             }
             try {
                 in.close();
-                // plugin.logger.warning("Closing input buffer");
             } catch (Exception e) {
                 logger.warning("Failed to close input buffer");
                 StringWriter sw = new StringWriter();
@@ -282,10 +292,10 @@ public class RemoteSession {
         }
     }
 
+    // --- 内部クラス: OutputThread ---
     private class OutputThread implements Runnable {
         @Override
         public void run() {
-            // plugin.logger.info("Starting output thread!");
             while (running) {
                 try {
                     String line;
@@ -295,7 +305,7 @@ public class RemoteSession {
                     }
                     out.flush();
                     Thread.yield();
-                    Thread.sleep(1L);
+                    Thread.sleep(2L);
                 } catch (Exception e) {
                     if (running) {
                         StringWriter sw = new StringWriter();
@@ -307,7 +317,6 @@ public class RemoteSession {
             }
             try {
                 out.close();
-                // logger.warning("Closing output buffer");
             } catch (Exception e) {
                 logger.warning("Failed to close output buffer");
                 StringWriter sw = new StringWriter();

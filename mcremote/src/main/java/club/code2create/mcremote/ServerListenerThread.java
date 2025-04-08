@@ -5,19 +5,20 @@ import java.net.*;
 import java.util.logging.Logger;
 
 public class ServerListenerThread implements Runnable {
-	private static final Logger logger = Logger.getLogger("McR_Server"); // Logger for logging messages
+	private static final Logger logger = Logger.getLogger("McR_Server");
 
-	ServerSocket serverSocket;
+	public ServerSocket serverSocket;
 	boolean running = true;
 	private static McRemote plugin;
 
-	ServerListenerThread(McRemote plugin, SocketAddress bindAddress) throws IOException {
+	public ServerListenerThread(McRemote plugin, SocketAddress bindAddress) throws IOException {
 		ServerListenerThread.plugin = plugin;
 		serverSocket = new ServerSocket();
 		serverSocket.setReuseAddress(true);
 		serverSocket.bind(bindAddress);
 	}
 
+	@Override
 	public void run() {
 		while (running) {
 			try {
@@ -25,7 +26,6 @@ public class ServerListenerThread implements Runnable {
 				if (!running) return;
 				plugin.handleConnection(new RemoteSession(plugin, newConnection));
 			} catch (Exception e) {
-				// if the server thread is still running raise an error
 				if (running) {
 					logger.warning("Error creating new connection");
 					StringWriter sw = new StringWriter();
