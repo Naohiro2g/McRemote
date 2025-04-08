@@ -16,7 +16,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import net.kyori.adventure.text.Component;
 
 public class RemoteSession {
-    private static final int MAX_COMMANDS_PER_TICK = 9000;
+    private static final int MAX_COMMANDS_PER_TICK = 1000;
     private static final Logger logger = Logger.getLogger("McR_RemoteSession");
 
     public boolean pendingRemoval = false;
@@ -110,7 +110,6 @@ public class RemoteSession {
                 close();
                 return;
             }
-
             switch (c) {
                 case "world.getBlock":
                 case "world.getBlocks":
@@ -167,7 +166,6 @@ public class RemoteSession {
         synchronized (queueLock) {
             queueLock.notifyAll();
         }
-
         try {
             inThread.join(2000);
             outThread.join(2000);
@@ -177,7 +175,6 @@ public class RemoteSession {
             e.printStackTrace(new PrintWriter(sw));
             logger.warning(sw.toString());
         }
-
         try {
             socket.close();
         } catch (Exception e) {
@@ -239,7 +236,7 @@ public class RemoteSession {
     private class InputThread implements Runnable {
         @Override
         public void run() {
-            logger.warning("Starting input thread!");
+            logger.info("Starting input thread!");
             while (running) {
                 try {
                     String newLine = in.readLine();
@@ -272,22 +269,18 @@ public class RemoteSession {
             while (running) {
                 try {
                     String line = null;
-
                     // queueLockを使用してキューへのアクセスを同期
                     synchronized (queueLock) {
                         // キューが空の場合は通知を待つ
                         while (running && outQueue.isEmpty()) {
                             queueLock.wait();
                         }
-
                         // 終了フラグが立っていて、キューが空であれば終了
                         if (!running && outQueue.isEmpty()) {
                             break;
                         }
-
                         line = outQueue.poll();
                     }
-
                     // 取り出したデータが存在する場合は書き込む
                     if (line != null) {
                         out.write(line);
@@ -324,7 +317,6 @@ public class RemoteSession {
         if (pendingRemoval && !a.startsWith("Error:")) {
             return;
         }
-
         // queueLockで同期して通知
         synchronized (queueLock) {
             outQueue.add(a);
