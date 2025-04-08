@@ -10,7 +10,7 @@ plugins {
 // ──────── plugin version ──────────────────────────────────────────────── //
 // The plugin jar will be like "mc-remote-1.21.4-0.6.22.jar".
 val mcVersion: String = "1.21.4"
-val pluginVersion: String = "1.0.1"
+val pluginVersion: String = "1.0.2"
 // 初期リリースバージョンは、1.21.4-1.0.99にしよう。
 // 1.21.ｘ-1.0.xの最終版はサーバー／クライアントセットで99にするルール。
 // 特に、1.21.x最終版セットを使いたい場面はありそう。
