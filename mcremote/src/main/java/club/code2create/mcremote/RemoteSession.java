@@ -21,7 +21,7 @@ public class RemoteSession {
 
     public boolean pendingRemoval = false;
     private Location origin = null;
-    private Player attachedPlayer = null;  // プレイヤー認証済みなら設定する想定
+    private Player attachedPlayer = null;
     private final Socket socket;
     private BufferedReader in;
     private BufferedWriter out;
@@ -31,6 +31,9 @@ public class RemoteSession {
     private final ArrayDeque<String> outQueue = new ArrayDeque<>();
     private boolean running = true;
     private final McRemote plugin;
+
+    // 通知メカニズム用のロックオブジェクト
+    private final Object queueLock = new Object();
 
     // イベント用キュー
     private final ArrayDeque<PlayerInteractEvent> interactEventQueue = new ArrayDeque<>();
@@ -53,9 +56,6 @@ public class RemoteSession {
         init();
     }
 
-    /**
-     * セッションの初期化処理
-     */
     private void init() throws IOException {
         socket.setTcpNoDelay(true);
         socket.setKeepAlive(true);
@@ -65,9 +65,6 @@ public class RemoteSession {
         startThreads();
     }
 
-    /**
-     * 入出力スレッドの開始
-     */
     private void startThreads() {
         inThread = new Thread(new InputThread());
         inThread.start();
@@ -98,9 +95,6 @@ public class RemoteSession {
 
     public BlockCommands getBlockCommands() { return blockCommands; }
 
-    /**
-     * 受信した１行をコマンドと引数に分解し、適切な処理へ委譲する。
-     */
     private void handleLine(String line) {
         String[] parts = line.split("\\(", 2);
         String command = parts[0];
@@ -108,10 +102,6 @@ public class RemoteSession {
         handleCommand(command, args);
     }
 
-    /**
-     * コマンド文字列と引数に応じて各担当クラスの処理を呼び出す。
-     * プレイヤーの起点 (origin) が未設定の場合、setPlayer コマンド以外は拒否する。
-     */
     private void handleCommand(String c, String[] args) {
         try {
             if (this.origin == null && !c.equals("setPlayer")) {
@@ -169,14 +159,15 @@ public class RemoteSession {
         }
     }
 
-
-    /**
-     * セッション終了処理。
-     * - 入出力スレッドの停止を待機し、ソケットを閉じる。
-     */
     public void close() {
         running = false;
         pendingRemoval = true;
+
+        // 出力スレッドを待機中の場合は通知して解除
+        synchronized (queueLock) {
+            queueLock.notifyAll();
+        }
+
         try {
             inThread.join(2000);
             outThread.join(2000);
@@ -227,10 +218,6 @@ public class RemoteSession {
         chatPostedQueue.add(event);
     }
 
-    /**
-     * Tick 処理：入力キューからコマンドを順次処理する。
-     * 一定以上のコマンドがある場合は次回以降に延期する。
-     */
     void tick() {
         int maxCommandsPerTick = MAX_COMMANDS_PER_TICK;
         int processedCount = 0;
@@ -249,7 +236,6 @@ public class RemoteSession {
         }
     }
 
-    // --- 内部クラス: InputThread ---
     private class InputThread implements Runnable {
         @Override
         public void run() {
@@ -280,20 +266,39 @@ public class RemoteSession {
         }
     }
 
-    // --- 内部クラス: OutputThread ---
     private class OutputThread implements Runnable {
         @Override
         public void run() {
             while (running) {
                 try {
-                    String line;
-                    while ((line = outQueue.poll()) != null) {
+                    String line = null;
+
+                    // queueLockを使用してキューへのアクセスを同期
+                    synchronized (queueLock) {
+                        // キューが空の場合は通知を待つ
+                        while (running && outQueue.isEmpty()) {
+                            queueLock.wait();
+                        }
+
+                        // 終了フラグが立っていて、キューが空であれば終了
+                        if (!running && outQueue.isEmpty()) {
+                            break;
+                        }
+
+                        line = outQueue.poll();
+                    }
+
+                    // 取り出したデータが存在する場合は書き込む
+                    if (line != null) {
                         out.write(line);
                         out.write('\n');
+                        out.flush();
                     }
-                    out.flush();
-                    Thread.yield();
-                    Thread.sleep(2L);
+                } catch (InterruptedException e) {
+                    // スレッドが割り込まれた場合
+                    if (running) {
+                        logger.warning("Output thread interrupted: " + e.getMessage());
+                    }
                 } catch (Exception e) {
                     if (running) {
                         StringWriter sw = new StringWriter();
@@ -315,12 +320,15 @@ public class RemoteSession {
     }
 
     public void send(String a) {
+        // 終了処理中でエラーメッセージでなければ送信しない
         if (pendingRemoval && !a.startsWith("Error:")) {
             return;
         }
-        synchronized (outQueue) {
+
+        // queueLockで同期して通知
+        synchronized (queueLock) {
             outQueue.add(a);
+            queueLock.notify(); // キューにデータが追加されたことを通知
         }
     }
-
 }
