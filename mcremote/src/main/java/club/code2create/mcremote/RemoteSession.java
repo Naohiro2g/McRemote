@@ -169,18 +169,6 @@ public class RemoteSession {
         }
     }
 
-    public void send(Object a) {
-        send(a.toString());
-    }
-
-    public void send(String a) {
-        if (pendingRemoval && !a.startsWith("Error:")) {
-            return;
-        }
-        synchronized (outQueue) {
-            outQueue.add(a);
-        }
-    }
 
     /**
      * セッション終了処理。
@@ -325,4 +313,14 @@ public class RemoteSession {
             }
         }
     }
+
+    public void send(String a) {
+        if (pendingRemoval && !a.startsWith("Error:")) {
+            return;
+        }
+        synchronized (outQueue) {
+            outQueue.add(a);
+        }
+    }
+
 }
