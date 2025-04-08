@@ -13,6 +13,7 @@ public class BlockCommands {
     private static final Logger logger = Logger.getLogger("McR_Block"); // Logger for logging messages
     private final RemoteSession session;
     private final MiscCommands miscCommands;
+    private static final boolean debug = false; // Debug flag
 
     public BlockCommands(RemoteSession session, MiscCommands miscCommands) {
         this.session = session;
@@ -103,6 +104,29 @@ public class BlockCommands {
         }
     }
 
+    public boolean checkRange(Location targetLoc) {
+        // プレイヤーのセッションを取得
+        if (session == null) {
+            sendAndLogWarning("Session is null.");
+            return false;
+        }
+        // プレイヤーのセッションからコマンドを取得
+        if (session.getPlayerCommands() == null) {
+            sendAndLogWarning("Player commands are null.");
+            return false;
+        }
+        // プレイヤーの起点 (origin) を取得
+        Location origin = session.getPlayerCommands().getOrigin();
+        if (origin == null) {
+            sendAndLogWarning("Player origin not set.");
+            return false;
+        }
+        int allowedRange = McRemote.instance.getPermissionManager().getPlayerRange(session.getPlayerCommands().getAttachedPlayer());
+        double dx = Math.abs(targetLoc.getX() - origin.getX());
+        double dz = Math.abs(targetLoc.getZ() - origin.getZ());
+        if (dx > allowedRange || dz > allowedRange) { return false; } else { return true; }
+    }
+
     public void handleSetBlock(World world, String[] args) {
         if (args.length < 4) {
             sendAndLogWarning("Invalid arguments for setBlock command.");
@@ -130,25 +154,19 @@ public class BlockCommands {
             }
             BlockFace blockFace = BlockFace.values()[facing];
 
-            // プレイヤーの起点 (origin) を取得
-            Location origin = session.getPlayerCommands().getOrigin();
-            if (origin == null) {
-                sendAndLogWarning("Player origin not set.");
-                return;
-            }
-            int allowedRange = McRemote.instance.getPermissionManager().getPlayerRange(session.getPlayerCommands().getAttachedPlayer());
-            double dx = Math.abs(targetLoc.getX() - origin.getX());
-            double dz = Math.abs(targetLoc.getZ() - origin.getZ());
-            if (dx > allowedRange || dz > allowedRange) {
-                sendAndLogWarning("Block placement denied: out of allowed range for " +
-                        session.getPlayerCommands().getPlayerName());
+            if (checkRange(targetLoc)) {
+                updateBlock(world, targetLoc, material, blockFace);
+            } else {
+                sendAndLogWarning("Block placement denied: out of allowed range for "
+                                  + session.getPlayerCommands().getPlayerName());
                 return;
             }
 
-            updateBlock(world, targetLoc, material, blockFace);
             if (msgError.isEmpty()) {
-                String msg = "Block " + material.name() + " set successfully at: " + targetLoc;
-                session.send(msg);
+                if (debug) {
+                    String msg = "Block " + material.name() + " set successfully at: " + targetLoc;
+                    session.send(msg);
+                }
             } else {
                 sendAndLogWarning(msgError);
             }
@@ -190,12 +208,23 @@ public class BlockCommands {
                 msgError += "  Invalid facing value for setBlocks command.";
             }
             BlockFace blockFace = BlockFace.values()[facing];
-            setCuboid(world, loc1, loc2, material, blockFace);
+
+            if (checkRange(loc1) && checkRange(loc2)) {
+                // Check if the player is within range for both locations
+                setCuboid(world, loc1, loc2, material, blockFace);
+            } else {
+                sendAndLogWarning("Block placement denied: out of allowed range for "
+                                  + session.getPlayerCommands().getPlayerName());
+                return;
+            }
+
             if (msgError.isEmpty()) {
-                String msg = "Blocks " + material.name() + " set successfully at: ("
-                        + args[0] + ", " + args[1] + ", " + args[2] + ") - ("
-                        + args[3] + ", " + args[4] + ", " + args[5] + ")";
-                session.send(msg);
+                if (debug) {
+                    String msg = "Blocks " + material.name() + " set successfully at: ("
+                            + args[0] + ", " + args[1] + ", " + args[2] + ") - ("
+                            + args[3] + ", " + args[4] + ", " + args[5] + ")";
+                    session.send(msg);
+                }
             } else {
                 sendAndLogWarning(msgError);
             }
@@ -259,15 +288,18 @@ public class BlockCommands {
     }
 
     private void sendAndLogWarning(String msg) {
-        session.send("Error: " + msg);
+        if (debug) {
+            session.send("Error: " + msg);
+        }
         logger.warning(msg);
     }
 
     private void sendAndLogError(String msg) {
-        session.send("Error: " + msg);
+        if (debug) {
+            session.send("Error: " + msg);
+        }
         logger.severe(msg);
     }
-
 
 }
 

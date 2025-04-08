@@ -61,7 +61,7 @@ public class PlayerCommands {
             return;
         }
 //        this.playerRange = PermissionManager.getPlayerRange(offlinePlayer);
-        logger.info("Player " + playerName + " has range: " + playerRange);
+        logger.info("Player " + playerName + " has build.range: " + playerRange);
 
         if (McRemote.isLuckPermsEnabled()) {
             if (offlinePlayer.isOnline()) {
@@ -114,7 +114,7 @@ public class PlayerCommands {
         this.origin = new Location(world, x, y, z);
         session.setOrigin(origin);
 
-        logger.warning("Session started for player: " + playerName + " at \n" + this.origin);
+        logger.warning("Session started for player: " + playerName + " at \n  " + this.origin);
         session.send("Player " + playerName + " set to location: " + x + ", " + y + ", " + z + " in world \"" + worldName + "\"");
     }
 
