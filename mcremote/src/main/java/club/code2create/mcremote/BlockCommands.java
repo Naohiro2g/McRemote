@@ -145,7 +145,6 @@ public class BlockCommands {
                 return;
             }
 
-
             updateBlock(world, targetLoc, material, blockFace);
             if (msgError.isEmpty()) {
                 String msg = "Block " + material.name() + " set successfully at: " + targetLoc;
@@ -236,7 +235,7 @@ public class BlockCommands {
         int maxZ = Math.max(loc1.getBlockZ(), loc2.getBlockZ());
 
         for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
+            for (int y = maxY; y >= minY; y--) {  // from top to bottom
                 for (int z = minZ; z <= maxZ; z++) {
                     updateBlock(world, x, y, z, blockType, blockFace);
                 }
