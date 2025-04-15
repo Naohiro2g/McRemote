@@ -32,29 +32,38 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y lftp
 
-      - name: Build plugin using Makefile
-        run: make build
-
-      - name: Deploy to FTP
-        env:
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASS: ${{ secrets.FTP_PASS }}
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_PATH: ${{ secrets.FTP_PATH }}
+      - name: Extract versions from Gradle
+        id: gradle_versions
         run: |
-          # ビルドされたJARファイルのパスを検出
-          JAR_PATH=$(find build/libs -name "mc-remote-*.jar" | head -n 1)
-          JAR_NAME=$(basename "$JAR_PATH")
-          
-          # lftpでFTPコマンドを分けて実行
-          lftp -c "
-            open ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST};
-            cd ${FTP_PATH};
-            rm -rf McRemote;
-            glob -a rm mc-remote*.jar;
-            put $JAR_PATH;
-            bye
-          "
+          MC_VERSION=$(./gradlew -q printMcVersion)
+          PLUGIN_VERSION=$(./gradlew -q printPluginVersion)
+          FULL_VERSION="${MC_VERSION}-${PLUGIN_VERSION}"
+          echo "MC_VERSION=${MC_VERSION}" >> $GITHUB_ENV
+          echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
+          echo "FULL_VERSION=${FULL_VERSION}" >> $GITHUB_ENV
+
+      - name: Build plugin
+        run: ./gradlew build
+
+      # workflow_dispatch での手動トリガーの場合、入力値 deploy_targets を環境変数 TARGETS に格納
+      - name: Set deploy targets for workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "TARGETS=${{ github.event.inputs.deploy_targets }}" >> $GITHUB_ENV
+
+      # タグプッシュの場合は、デフォルトで staging にデプロイ
+      - name: Set deploy targets for tag push
+        if: github.event_name == 'push'
+        run: echo "TARGETS=staging" >> $GITHUB_ENV
+
+      - name: Deploy to specified targets
+        run: |
+          for target in $(echo "$TARGETS" | tr ',' ' '); do
+            if [ "$target" = "staging" ]; then
+              ./gradlew deploy_ftp1
+            elif [ "$target" = "production" ]; then
+              ./gradlew deploy_ftp2
+            fi
+          done
 
       # タグプッシュ（＝自動リリースの場合）のときのみリリース作成する
       - name: Create GitHub Release
@@ -68,16 +77,3 @@ jobs:
           draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      # workflow_dispatch での手動トリガーの場合、入力値 deploy_targets を環境変数 TARGETS に格納
-      - name: Set deploy targets for workflow_dispatch
-        if: github.event_name == 'workflow_dispatch'
-        run: echo "TARGETS=${{ github.event.inputs.deploy_targets }}" >> $GITHUB_ENV
-
-      # タグプッシュの場合は、デフォルトで staging にデプロイ
-      - name: Set deploy targets for tag push
-        if: github.event_name == 'push'
-        run: echo "TARGETS=staging" >> $GITHUB_ENV
-
-      - name: Deploy to specified targets
-        run: make deploy

@@ -9,7 +9,7 @@ plugins {
 // ──────── plugin version ──────────────────────────────────────────────── //
 // The plugin jar will be like "mc-remote-1.21.4-1.0.9.jar".
 val mcVersion: String = "1.21.5"
-val pluginVersion: String = "1.1.0rc2"
+val pluginVersion: String = "1.1.0rc3"
 // ──────── Local Minecraft Server for development ──────────────────────── //
 val homeDir: String = System.getenv("HOME") ?: System.getProperty("user.home")
 val mcDir = file("$homeDir/MINECRAFT_SERVERS/PaperMC")  // Minecraft server directory
@@ -246,5 +246,18 @@ tasks.register("trigger") {
     dependsOn("tagRelease", "pushRelease")
     doLast {
         println("Git tag v$version has been created and pushed to origin.")
+    }
+}
+
+// バージョン情報を表示するタスク
+tasks.register("printMcVersion") {
+    doLast {
+        println(mcVersion)
+    }
+}
+
+tasks.register("printPluginVersion") {
+    doLast {
+        println(pluginVersion)
     }
 }
