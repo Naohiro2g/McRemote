@@ -7,5 +7,6 @@
 # gradle
 .gradle/
 build/
+bin/
 # FTP
 ftp_settings.*
