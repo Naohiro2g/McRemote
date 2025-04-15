@@ -1,19 +1,11 @@
-__pycache__/
-node_modules/
-bukkit/bin/
-bukkit/target/
-bukkit/lib/*.jar
-
 # idea
-out
 *.ipr
 *.iws
 *.iml
-.idea
-
-.gradle
-package-lock.json
-/others/
+.idea/
+.classpath
+# gradle
+.gradle/
 build/
-bin/
+# FTP
 ftp_settings.*

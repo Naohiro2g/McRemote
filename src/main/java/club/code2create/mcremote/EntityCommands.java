@@ -14,6 +14,7 @@ public class EntityCommands {
 
     private final RemoteSession session;
     private final MiscCommands miscCommands;
+    private static final boolean debug = false; // Debug flag
 
     public EntityCommands(RemoteSession session, MiscCommands miscCommands) {
         this.session = session;
@@ -74,7 +75,9 @@ public class EntityCommands {
         try {
             Location loc = miscCommands.parseRelativeBlockLocation(args[1], args[2], args[3]);
             entity.teleport(loc);
-            session.send("Entity position set to: " + loc.getX() + "," + loc.getY() + "," + loc.getZ());
+            if (debug) {
+                session.send("Entity position set to: " + loc.getX() + "," + loc.getY() + "," + loc.getZ());
+            }
         } catch (Exception e) {
             session.send("Error setting entity position: " + e.getMessage());
             logger.warning("Error setting entity position: " + e.getMessage());
@@ -92,7 +95,9 @@ public class EntityCommands {
             loc.setYaw(Float.parseFloat(args[1]));
             loc.setPitch(Float.parseFloat(args[2]));
             entity.teleport(loc);
-            session.send("Entity rotation set to: " + loc.getYaw() + "," + loc.getPitch());
+            if (debug) {
+                session.send("Entity rotation set to: " + loc.getYaw() + "," + loc.getPitch());
+            }
         } catch (Exception e) {
             session.send("Error setting entity ro tation: " + e.getMessage());
             logger.warning("Error setting entity rotation: " + e.getMessage());
@@ -108,7 +113,9 @@ public class EntityCommands {
             Location loc = entity.getLocation();
             loc.setPitch(Float.parseFloat(args[1]));
             entity.teleport(loc);
-            session.send("Entity pitch set to: " + loc.getPitch());
+            if (debug) {
+                session.send("Entity pitch set to: " + loc.getPitch());
+            }
         } catch (Exception e) {
             session.send("Error setting entity pitch: " + e.getMessage());
             logger.warning("Error setting entity pitch: " + e.getMessage());
@@ -124,7 +131,9 @@ public class EntityCommands {
             Location loc = entity.getLocation();
             loc.setYaw(Float.parseFloat(args[1]));
             entity.teleport(loc);
-            session.send("Entity yaw set to: " + loc.getYaw());
+            if (debug) {
+                session.send("Entity yaw set to: " + loc.getYaw());
+            }
         } catch (Exception e) {
             session.send("Error setting entity yaw: " + e.getMessage());
             logger.warning("Error setting entity yaw: " + e.getMessage());
@@ -134,7 +143,9 @@ public class EntityCommands {
     private void handleEntityRemove(Entity entity) {
         try {
             entity.remove();
-            session.send("Entity removed successfully.");
+            if (debug) {
+                session.send("Entity removed: " + entity.getUniqueId());
+            }
         } catch (Exception e) {
             session.send("Error removing entity: " + e.getMessage());
             logger.warning("Error removing entity: " + e.getMessage());

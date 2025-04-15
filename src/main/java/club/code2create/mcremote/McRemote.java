@@ -20,7 +20,7 @@ import java.util.*;
 import java.util.logging.Logger;
 
 public class McRemote extends JavaPlugin implements Listener {
-    final Logger logger = Logger.getLogger("McR");
+    private static final Logger logger = Logger.getLogger("McRemote");
     private static final Set<Material> blockBreakDetectionTools = EnumSet.of(
             Material.DIAMOND_SWORD,
             Material.GOLDEN_SWORD,
@@ -45,12 +45,12 @@ public class McRemote extends JavaPlugin implements Listener {
         try {
             serverThread = new ServerListenerThread(this, new InetSocketAddress(port));
             new Thread(serverThread).start();
-            getLogger().info("Server started at port " + port);
+            logger.info("Server started at port " + port);
         } catch (Exception e) {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
-            getLogger().warning(sw.toString());
-            getLogger().warning("Failed to start Server");
+            logger.warning(sw.toString());
+            logger.warning("Failed to start Server");
             return;
         }
 

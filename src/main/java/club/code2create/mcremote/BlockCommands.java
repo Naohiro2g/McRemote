@@ -213,15 +213,11 @@ public class BlockCommands {
             BlockFace blockFace = BlockFace.values()[facing];
 
             if (checkRange(loc1) && checkRange(loc2)) {
-                // Check if the player is within range for both locations
+                // Check if both locations are within the allowed range
                 setCuboid(world, loc1, loc2, material, blockFace);
             } else {
-                if (debug) {
-                    String msg = "Block placement denied: out of allowed range for "
-                            + session.getPlayerCommands().getPlayerName();
-                    session.send(msg);
-                }
-                return;
+                msgError = "Block placement denied: out of allowed range for "
+                        + session.getPlayerCommands().getPlayerName();
             }
 
             if (msgError.isEmpty()) {

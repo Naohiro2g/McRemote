@@ -8,12 +8,9 @@ plugins {
 }
 
 // ──────── plugin version ──────────────────────────────────────────────── //
-// The plugin jar will be like "mc-remote-1.21.4-0.6.22.jar".
+// The plugin jar will be like "mc-remote-1.21.4-1.0.9.jar".
 val mcVersion: String = "1.21.4"
-val pluginVersion: String = "1.0.3"
-// 初期リリースバージョンは、1.21.4-1.0.99にしよう。
-// 1.21.ｘ-1.0.xの最終版はサーバー／クライアントセットで99にするルール。
-// 特に、1.21.x最終版セットを使いたい場面はありそう。
+val pluginVersion: String = "1.0.5"
 // ──────── Local Minecraft Server for development ──────────────────────── //
 val homeDir: String = System.getenv("HOME") ?: System.getProperty("user.home")
 val mcDir = file("$homeDir/MINECRAFT_SERVERS/PaperMC")  // Minecraft server directory
@@ -27,8 +24,13 @@ version = "$mcVersion-$pluginVersion"
 val projectDir = project.rootDir
 java.sourceCompatibility = JavaVersion.VERSION_21
 
-
 val ftpSettingsFile = file("$projectDir/ftp_settings.mk")
+// FTP settings file 'ftp_settings.mk' should be in the same directory as this build.gradle.kts file.
+// The content of the file should be like:
+//# ftp_settings.mk:
+//FTP_USER := ftpuser
+//FTP_PASS := jdijidjidjidji
+//FTP_HOST := c2cc.xgames.jp:10021
 
 repositories {
     mavenCentral()

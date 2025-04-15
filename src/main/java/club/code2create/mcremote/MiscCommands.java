@@ -8,12 +8,13 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 
-//import java.util.logging.Logger;
+import java.util.logging.Logger;
 
 public class MiscCommands {
-//    private static final Logger logger = Logger.getLogger("McR_Misc"); // Logger for logging messages
+    private static final Logger logger = Logger.getLogger("McR_Misc"); // Logger for logging messages
 
     private final RemoteSession session;
+    private static final boolean debug = false; // Debug flag
 
     public MiscCommands(RemoteSession session) {
         this.session = session;
@@ -57,9 +58,12 @@ public class MiscCommands {
         }
         try {
             session.getOrigin().getWorld().spawnParticle(particleType, loc, count, offsetX, offsetY, offsetZ, speed, null, force);
-            session.send("Particle spawn successful");
+            if (debug) {
+                session.send("Particle spawn debug: " + particleType + " at " + loc);
+            }
         } catch (Exception e) {
             session.send("Error: " + e.getMessage());
+            logger.warning("Error: " + e.getMessage());
         }
     }
 

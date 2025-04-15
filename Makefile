@@ -1,5 +1,6 @@
 # Description: Makefile for Minecraft server development and deployment
 # Author: Naohiro Tsuji
+# NOT-IN-USE 現在は使っていない。すべてGradleに集約済み
 
 # Minecraft server version and plugin version
 MC_VERSION := 1.21.4

@@ -1,0 +1,73 @@
+name: Build and Deploy
+
+on:
+  # タグプッシュによる自動トリガー（例: v1.21.4-0.6.14）
+  push:
+    tags:
+      - 'v*'
+  # GitHub Actions の手動トリガー。deploy_targets はカンマ区切りで例: staging,production
+  workflow_dispatch:
+    inputs:
+      deploy_targets:
+        description: 'Deployment targets (comma-separated, e.g. staging,production)'
+        required: true
+        default: 'staging'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'amazon-corretto'
+
+      - name: Install lftp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+
+      - name: Deploy to FTP Server
+        env:
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_PORT: ${{ secrets.FTP_PORT }}
+          FTP_PATH: /minecraft/plugins/
+        run: |
+          lftp ftp://$(FTP_USER):$(FTP_PASS)@$(FTP_HOST)$(FTP_PATH) -e "glob -a rm mc-remote*.jar; put build/libs/mc-remote-$(MC_VERSION)-$(PLUGIN_VERSION).jar; bye";
+
+
+      - name: Build plugin using Makefile
+        run: make build
+
+      # タグプッシュ（＝自動リリースの場合）のときのみリリース作成する
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: "Automatically generated release for version ${{ github.ref_name }}."
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # workflow_dispatch での手動トリガーの場合、入力値 deploy_targets を環境変数 TARGETS に格納
+      - name: Set deploy targets for workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "TARGETS=${{ github.event.inputs.deploy_targets }}" >> $GITHUB_ENV
+
+      # タグプッシュの場合は、デフォルトで staging にデプロイ
+      - name: Set deploy targets for tag push
+        if: github.event_name == 'push'
+        run: echo "TARGETS=staging" >> $GITHUB_ENV
+
+      - name: Deploy to specified targets
+        run: make deploy
