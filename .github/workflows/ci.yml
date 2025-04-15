@@ -42,11 +42,19 @@ jobs:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
-          lftp ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST}${FTP_PATH} -e "
-          if [ -d McRemote ]; then rm -r McRemote; fi;
-          glob -a rm mc-remote*.jar;
-          put build/libs/mc-remote-${{ env.MC_VERSION }}-${{ env.PLUGIN_VERSION }}.jar;
-          bye"
+          # ビルドされたJARファイルのパスを検出
+          JAR_PATH=$(find build/libs -name "mc-remote-*.jar" | head -n 1)
+          JAR_NAME=$(basename "$JAR_PATH")
+          
+          # lftpでFTPコマンドを分けて実行
+          lftp -c "
+            open ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST};
+            cd ${FTP_PATH};
+            rm -rf McRemote;
+            glob -a rm mc-remote*.jar;
+            put $JAR_PATH;
+            bye
+          "
 
       # タグプッシュ（＝自動リリースの場合）のときのみリリース作成する
       - name: Create GitHub Release
