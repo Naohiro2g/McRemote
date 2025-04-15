@@ -5,7 +5,7 @@ on:
   push:
     tags:
       - 'v*'
-  # GitHub Actions の手動トリガー。deploy_targets はカンマ区切りで例: staging,production
+  # GitHub Actions の手動トリガー
   workflow_dispatch:
     inputs:
       deploy_targets:
@@ -45,7 +45,7 @@ jobs:
       - name: Build plugin
         run: ./gradlew build
 
-      # workflow_dispatch での手動トリガーの場合、入力値 deploy_targets を環境変数 TARGETS に格納
+      # workflow_dispatch での手動トリガーの場合、入力値を使用
       - name: Set deploy targets for workflow_dispatch
         if: github.event_name == 'workflow_dispatch'
         run: echo "TARGETS=${{ github.event.inputs.deploy_targets }}" >> $GITHUB_ENV
@@ -55,25 +55,36 @@ jobs:
         if: github.event_name == 'push'
         run: echo "TARGETS=staging" >> $GITHUB_ENV
 
-      - name: Deploy to specified targets
+      # stagingへのデプロイ
+      - name: Deploy to staging
+        if: contains(env.TARGETS, 'staging')
+        env:
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
-          for target in $(echo "$TARGETS" | tr ',' ' '); do
-            if [ "$target" = "staging" ]; then
-              ./gradlew deploy_ftp1
-            elif [ "$target" = "production" ]; then
-              ./gradlew deploy_ftp2
-            fi
-          done
+          JAR_PATH="build/libs/mc-remote-${MC_VERSION}-${PLUGIN_VERSION}.jar"
+          lftp -c "
+            open ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST};
+            cd ${FTP_PATH};
+            if [ -d McRemote ]; then rm -r McRemote; fi;
+            glob -a rm mc-remote*.jar;
+            put ${JAR_PATH};
+            bye
+          "
+          echo "Deployed to staging environment"
 
-      # タグプッシュ（＝自動リリースの場合）のときのみリリース作成する
+      # タグプッシュ（自動リリースの場合）のときのみリリース作成
       - name: Create GitHub Release
         if: github.event_name == 'push'
         id: create_release
         uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
           release_name: Release ${{ github.ref_name }}
           body: "Automatically generated release for version ${{ github.ref_name }}."
           draft: false
           prerelease: false
-          token: ${{ secrets.GITHUB_TOKEN }}
