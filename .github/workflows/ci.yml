@@ -25,26 +25,28 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: '21'
-          distribution: 'amazon-corretto'
+          distribution: 'corretto'
 
       - name: Install lftp
         run: |
           sudo apt-get update
           sudo apt-get install -y lftp
 
-      - name: Deploy to FTP Server
+      - name: Build plugin using Makefile
+        run: make build
+
+      - name: Deploy to FTP
         env:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_PORT: ${{ secrets.FTP_PORT }}
-          FTP_PATH: /minecraft/plugins/
+          FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
-          lftp ftp://$(FTP_USER):$(FTP_PASS)@$(FTP_HOST)$(FTP_PATH) -e "glob -a rm mc-remote*.jar; put build/libs/mc-remote-$(MC_VERSION)-$(PLUGIN_VERSION).jar; bye";
-
-
-      - name: Build plugin using Makefile
-        run: make build
+          lftp ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST}${FTP_PATH} -e "
+          if [ -d McRemote ]; then rm -r McRemote; fi;
+          glob -a rm mc-remote*.jar;
+          put build/libs/mc-remote-${{ env.MC_VERSION }}-${{ env.PLUGIN_VERSION }}.jar;
+          bye"
 
       # タグプッシュ（＝自動リリースの場合）のときのみリリース作成する
       - name: Create GitHub Release
