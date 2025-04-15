@@ -27,9 +27,11 @@ val ftpSettingsFile = file("$projectDir/ftp_settings.mk")
 // FTP settings file 'ftp_settings.mk' should be in the same directory as this build.gradle.kts file.
 // The content of the file should be like:
 //# ftp_settings.mk:
-//FTP_USER := ftpuser
-//FTP_PASS := jdijidjidjidji
-//FTP_HOST := c2cc.xgames.jp:10021
+//ftp1.FTP_USER := ftpuser
+//ftp1.FTP_PASS := jdijidjidjidji
+//ftp1.FTP_HOST := c2cc.xgames.jp:10021
+//ftp1.FTP_PATH := /minecraft/plugins/
+// you can add more environments like ftp2, ftp3, etc.
 
 repositories {
     mavenCentral()
@@ -68,30 +70,6 @@ tasks.processResources {
     inputs.property("version", version.toString())
 }
 
-fun loadFtpSettings(): Map<String, String> {
-    val ftpFile = file("ftp_settings.mk")
-    if (!ftpFile.exists()) {
-        println("FTP接続設定ファイルが見つかりません。FTP のデプロイはスキップされます。")
-        return emptyMap()
-    }
-    return ftpFile.readLines()
-        .filter { it.contains(":=") }
-        .associate { line ->
-            val (key, value) = line.split(":=", limit = 2)
-            key.trim() to value.trim()
-        }
-}
-
-// read ftp_settings.mk
-val ftpSettings = loadFtpSettings()
-val ftpUser = ftpSettings["FTP_USER"] ?: ""
-val ftpPass = ftpSettings["FTP_PASS"] ?: ""
-val ftpHost = ftpSettings["FTP_HOST"] ?: ""
-val ftpPath = ftpSettings["FTP_PATH"] ?: ""
-
-// ──────────────────────────────
-// タスク定義
-// ──────────────────────────────
 
 /**
  * reloadPlugin: プラグインの再ビルド後、生成されたjarをサーバーのpluginsフォルダーにコピーする
@@ -194,16 +172,54 @@ tasks.register("live") {
  * deploy: FTP経由でプラグインjarを指定サーバーにデプロイする（lftpを利用）
  * ftp_settings.mk で定義された FTP_USER, FTP_PASS, FTP_HOST, FTP_PATH を使用します。
  */
-tasks.register<Exec>("deploy") {
-    group = "deployment"
-    description = "Deploy the plugin jar to the FTP server."
-    dependsOn("build")
-    doFirst {
-        println("Deploying mc-remote-$version.jar via FTP to: $ftpHost$ftpPath")
+fun loadFtpSettings(env: String): Map<String, String> {
+    val ftpFile = file("ftp_settings.mk")
+    if (!ftpFile.exists()) {
+        println("FTP接続設定ファイルが見つかりません。FTP のデプロイはスキップされます。")
+        return emptyMap()
     }
-    val jarPath = layout.buildDirectory.get().asFile.resolve("libs/mc-remote-$version.jar").absolutePath
-    val ftpCommand = "lftp ftp://$ftpUser:$ftpPass@$ftpHost$ftpPath -e \"glob -a rm mc-remote*.jar; put $jarPath; bye\""
-    commandLine("sh", "-c", ftpCommand)
+
+    return ftpFile.readLines()
+        .filter { it.contains(":=") && it.startsWith("$env.") }
+        .associate { line ->
+            val (key, value) = line.split(":=", limit = 2)
+            key.removePrefix("$env.").trim() to value.trim()
+        }
+}
+
+// 環境ごとにFTPタスクを作成
+listOf("ftp1", "ftp2").forEach { env ->
+    tasks.register<Exec>("deploy_$env") {
+        group = "deployment"
+        description = "Deploy the plugin jar to the $env FTP server."
+        dependsOn("build")
+
+        doFirst {
+            val ftpSettings = loadFtpSettings(env)
+            val ftpUser = ftpSettings["FTP_USER"] ?: ""
+            val ftpPass = ftpSettings["FTP_PASS"] ?: ""
+            val ftpHost = ftpSettings["FTP_HOST"] ?: ""
+            val ftpPath = ftpSettings["FTP_PATH"] ?: ""
+
+            if (ftpUser.isBlank() || ftpPass.isBlank() || ftpHost.isBlank() || ftpPath.isBlank()) {
+                println("FTP設定が不完全なため、$env へのデプロイをスキップします。")
+                enabled = false // タスクをスキップ
+                return@doFirst
+            }
+
+            println("Deploying mc-remote-$version.jar via FTP to: $ftpHost$ftpPath")
+
+            val jarPath = layout.buildDirectory.get().asFile.resolve("libs/mc-remote-$version.jar").absolutePath
+            val ftpCommand = """
+                lftp ftp://$ftpUser:$ftpPass@$ftpHost$ftpPath -e "
+                if [ -d McRemote ]; then rm -r McRemote; fi;
+                glob -a rm mc-remote*.jar;
+                put $jarPath;
+                bye"
+            """.trimIndent()
+            commandLine("sh", "-c", ftpCommand)
+        }
+    }
 }
 
 /**
