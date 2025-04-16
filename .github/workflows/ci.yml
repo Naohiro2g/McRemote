@@ -65,10 +65,11 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
           FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
           JAR_PATH="build/libs/mc-remote-${MC_VERSION}-${PLUGIN_VERSION}.jar"
           lftp -d -c "
-            open ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST};
+            open ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST}${FTP_PATH};
             glob -a rm mc-remote*.jar;
             put ${JAR_PATH};
             bye
