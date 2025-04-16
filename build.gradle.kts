@@ -9,7 +9,7 @@ plugins {
 // ──────── plugin version ──────────────────────────────────────────────── //
 // The plugin jar will be like "mc-remote-1.21.4-1.0.9.jar".
 val mcVersion: String = "1.21.5"
-val pluginVersion: String = "1.1.0rc10"
+val pluginVersion: String = "1.1.0rc12"
 // ──────── Local Minecraft Server for development ──────────────────────── //
 val homeDir: String = System.getenv("HOME") ?: System.getProperty("user.home")
 val mcDir = file("$homeDir/MINECRAFT_SERVERS/PaperMC")  // Minecraft server directory
@@ -212,7 +212,6 @@ listOf("ftp1", "ftp2").forEach { env ->
             val jarPath = layout.buildDirectory.get().asFile.resolve("libs/mc-remote-$version.jar").absolutePath
             val ftpCommand = """
                 lftp ftp://$ftpUser:$ftpPass@$ftpHost$ftpPath -e "
-                rm -fr McRemote;
                 glob -a rm mc-remote*.jar;
                 put $jarPath;
                 bye"
