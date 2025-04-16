@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -78,28 +78,17 @@ jobs:
           "
           echo "Deployed to staging environment"
 
-      # タグプッシュ（自動リリースの場合）のときのみリリース作成
-      - name: Create GitHub Release
+      # タグプッシュ（自動リリースの場合）のときのみリリース作成、アーティファクト添付
+      - name: Create GitHub Release with artifact
         if: github.event_name == 'push'
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
         with:
           tag_name: ${{ github.ref_name }}
           release_name: Release ${{ github.ref_name }}
+          files: build/libs/mc-remote-${{ env.MC_VERSION }}-${{ env.PLUGIN_VERSION }}.jar
           body: "Automatically generated release for version ${{ github.ref_name }}."
           draft: false
           prerelease: false
-
-      # 作成したリリースに対してアーティファクトを添付
-      - name: Upload Release Asset
-        if: github.event_name == 'push'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/libs/mc-remote-${{ env.MC_VERSION }}-${{ env.PLUGIN_VERSION }}.jar
-          asset_name: mc-remote-${{ env.MC_VERSION }}-${{ env.PLUGIN_VERSION }}.jar
-          asset_content_type: application/java-archive
