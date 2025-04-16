@@ -45,6 +45,9 @@ jobs:
       - name: Build plugin
         run: ./gradlew build
 
+      - name: List build artifacts
+        run: ls -la build/libs
+
       # workflow_dispatch での手動トリガーの場合、入力値を使用
       - name: Set deploy targets for workflow_dispatch
         if: github.event_name == 'workflow_dispatch'
@@ -65,7 +68,7 @@ jobs:
           FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
           JAR_PATH="build/libs/mc-remote-${MC_VERSION}-${PLUGIN_VERSION}.jar"
-          lftp -c "
+          lftp -d -c "
             open ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST};
             cd ${FTP_PATH};
             rm -fr McRemote;
@@ -88,3 +91,15 @@ jobs:
           body: "Automatically generated release for version ${{ github.ref_name }}."
           draft: false
           prerelease: false
+
+      # 作成したリリースに対してアーティファクトを添付
+      - name: Upload Release Asset
+        if: github.event_name == 'push'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: build/libs/mc-remote-${{ env.MC_VERSION }}-${{ env.PLUGIN_VERSION }}.jar
+          asset_name: mc-remote-${{ env.MC_VERSION }}-${{ env.PLUGIN_VERSION }}.jar
+          asset_content_type: application/java-archive
