@@ -68,7 +68,7 @@ jobs:
           lftp -c "
             open ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST};
             cd ${FTP_PATH};
-            if [ -d McRemote ]; then rm -r McRemote; fi;
+            rm -fr McRemote;
             glob -a rm mc-remote*.jar;
             put ${JAR_PATH};
             bye
