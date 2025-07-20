@@ -256,6 +256,6 @@ tasks.register("printMcVersion") {
 
 tasks.register("printPluginVersion") {
     doLast {
-        println("v$version")
+        println(pluginVersion)
     }
 }
