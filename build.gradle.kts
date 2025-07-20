@@ -8,8 +8,8 @@ plugins {
 
 // ──────── plugin version ──────────────────────────────────────────────── //
 // The plugin jar will be like "mc-remote-1.21.4-1.0.9.jar".
-val mcVersion: String = "1.21.5"
-val pluginVersion: String = "1.1.0rc13"
+val mcVersion: String = "1.21.8"
+val pluginVersion: String = "1.4.0"
 // ──────── Local Minecraft Server for development ──────────────────────── //
 val homeDir: String = System.getenv("HOME") ?: System.getProperty("user.home")
 val mcDir = file("$homeDir/MINECRAFT_SERVERS/PaperMC")  // Minecraft server directory
@@ -28,8 +28,8 @@ val ftpSettingsFile = file("$projectDir/ftp_settings.mk")
 // The content of the file should be like:
 //# ftp_settings.mk:
 //ftp1.FTP_USER := ftpuser
-//ftp1.FTP_PASS := jdijidjidjidji
-//ftp1.FTP_HOST := c2cc.xgames.jp:10021
+//ftp1.FTP_PASS := xxpasswordxx
+//ftp1.FTP_HOST := mc-remote.xgames.jp:10021
 //ftp1.FTP_PATH := /minecraft/plugins/
 // you can add more environments like ftp2, ftp3, etc.
 
@@ -173,7 +173,7 @@ tasks.register("live") {
  * ftp_settings.mk で定義された FTP_USER, FTP_PASS, FTP_HOST, FTP_PATH を使用します。
  */
 fun loadFtpSettings(env: String): Map<String, String> {
-    val ftpFile = file("ftp_settings.mk")
+    val ftpFile = ftpSettingsFile
     if (!ftpFile.exists()) {
         println("FTP接続設定ファイルが見つかりません。FTP のデプロイはスキップされます。")
         return emptyMap()
@@ -188,7 +188,7 @@ fun loadFtpSettings(env: String): Map<String, String> {
 }
 
 // 環境ごとにFTPタスクを作成
-listOf("ftp1", "ftp2").forEach { env ->
+listOf("ftp1", "ftp2", "ftp3").forEach { env ->
     tasks.register<Exec>("deploy_$env") {
         group = "deployment"
         description = "Deploy the plugin jar to the $env FTP server."
@@ -250,12 +250,14 @@ tasks.register("trigger") {
 
 tasks.register("printMcVersion") {
     doLast {
+        println("Minecraft version:")
         println(mcVersion)
     }
 }
 
 tasks.register("printPluginVersion") {
     doLast {
-        println(pluginVersion)
+        println("Plugin version:")
+        println("v$version")
     }
 }
