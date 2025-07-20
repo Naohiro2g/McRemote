@@ -250,14 +250,12 @@ tasks.register("trigger") {
 
 tasks.register("printMcVersion") {
     doLast {
-        println("Minecraft version:")
         println(mcVersion)
     }
 }
 
 tasks.register("printPluginVersion") {
     doLast {
-        println("Plugin version:")
         println("v$version")
     }
 }
