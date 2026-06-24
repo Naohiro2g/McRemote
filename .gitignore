@@ -11,3 +11,5 @@ bin/
 # FTP
 ftp_settings.*
 NOTES_ja.md
+# Python
+__pycache__/
