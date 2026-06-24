@@ -81,9 +81,11 @@ jobs:
         if: github.event_name == 'push'
         id: create_release
         uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
         with:
+          # action-gh-release@v2 reads the token from the `token` input (default:
+          # the restricted built-in github.token), so the PAT must be passed here,
+          # not via env.GITHUB_TOKEN, or release creation fails with HTTP 403.
+          token: ${{ secrets.RELEASE_PAT }}
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body: "Automatically generated release for version ${{ github.ref_name }}."
