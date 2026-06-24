@@ -143,20 +143,28 @@ public class BlockEditCommands {
             sendAndLogWarning("Session is null.");
             return false;
         }
-        if (session.getPlayerCommands() == null) {
-            sendAndLogWarning("Player commands are null.");
-            return false;
-        }
-        Location origin = session.getPlayerCommands().getOrigin();
+        Location origin = session.getOrigin();
         if (origin == null) {
-            sendAndLogWarning("Player origin not set.");
+            sendAndLogWarning("Build origin not set.");
             return false;
         }
-        int allowedRange = McRemote.instance.getPermissionManager()
-                .getPlayerRange(session.getPlayerCommands().getAttachedPlayer());
+        int allowedRange = resolveBuildRange();
         double dx = Math.abs(targetLoc.getX() - origin.getX());
         double dz = Math.abs(targetLoc.getZ() - origin.getZ());
         return dx <= allowedRange && dz <= allowedRange;
+    }
+
+    /**
+     * 建築許容範囲を返す。プレイヤーが紐付いていれば PermissionManager から、
+     * いなければ（setBuildOrigin 経路など）config の default_build_range を使う。
+     */
+    private int resolveBuildRange() {
+        PlayerCommands playerCommands = session.getPlayerCommands();
+        org.bukkit.OfflinePlayer player = playerCommands != null ? playerCommands.getAttachedPlayer() : null;
+        if (player != null) {
+            return McRemote.instance.getPermissionManager().getPlayerRange(player);
+        }
+        return McRemote.getInstance().getDefaultBuildRange();
     }
 
     private void updateBlock(World world, Location loc, Material blockType, BlockFace blockFace) {

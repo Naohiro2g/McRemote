@@ -29,8 +29,8 @@ public class CommandDispatcher {
             }
 
             if (registration.requiresOrigin() && session.getOrigin() == null) {
-                session.send("Error: Player and its origin are not set, please use setPlayer() first.");
-                logger.severe("Player and its origin are not set. Command: "
+                session.send("Error: build origin is not set. Use setWorld()/setBuildOrigin() (or setPlayer()) first.");
+                logger.severe("Build origin is not set. Command: "
                         + commandName + ", Arguments: " + Arrays.toString(args));
                 session.close();
                 return;

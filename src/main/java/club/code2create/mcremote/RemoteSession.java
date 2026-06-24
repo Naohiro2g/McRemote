@@ -44,6 +44,7 @@ public class RemoteSession {
     private final BlockCommands blockCommands;
     private final MiscCommands miscCommands;
     private final EntityCommands entityCommands;
+    private final BuildStateCommands buildStateCommands;
     private final CommandParser commandParser;
     private final CommandDispatcher commandDispatcher;
 
@@ -54,9 +55,10 @@ public class RemoteSession {
         this.miscCommands = new MiscCommands(this);
         this.entityCommands = new EntityCommands(this, miscCommands);
         this.blockCommands = new BlockCommands(this, miscCommands);
+        this.buildStateCommands = new BuildStateCommands(this);
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
-                this, playerCommands, blockCommands, miscCommands, entityCommands));
+                this, playerCommands, blockCommands, miscCommands, entityCommands, buildStateCommands));
         init();
     }
 

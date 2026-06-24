@@ -6,7 +6,8 @@ public class RemoteCommandRegistrar {
             PlayerCommands playerCommands,
             BlockCommands blockCommands,
             MiscCommands miscCommands,
-            EntityCommands entityCommands
+            EntityCommands entityCommands,
+            BuildStateCommands buildStateCommands
     ) {
         CommandRegistry registry = new CommandRegistry();
 
@@ -27,6 +28,10 @@ public class RemoteCommandRegistrar {
         registry.register("entity.setYaw", args -> entityCommands.handleEntityCommands("entity.setYaw", args));
         registry.register("entity.remove", args -> entityCommands.handleEntityCommands("entity.remove", args));
         registry.register("setPlayer", playerCommands::handleSetPlayerCommand, false);
+
+        // Build state (identity から分離) — origin/world をプレイヤー非依存で設定
+        registry.register("setWorld", buildStateCommands::handleSetWorld, false);
+        registry.register("setBuildOrigin", buildStateCommands::handleSetBuildOrigin, false);
 
         return registry;
     }

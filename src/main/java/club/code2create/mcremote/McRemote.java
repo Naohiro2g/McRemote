@@ -33,6 +33,7 @@ public class McRemote extends JavaPlugin implements Listener {
     private static boolean luckPermsEnabled = false;
     public static McRemote instance;
     private IPermissionManager permissionManager;
+    private int defaultBuildRange;
 
     @Override
     public void onEnable(){
@@ -64,6 +65,7 @@ public class McRemote extends JavaPlugin implements Listener {
         String offlinePermission = config.getString("luckperm_permissions.offline", "mcr.offline");
         String buildRangeMetaKey = config.getString("luckperm_permissions.build.range", "mcr.build.range");
         int defaultBuildRange = config.getInt("default_build_range", 32);
+        this.defaultBuildRange = defaultBuildRange;
 
         // LuckPerms の有無をチェック　→　存在するなら LuckPermsPermissionManager を生成
         luckPermsEnabled = (Bukkit.getPluginManager().getPlugin("LuckPerms") != null);
@@ -107,6 +109,10 @@ public class McRemote extends JavaPlugin implements Listener {
             logger.warning(sw.toString());
         }
         serverThread = null;
+    }
+
+    public int getDefaultBuildRange() {
+        return this.defaultBuildRange;
     }
 
     public IPermissionManager getPermissionManager() {
