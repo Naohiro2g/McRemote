@@ -7,9 +7,12 @@ plugins {
 }
 
 // ──────── plugin version ──────────────────────────────────────────────── //
-// The plugin jar will be like "mc-remote-1.21.4-1.0.9.jar".
-val mcVersion: String = "1.21.8"
-val pluginVersion: String = "1.4.0"
+// The plugin jar will be like "mc-remote-1.21.11-2000.0.0.jar".
+val mcVersion: String = providers.gradleProperty("mcVersion").get()
+val mcJavaVersion: Int = providers.gradleProperty("mcJavaVersion").map(String::toInt).get()
+val paperApiVersion: String = providers.gradleProperty("paperApiVersion").get()
+val pluginApiVersion: String = providers.gradleProperty("pluginApiVersion").get()
+val pluginVersion: String = providers.gradleProperty("pluginVersion").get()
 // ──────── Local Minecraft Server for development ──────────────────────── //
 val homeDir: String = System.getenv("HOME") ?: System.getProperty("user.home")
 val mcDir = file("$homeDir/MINECRAFT_SERVERS/PaperMC")  // Minecraft server directory
@@ -21,7 +24,16 @@ val memoryX = "8G"  // Maximum memory size
 group = "club.code2create"
 version = "$mcVersion-$pluginVersion"
 val projectDir = project.rootDir
-java.sourceCompatibility = JavaVersion.VERSION_21
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(mcJavaVersion))
+    }
+}
+
+val serverJavaLauncher = javaToolchains.launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(mcJavaVersion))
+}
 
 val ftpSettingsFile = file("$projectDir/ftp_settings.mk")
 // FTP settings file 'ftp_settings.mk' should be in the same directory as this build.gradle.kts file.
@@ -41,21 +53,11 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:$mcVersion-R0.1-SNAPSHOT")  // Paper API
+    compileOnly("io.papermc.paper:paper-api:$paperApiVersion")  // Paper API
     compileOnly("net.luckperms:api:5.4")  // LuckPerms API
 }
 
-var runServerCmd: String
-var stopServerCmd: String
 val isWindows: Boolean = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("windows")
-if (isWindows) {
-    runServerCmd = "cd ${mcDir.absolutePath} && java -Xmx$memoryX -Xms$memoryS -jar $serverJar"
-    stopServerCmd = "echo \"Stop command for Windows not implemented. Please stop the server manually.\""
-} else {
-    runServerCmd = "cd ${mcDir.absolutePath} && screen -dmS minecraft java -Xmx$memoryX -Xms$memoryS -jar $serverJar && echo \"Minecraft server started successfully.\""
-    stopServerCmd = "cd ${mcDir.absolutePath} && if screen -list | grep -q minecraft; then screen -S minecraft -X stuff 'stop\r' && sleep 5; else echo \"No screen session found for 'minecraft'\"; fi"
-}
-
 
 tasks.jar {
     archiveBaseName.set("mc-remote")
@@ -65,9 +67,13 @@ tasks.jar {
 
 tasks.processResources {
     filesMatching("plugin.yml") {
-        expand(mapOf("project" to mapOf("version" to version.toString())))
+        expand(mapOf(
+            "project" to mapOf("version" to version.toString()),
+            "plugin" to mapOf("apiVersion" to pluginApiVersion)
+        ))
     }
     inputs.property("version", version.toString())
+    inputs.property("pluginApiVersion", pluginApiVersion)
 }
 
 
@@ -137,11 +143,12 @@ tasks.register<Exec>("runServer") {
     description = "Launch the Minecraft server session."
     workingDir = mcDir
     doFirst {
+        val javaExecutable = serverJavaLauncher.get().executablePath.asFile.absolutePath
         if (!isWindows) {
-            commandLine("screen", "-dmS", "minecraft", "java", "-Xmx$memoryX", "-Xms$memoryS", "-jar", serverJar, "nogui")
+            commandLine("screen", "-dmS", "minecraft", javaExecutable, "-Xmx$memoryX", "-Xms$memoryS", "-jar", serverJar, "nogui")
         } else {
             println("ScreenコマンドはWindowsではサポートされていません。代わりにサーバーを直接起動します。")
-            commandLine("java", "-Xmx$memoryX", "-Xms$memoryS", "-jar", serverJar, "nogui")
+            commandLine(javaExecutable, "-Xmx$memoryX", "-Xms$memoryS", "-jar", serverJar, "nogui")
         }
     }
     doLast {
@@ -257,5 +264,23 @@ tasks.register("printMcVersion") {
 tasks.register("printPluginVersion") {
     doLast {
         println(pluginVersion)
+    }
+}
+
+tasks.register("printMcJavaVersion") {
+    doLast {
+        println(mcJavaVersion)
+    }
+}
+
+tasks.register("printPaperApiVersion") {
+    doLast {
+        println(paperApiVersion)
+    }
+}
+
+tasks.register("printPluginApiVersion") {
+    doLast {
+        println(pluginApiVersion)
     }
 }

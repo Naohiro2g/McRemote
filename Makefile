@@ -58,23 +58,13 @@ build:
 restart-server: stop run  # restart the server
 
 run:
-	cd $(MC_DIR) && \
-	screen -dmS minecraft java -Xmx8G -Xms8G -jar paper.jar && \
-	echo "Minecraft server started successfully."
+	./gradlew runServer
 
 stop:  # stop the server if it is running, then wait for 5 seconds
-	cd $(MC_DIR) && \
-	if screen -list | grep -q minecraft; then \
-		screen -S minecraft -X stuff "stop\r"; \
-		sleep 5; \
-	else \
-		echo "No screen session found for 'minecraft'"; \
-	fi
+	./gradlew stopServer
 
 reload-plugin: build  # update the plugin in the server
-	(rm -rf "$(MC_DIR)/plugins/McRemote" || :) && \
-	(rm -f "$(MC_DIR)/plugins/mc-remote*.jar" || :) && \
-	cp "$(PROJECT_DIR)/build/libs/mc-remote-$(MC_VERSION)-$(PLUGIN_VERSION).jar" "$(MC_DIR)/plugins/"
+	./gradlew reloadPlugin
 
 build-deploy: build deploy
 
