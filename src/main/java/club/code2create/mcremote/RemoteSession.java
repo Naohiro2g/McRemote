@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.logging.Logger;
 
 import org.bukkit.Location;
@@ -45,6 +44,8 @@ public class RemoteSession {
     private final BlockCommands blockCommands;
     private final MiscCommands miscCommands;
     private final EntityCommands entityCommands;
+    private final CommandParser commandParser;
+    private final CommandDispatcher commandDispatcher;
 
     public RemoteSession(McRemote plugin, Socket socket) throws IOException {
         this.plugin = plugin;
@@ -53,6 +54,9 @@ public class RemoteSession {
         this.miscCommands = new MiscCommands(this);
         this.entityCommands = new EntityCommands(this, miscCommands);
         this.blockCommands = new BlockCommands(this, miscCommands);
+        this.commandParser = new CommandParser();
+        this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
+                this, playerCommands, blockCommands, miscCommands, entityCommands));
         init();
     }
 
@@ -96,61 +100,9 @@ public class RemoteSession {
     public BlockCommands getBlockCommands() { return blockCommands; }
 
     private void handleLine(String line) {
-        String[] parts = line.split("\\(", 2);
-        String command = parts[0];
-        String[] args = parts.length > 1 ? parts[1].substring(0, parts[1].length() - 1).split(",") : new String[0];
-        handleCommand(command, args);
-    }
-
-    private void handleCommand(String c, String[] args) {
         try {
-            if (this.origin == null && !c.equals("setPlayer")) {
-                send("Error: Player and its origin are not set, please use setPlayer() first.");
-                logger.severe("Player and its origin are not set. Command: " + c + ", Arguments: " + Arrays.toString(args));
-                close();
-                return;
-            }
-            switch (c) {
-                case "world.getBlock":
-                case "world.getBlocks":
-                case "world.getBlockWithData":
-                case "world.setBlock":
-                case "world.setBlocks":
-                    blockCommands.handleBlockCommands(c, args);
-                    break;
-                case "world.spawnParticle":
-                    miscCommands.handleSpawnParticle(args);
-                    break;
-                case "world.getHeight":
-                    miscCommands.handleGetHeight(origin.getWorld(), args);
-                    break;
-                case "chat.post":
-                    miscCommands.handleChatPost(args);
-                    break;
-                case "world.spawnEntity":
-                    miscCommands.handleSpawnEntity(args);
-                    break;
-                case "world.getNearbyEntities":
-                case "entity.getPos":
-                case "entity.setPos":
-                case "entity.getRotation":
-                case "entity.setRotation":
-                case "entity.getPitch":
-                case "entity.setPitch":
-                case "entity.getYaw":
-                case "entity.setYaw":
-                case "entity.remove":
-                    entityCommands.handleEntityCommands(c, args);
-                    break;
-                case "setPlayer":
-                    playerCommands.handleSetPlayerCommand(args);
-                    break;
-                default:
-                    send("Error: No such entity/player command: " + c);
-                    logger.warning("No such entity/player command: " + c);
-                    break;
-            }
-        } catch (Exception e) {
+            commandDispatcher.dispatch(commandParser.parse(line));
+        } catch (IllegalArgumentException e) {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
             logger.warning(sw.toString());
