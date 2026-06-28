@@ -1,5 +1,21 @@
 # 引き継ぎ: minecraft-remote-api に setWorld / setBuildOrigin を追加
 
+> ⚠️ **SUPERSEDED（歴史資料）— 2026-06-28 時点で現行 b1 wire 契約とは一致しない。**
+> この文書は **protocol 20.0.0 / api 2000.0.0** 期に、行ベース `cmd(args)\n` プロトコル前提で
+> 書かれた。以下は**すべて b1（protocol 21.0.0 / `2100.0.0b1`）で改訂済み**:
+> - wire は **JSON-RPC 2.0**（旧 `cmd(args)\n` テキストは廃止）。
+> - wire method は **`build.setWorld` / `build.setOrigin`** の dot 名前空間（API 名 `setWorld`/`setBuildOrigin` は別層で維持）。
+> - **`setPlayer` は b1 でクリーン除去**（互換 alias なし）。本文の「移行期に温存」は無効。
+> - エラーは **JSON-RPC error object**（`data.reason`/`data.ref`）。本文の `sys.exit`/テキスト ack は無効。
+> - `postToChat` は現行 `Minecraft` クラスに無い（`chat.post`）。
+> - hello は **object params + flat JSON-RPC result**（`protocol=21.0.0`・`y_sea`・`catalogHash:null` 等）。
+>
+> b1 の実際の着地状況は `NOTES_ja.md`（2026-06-28 エントリ）と `smoke.log`、正本は knowledge
+> repo `10-protocol/wire-format-design_ja.md` を参照。本文は **setWorld/setBuildOrigin への分離設計の
+> 歴史的経緯**としてのみ読むこと。現行 b1 handoff として信用しない。
+
+---
+
 対象リポ: `minecraft-remote-api`（Python クライアント）
 作成元: McRemote（プラグイン）側の作業。protocol 20.0.0 / api 2000.0.0。
 このファイル1枚で完結できるよう、背景・パッチ・テスト手順を入れてある。

@@ -23,15 +23,15 @@ public class CommandDispatcher {
         try {
             CommandRegistry.CommandRegistration registration = registry.get(commandName);
             if (registration == null) {
-                session.send("Error: No such command: " + commandName);
-                logger.warning("No such command: " + commandName);
+                session.respondError(-32601, "method_not_found", null);
+                logger.warning("No such method: " + commandName);
                 return;
             }
 
             if (registration.requiresOrigin() && session.getOrigin() == null) {
-                session.send("Error: build origin is not set. Use setWorld()/setBuildOrigin() (or setPlayer()) first.");
-                logger.severe("Build origin is not set. Command: "
-                        + commandName + ", Arguments: " + Arrays.toString(args));
+                session.respondError(-32000, "origin_not_set", null);
+                logger.severe("Build origin is not set. Method: "
+                        + commandName + ", Params: " + Arrays.toString(args));
                 session.close();
                 return;
             }

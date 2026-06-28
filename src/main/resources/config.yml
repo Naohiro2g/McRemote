@@ -7,3 +7,7 @@ luckperm_permissions:
   build.range: "mcr.build.range"  # meta key for group
 # if there is no LuckPerms, use this
 default_build_range: 1000
+# MC versions this server advertises as compatible in the hello handshake
+# (protocol §8.1). Empty -> falls back to the running server version.
+supported_mc_versions:
+  - "1.21.11"

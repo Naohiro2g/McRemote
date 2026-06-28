@@ -11,5 +11,9 @@ bin/
 # FTP
 ftp_settings.*
 NOTES_ja.md
+# operator/session docs (private; not committed)
+memo_codex*.md
+# logs (token hygiene: keep on disk, never track)
+*.log
 # Python
 __pycache__/

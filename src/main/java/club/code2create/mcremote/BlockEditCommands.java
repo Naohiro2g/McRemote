@@ -1,18 +1,25 @@
 package club.code2create.mcremote;
 
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.Directional;
-
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
+
+/**
+ * ブロック設置（wire-format-design §7.1/§7.3）。
+ * 4番目（setBlock）/7番目（setBlocks）の引数は block_state_ref 文字列で、
+ * BlockRef が tolerate パース（無印→minecraft:・部分 state）する。旧 facing int 引数は廃止
+ * （向きは state、例 [facing=north] が運ぶ）。
+ *
+ * 既定は send-only（notification）だが、id 付き要求には同期応答する（§7.3, DECISIONS 2026-06-27-04）。
+ * respondResult/respondError は notification では no-op なので、高速建築の fire-and-forget は保たれる。
+ */
 public class BlockEditCommands {
     private static final Logger logger = Logger.getLogger("McR_BlockEdit");
-    private static final boolean debug = false;
 
     private final RemoteSession session;
     private final MiscCommands miscCommands;
@@ -24,71 +31,62 @@ public class BlockEditCommands {
 
     public void handleSetBlock(String[] args) {
         if (args.length < 4) {
-            sendAndLogWarning("Invalid arguments for setBlock command.");
+            session.respondError(-32602, "malformed_ref", null);
+            logger.warning("Invalid arguments for world.setBlock.");
+            return;
+        }
+        if (isInvalidCoordinate(args[0], args[1], args[2])) {
+            session.respondError(-32602, "malformed_ref", refData(args[0] + "," + args[1] + "," + args[2]));
+            logger.warning("Coordinates out of range for world.setBlock.");
             return;
         }
 
-        if (isInvalidCoordinate(args[0], args[1], args[2])) {
-            sendAndLogWarning("Coordinates out of range for setBlock command. Location: ("
-                    + args[0] + ", " + args[1] + ", " + args[2] + ")");
+        BlockData data;
+        try {
+            data = BlockRef.parse(args[3]);
+        } catch (BlockRef.BlockRefException e) {
+            session.respondError(e.code, e.reason, refData(args[3]));
+            logger.warning("Bad block_state_ref for world.setBlock: " + args[3] + " (" + e.reason + ")");
             return;
         }
 
         try {
             World world = session.getOrigin().getWorld();
-            Location targetLoc = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
-            Material material = Material.matchMaterial(args[3]);
-            String msgError = "";
-            if (material == null) {
-                material = Material.valueOf("AMETHYST_BLOCK");
-                msgError = "No such material: " + args[3] + " for setBlock. "
-                        + "Location: (" + args[0] + ", " + args[1] + ", " + args[2] + ")";
-            }
-            int facing = args.length > 4 ? Integer.parseInt(args[4]) : 0;
-            if (facing < 0 || facing >= BlockFace.values().length) {
-                msgError += "  Invalid facing value for setBlock command.";
-            }
-            BlockFace blockFace = BlockFace.values()[facing];
-
-            if (checkRange(targetLoc)) {
-                updateBlock(world, targetLoc, material, blockFace);
-            } else {
-                if (debug) {
-                    String msg = "Block placement denied: out of allowed range for "
-                            + session.getPlayerCommands().getPlayerName();
-                    session.send(msg);
-                }
+            Location loc = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
+            // 未ロード/未生成 chunk は getBlockAt/setBlockData が同期でロード・生成する（旧リリース挙動）。
+            // isChunkLoaded での拒否はしない＝生成済み/未生成・プレイヤー在席に依らず設置できる。
+            if (!checkRange(loc)) {
+                session.respondError(-32000, "build_denied", refData(args[3]));
                 return;
             }
-
-            if (msgError.isEmpty()) {
-                if (debug) {
-                    String msg = "Block " + material.name() + " set successfully at: " + targetLoc;
-                    session.send(msg);
-                }
-            } else {
-                sendAndLogWarning(msgError);
-            }
+            Block block = world.getBlockAt(loc);
+            block.setBlockData(data, false);
+            // id 付き要求には設置後の canonical を返す（§7.1）。notification は no-op。
+            session.respondResult(BlockRef.canonical(block.getBlockData()));
         } catch (NumberFormatException e) {
-            sendAndLogWarning("Invalid coordinates or facing for world.setBlock command.");
-        } catch (IllegalArgumentException e) {
-            sendAndLogWarning("Invalid material for setBlock command.");
-        } catch (Exception e) {
-            sendAndLogError("Unknown error for setBlock with material " + args[3]
-                    + " at (" + args[0] + ", " + args[1] + ", " + args[2] + ")\n" + e.getMessage());
+            session.respondError(-32602, "malformed_ref", refData(args[3]));
+            logger.warning("Invalid coordinates for world.setBlock.");
         }
     }
 
     public void handleSetBlocks(String[] args) {
         if (args.length < 7) {
-            sendAndLogWarning("Invalid arguments for setBlocks command.");
+            session.respondError(-32602, "malformed_ref", null);
+            logger.warning("Invalid arguments for world.setBlocks.");
+            return;
+        }
+        if (isInvalidCoordinate(args[0], args[1], args[2]) || isInvalidCoordinate(args[3], args[4], args[5])) {
+            session.respondError(-32602, "malformed_ref", null);
+            logger.warning("Coordinates out of range for world.setBlocks.");
             return;
         }
 
-        if (isInvalidCoordinate(args[0], args[1], args[2]) || isInvalidCoordinate(args[3], args[4], args[5])) {
-            sendAndLogWarning("Coordinates out of range for setBlocks. Location: ("
-                    + args[0] + ", " + args[1] + ", " + args[2] + ") - ("
-                    + args[3] + ", " + args[4] + ", " + args[5] + ")");
+        BlockData data;
+        try {
+            data = BlockRef.parse(args[6]);
+        } catch (BlockRef.BlockRefException e) {
+            session.respondError(e.code, e.reason, refData(args[6]));
+            logger.warning("Bad block_state_ref for world.setBlocks: " + args[6] + " (" + e.reason + ")");
             return;
         }
 
@@ -96,56 +94,22 @@ public class BlockEditCommands {
             World world = session.getOrigin().getWorld();
             Location loc1 = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
             Location loc2 = miscCommands.parseRelativeBlockLocation(args[3], args[4], args[5]);
-            Material material = Material.matchMaterial(args[6]);
-            String msgError = "";
-            if (material == null) {
-                material = Material.valueOf("BEACON");
-                msgError = "No such material: " + args[6] + " for setBlocks. Location: ("
-                        + args[0] + ", " + args[1] + ", " + args[2] + ") - ("
-                        + args[3] + ", " + args[4] + ", " + args[5] + ")";
+            if (!checkRange(loc1) || !checkRange(loc2)) {
+                session.respondError(-32000, "build_denied", refData(args[6]));
+                return;
             }
-            int facing = args.length > 7 ? Integer.parseInt(args[7]) : 0;
-            if (facing < 0 || facing >= BlockFace.values().length) {
-                msgError += "  Invalid facing value for setBlocks command.";
-            }
-            BlockFace blockFace = BlockFace.values()[facing];
-
-            if (checkRange(loc1) && checkRange(loc2)) {
-                setCuboid(world, loc1, loc2, material, blockFace);
-            } else {
-                msgError = "Block placement denied: out of allowed range for "
-                        + session.getPlayerCommands().getPlayerName();
-            }
-
-            if (msgError.isEmpty()) {
-                if (debug) {
-                    String msg = "Blocks " + material.name() + " set successfully at: ("
-                            + args[0] + ", " + args[1] + ", " + args[2] + ") - ("
-                            + args[3] + ", " + args[4] + ", " + args[5] + ")";
-                    session.send(msg);
-                }
-            } else {
-                sendAndLogWarning(msgError);
-            }
+            setCuboid(world, loc1, loc2, data);
+            // 一様充填なので canonical を1つ返す（id 付き要求のみ）。
+            session.respondResult(BlockRef.canonical(data));
         } catch (NumberFormatException e) {
-            sendAndLogWarning("Invalid coordinates or facing for setBlocks command.");
-        } catch (IllegalArgumentException e) {
-            sendAndLogWarning("Invalid material for setBlocks command.");
-        } catch (Exception e) {
-            sendAndLogError("Unknown error for setBlocks command with material " + args[6]
-                    + " at (" + args[0] + ", " + args[1] + ", " + args[2] + ") - ("
-                    + args[3] + ", " + args[4] + ", " + args[5] + ")\n" + e.getMessage());
+            session.respondError(-32602, "malformed_ref", refData(args[6]));
+            logger.warning("Invalid coordinates for world.setBlocks.");
         }
     }
 
     private boolean checkRange(Location targetLoc) {
-        if (session == null) {
-            sendAndLogWarning("Session is null.");
-            return false;
-        }
         Location origin = session.getOrigin();
         if (origin == null) {
-            sendAndLogWarning("Build origin not set.");
             return false;
         }
         int allowedRange = resolveBuildRange();
@@ -156,7 +120,7 @@ public class BlockEditCommands {
 
     /**
      * 建築許容範囲を返す。プレイヤーが紐付いていれば PermissionManager から、
-     * いなければ（setBuildOrigin 経路など）config の default_build_range を使う。
+     * いなければ（build.setOrigin 経路など）config の default_build_range を使う。
      */
     private int resolveBuildRange() {
         PlayerCommands playerCommands = session.getPlayerCommands();
@@ -167,22 +131,7 @@ public class BlockEditCommands {
         return McRemote.getInstance().getDefaultBuildRange();
     }
 
-    private void updateBlock(World world, Location loc, Material blockType, BlockFace blockFace) {
-        Block block = world.getBlockAt(loc);
-        block.setType(blockType);
-        BlockData blockData = block.getBlockData();
-        if (blockData instanceof Directional) {
-            ((Directional) blockData).setFacing(blockFace);
-        }
-        block.setBlockData(blockData);
-    }
-
-    private void updateBlock(World world, int x, int y, int z, Material blockType, BlockFace blockFace) {
-        Location loc = new Location(world, x, y, z);
-        updateBlock(world, loc, blockType, blockFace);
-    }
-
-    private void setCuboid(World world, Location loc1, Location loc2, Material blockType, BlockFace blockFace) {
+    private void setCuboid(World world, Location loc1, Location loc2, BlockData data) {
         int minX = Math.min(loc1.getBlockX(), loc2.getBlockX());
         int maxX = Math.max(loc1.getBlockX(), loc2.getBlockX());
         int minY = Math.min(loc1.getBlockY(), loc2.getBlockY());
@@ -193,7 +142,7 @@ public class BlockEditCommands {
         for (int x = minX; x <= maxX; x++) {
             for (int y = maxY; y >= minY; y--) {
                 for (int z = minZ; z <= maxZ; z++) {
-                    updateBlock(world, x, y, z, blockType, blockFace);
+                    world.getBlockAt(x, y, z).setBlockData(data, false);
                 }
             }
         }
@@ -207,24 +156,17 @@ public class BlockEditCommands {
             int y = Integer.parseInt(yStr);
             int z = Integer.parseInt(zStr);
             return x < -worldLimit || x > worldLimit
-                    || y < 0 || y > skyLimit
+                    || y < -skyLimit || y > skyLimit
                     || z < -worldLimit || z > worldLimit;
         } catch (NumberFormatException e) {
             return true;
         }
     }
 
-    private void sendAndLogWarning(String msg) {
-        if (debug) {
-            session.send("Error: " + msg);
-        }
-        logger.warning(msg);
-    }
-
-    private void sendAndLogError(String msg) {
-        if (debug) {
-            session.send("Error: " + msg);
-        }
-        logger.severe(msg);
+    /** §7.3 data.ref（問題の入力エコー）を1要素 map で返す。 */
+    private Map<String, Object> refData(String ref) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("ref", BlockRef.echo(ref));
+        return data;
     }
 }

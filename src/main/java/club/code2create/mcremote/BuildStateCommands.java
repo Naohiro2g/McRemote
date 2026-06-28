@@ -77,6 +77,15 @@ public class BuildStateCommands {
         session.send("World set to \"" + world.getName() + "\" (origin: " + x + ", " + y + ", " + z + ")");
     }
 
+    /** 接続時の既定原点（既定ワールド / (200,0,200)）。ワールド未ロード時のみ null。 */
+    public Location defaultOrigin() {
+        World world = defaultWorld();
+        if (world == null) {
+            return null;
+        }
+        return new Location(world, DEFAULT_ORIGIN_X, DEFAULT_ORIGIN_Y, DEFAULT_ORIGIN_Z);
+    }
+
     private World currentWorldOrDefault() {
         Location origin = session.getOrigin();
         if (origin != null && origin.getWorld() != null) {

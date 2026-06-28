@@ -3,7 +3,6 @@ package club.code2create.mcremote;
 public class RemoteCommandRegistrar {
     public CommandRegistry createRegistry(
             RemoteSession session,
-            PlayerCommands playerCommands,
             BlockCommands blockCommands,
             MiscCommands miscCommands,
             EntityCommands entityCommands,
@@ -27,11 +26,11 @@ public class RemoteCommandRegistrar {
         registry.register("entity.getYaw", args -> entityCommands.handleEntityCommands("entity.getYaw", args));
         registry.register("entity.setYaw", args -> entityCommands.handleEntityCommands("entity.setYaw", args));
         registry.register("entity.remove", args -> entityCommands.handleEntityCommands("entity.remove", args));
-        registry.register("setPlayer", playerCommands::handleSetPlayerCommand, false);
 
-        // Build state (identity から分離) — origin/world をプレイヤー非依存で設定
-        registry.register("setWorld", buildStateCommands::handleSetWorld, false);
-        registry.register("setBuildOrigin", buildStateCommands::handleSetBuildOrigin, false);
+        // Build state (identity から分離) — origin/world をプレイヤー非依存で設定。
+        // ワイヤ method は build.* 名前空間（wire-format-design §5.1, DECISIONS 2026-06-26-04）。
+        registry.register("build.setWorld", buildStateCommands::handleSetWorld, false);
+        registry.register("build.setOrigin", buildStateCommands::handleSetBuildOrigin, false);
 
         return registry;
     }

@@ -20,16 +20,20 @@ public class BlockQueryCommands {
 
     public void handleGetBlock(String[] args) {
         if (args.length != 3) {
-            sendAndLogWarning("Invalid arguments for getBlock command.");
+            session.respondError(-32602, "malformed_ref", null);
+            logger.warning("Invalid arguments for world.getBlock.");
             return;
         }
         try {
             World world = session.getOrigin().getWorld();
             Location loc = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
+            // 未ロード/未生成 chunk は getBlockAt が同期でロード・生成する（旧リリース挙動）。拒否はしない。
             Block block = world.getBlockAt(loc);
-            session.send(block.getType().name());
+            // canonical-full block_state_ref（§7.1）を返す。
+            session.respondResult(BlockRef.canonical(block.getBlockData()));
         } catch (NumberFormatException e) {
-            sendAndLogWarning("Invalid coordinates for getBlock command.");
+            session.respondError(-32602, "malformed_ref", null);
+            logger.warning("Invalid coordinates for world.getBlock.");
         }
     }
 
