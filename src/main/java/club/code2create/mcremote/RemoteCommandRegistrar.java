@@ -13,7 +13,7 @@ public class RemoteCommandRegistrar {
         blockCommands.register(registry);
         registry.register("world.spawnParticle", miscCommands::handleSpawnParticle);
         registry.register("world.getHeight", args -> miscCommands.handleGetHeight(session.getOrigin().getWorld(), args));
-        registry.register("chat.post", miscCommands::handleChatPost);
+        registry.register("chat.post", miscCommands::handleChatPost, false); // origin 不要・既定 send-only
         registry.register("world.spawnEntity", miscCommands::handleSpawnEntity);
         registry.register("world.getNearbyEntities",
                 args -> entityCommands.handleGetNearbyEntities(session.getOrigin().getWorld(), args));

@@ -1,6 +1,8 @@
 package club.code2create.mcremote;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
@@ -33,7 +35,9 @@ public final class BlockRef {
      * 受理例：`stone` / `minecraft:stone` / `oak_log[axis=y]`（無印・部分 state）。
      *
      * @throws BlockRefException reason＝`malformed_ref`（括弧崩れ）／`unknown_block`（無印補完後も未知）／
-     *                           `invalid_property_value`（prop 名/値が不正）。すべて code -32602。
+     *                           `unknown_property`（そのブロックに無い prop 名, 例 `stone[axis=y]`）／
+     *                           `invalid_property_value`（prop 名は有効・値が許容外, 例 `oak_log[axis=w]`）。
+     *                           すべて code -32602（§7.3）。
      */
     public static BlockData parse(String ref) throws BlockRefException {
         if (ref == null) {
@@ -68,9 +72,51 @@ public final class BlockRef {
             // state "" は全 default、"[axis=y]" は部分指定で残りを default 補完。
             return material.createBlockData(state);
         } catch (IllegalArgumentException e) {
-            // prop 名不在／値不正をまとめて invalid_property_value にする（細分化は §7.3 b2）。
+            // §7.3: prop 名がそのブロックに無い（unknown_property, 例 stone[axis=y]）と、
+            // prop 名は有効だが値が許容外（invalid_property_value, 例 oak_log[axis=w]）を切り分ける。
+            if (hasUnknownProperty(material, state)) {
+                throw new BlockRefException(-32602, "unknown_property");
+            }
             throw new BlockRefException(-32602, "invalid_property_value");
         }
+    }
+
+    /**
+     * 入力 state のキーに、そのブロックに存在しない prop 名が1つでもあれば true。
+     * 有効 prop 名はブロックの default state（{@code createBlockData().getAsString()}）から取る。
+     */
+    private static boolean hasUnknownProperty(Material material, String state) {
+        if (state.isEmpty()) {
+            return false; // state 無しなら prop 起因ではない
+        }
+        Set<String> valid = propertyNames(material.createBlockData());
+        String body = state.substring(1, state.length() - 1); // "[k=v,...]" → "k=v,..."
+        for (String pair : body.split(",")) {
+            int eq = pair.indexOf('=');
+            String key = (eq >= 0 ? pair.substring(0, eq) : pair).trim();
+            if (!key.isEmpty() && !valid.contains(key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** BlockData の canonical 文字列から prop 名の集合を取り出す（prop 無しブロックは空集合）。 */
+    private static Set<String> propertyNames(BlockData data) {
+        Set<String> names = new HashSet<>();
+        String s = data.getAsString();
+        int br = s.indexOf('[');
+        if (br < 0) {
+            return names;
+        }
+        String body = s.substring(br + 1, s.length() - 1);
+        for (String pair : body.split(",")) {
+            int eq = pair.indexOf('=');
+            if (eq >= 0) {
+                names.add(pair.substring(0, eq).trim());
+            }
+        }
+        return names;
     }
 
     /**
