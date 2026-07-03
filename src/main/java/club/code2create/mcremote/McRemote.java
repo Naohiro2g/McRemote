@@ -17,6 +17,7 @@ import org.jspecify.annotations.NullMarked;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
 public class McRemote extends JavaPlugin implements Listener {
@@ -29,7 +30,9 @@ public class McRemote extends JavaPlugin implements Listener {
             Material.WOODEN_SWORD);
 
     private ServerListenerThread serverThread;
-    private final List<RemoteSession> sessions = new ArrayList<>();
+    // 追加はリスナースレッド、反復（TickHandler / イベント handler）は主スレッドで並行。
+    // snapshot 反復で ConcurrentModificationException を起こさない CopyOnWriteArrayList を使う。
+    private final List<RemoteSession> sessions = new CopyOnWriteArrayList<>();
     private static boolean luckPermsEnabled = false;
     public static McRemote instance;
     private IPermissionManager permissionManager;
@@ -123,12 +126,12 @@ public class McRemote extends JavaPlugin implements Listener {
     private class TickHandler implements Runnable {
         @Override
         public void run() {
-            Iterator<RemoteSession> sI = sessions.iterator();
-            while (sI.hasNext()) {
-                RemoteSession s = sI.next();
+            // CopyOnWriteArrayList の反復は snapshot。要素除去はリスト側 remove(Object) で行う
+            // （snapshot iterator は remove() 非対応）。RemoteSession は equals 未override＝同一性判定。
+            for (RemoteSession s : sessions) {
                 if (s.pendingRemoval) {
                     s.close();
-                    sI.remove();
+                    sessions.remove(s);
                 } else {
                     s.tick();
                 }
@@ -179,9 +182,8 @@ public class McRemote extends JavaPlugin implements Listener {
             newSession.kick("You've been banned from this server!");
             return;
         }
-        synchronized(sessions) {
-            sessions.add(newSession);
-        }
+        // CopyOnWriteArrayList.add は原子的なので外部同期は不要。
+        sessions.add(newSession);
     }
 
     private boolean checkBanned(RemoteSession session) {
