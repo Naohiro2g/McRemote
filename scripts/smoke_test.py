@@ -14,7 +14,7 @@ minecraft-remote-api モジュールに依存しない素の疎通テスト。JS
   - 要求 {"jsonrpc":"2.0","id":N,"method":...,"params":...}、応答 {... ,"id":N,"result"|"error":...}。
   - id を省くと notification ＝ 応答が返らない（world.setBlock は既定 send-only）。
   - hello は最初の1メッセージ（object params {"protocol":"21.0.0"}）。応答は flat result
-    {protocol, mc_version, supported_mc_versions, y_sea, catalogHash, ...}（§6.2）。非互換は error。
+    {protocol, mc_version, supported_mc_versions, world_constants:{y_sea}, catalogHash, ...}（§6.2）。非互換は error。
 
 使い方（サーバを runServer 等で起動し、新プラグインを反映してから）:
   python3 scripts/smoke_test.py
@@ -90,12 +90,17 @@ def main() -> int:
             if not isinstance(info, dict):
                 print(f"FAIL: hello result is not an object: {info!r}")
                 return 1
-            for key in ("protocol", "mc_version", "supported_mc_versions", "y_sea", "catalogHash"):
+            for key in ("protocol", "mc_version", "supported_mc_versions", "world_constants", "catalogHash"):
                 if key not in info:
                     print(f"FAIL: hello result missing {key!r}: {info}")
                     return 1
+            # y_sea は world_constants object に束ねられる（§6.2 / DECISIONS 2026-07-02-02）。
+            wc = info["world_constants"]
+            if not isinstance(wc, dict) or "y_sea" not in wc:
+                print(f"FAIL: world_constants must be an object containing y_sea: {info}")
+                return 1
             print(f"                    protocol={info['protocol']} mc_version={info['mc_version']} "
-                  f"supported={info['supported_mc_versions']} y_sea={info['y_sea']} "
+                  f"supported={info['supported_mc_versions']} world_constants.y_sea={wc['y_sea']} "
                   f"catalogHash={info['catalogHash']}")
 
             print(f"[build.setWorld]  <- {request('build.setWorld', [args.dimension])}")

@@ -192,7 +192,7 @@ public class RemoteSession {
     /**
      * hello 応答の flat result（wire-format-design §6.2）。
      * 版フィールドは clean な protocol semver、catalogHash は b1 で常在 null、
-     * y_sea は top-level（DECISION 2026-06-27）。world/origin は接続時の build state。
+     * y_sea は world_constants に束ねる（DECISIONS 2026-07-02-02）。world/origin は接続時の build state。
      */
     private Map<String, Object> buildHelloResult() {
         String mcVersion = Bukkit.getMinecraftVersion();
@@ -200,13 +200,17 @@ public class RemoteSession {
         if (supported.isEmpty()) {
             supported = List.of(mcVersion);
         }
-        int ySea = (origin != null && origin.getWorld() != null) ? origin.getWorld().getSeaLevel() : 62;
+        // y_sea は座標式に使わない情報定数。world 不明時は number|null の null（§6.2 / DECISIONS 2026-07-02-02）。
+        Integer ySea = (origin != null && origin.getWorld() != null) ? origin.getWorld().getSeaLevel() : null;
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("protocol", ProtocolInfo.PROTOCOL);
         result.put("mc_version", mcVersion);
         result.put("supported_mc_versions", supported);
-        result.put("y_sea", ySea);
+        // world/profile 依存の情報定数は world_constants bucket に束ねる（top-level に散らさない・§6.2）。
+        Map<String, Object> worldConstants = new LinkedHashMap<>();
+        worldConstants.put("y_sea", ySea);
+        result.put("world_constants", worldConstants);
         result.put("catalogHash", null); // b1 は無認証ゆえ常に null（§6.2・実値は bN）
         if (origin != null && origin.getWorld() != null) {
             result.put("world", origin.getWorld().getName());
