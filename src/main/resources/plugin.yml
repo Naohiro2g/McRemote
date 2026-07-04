@@ -6,3 +6,7 @@ main: club.code2create.mcremote.McRemote
 api-version: ${plugin.apiVersion}
 soft-depend:
   - LuckPerms
+commands:
+  mcremote:
+    description: McRemote pairing and admin
+    usage: /mcremote pair <code>

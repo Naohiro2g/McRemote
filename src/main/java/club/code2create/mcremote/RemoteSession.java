@@ -60,6 +60,8 @@ public class RemoteSession {
     private final BuildStateCommands buildStateCommands;
     private final CommandParser commandParser;
     private final CommandDispatcher commandDispatcher;
+    // pre-hello の auth.* 経路（§6.5）。ペアリングは hello の前段ゆえ門番より前に通す。
+    private final AuthCommands authCommands;
 
     public RemoteSession(McRemote plugin, Socket socket) throws IOException {
         this.plugin = plugin;
@@ -75,6 +77,7 @@ public class RemoteSession {
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
                 this, blockCommands, miscCommands, entityCommands, buildStateCommands));
+        this.authCommands = new AuthCommands(this, plugin.getPairingManager());
         init();
     }
 
@@ -123,6 +126,11 @@ public class RemoteSession {
             // 要求 id を相関キーに据える（応答／エラー封筒で使う。null＝notification）。
             activeId = parsed.getId();
             if (!helloComplete) {
+                // ペアリングは hello の前段の独立メソッド（§6.5）。auth.* を先に捌き、
+                // 対応したら門番を通さない（helloComplete は立てない・close しない）。
+                if (authCommands.handle(parsed)) {
+                    return;
+                }
                 handleHello(parsed);
                 return;
             }

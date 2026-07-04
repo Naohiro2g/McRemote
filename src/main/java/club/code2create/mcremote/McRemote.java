@@ -10,6 +10,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NullMarked;
@@ -37,12 +38,32 @@ public class McRemote extends JavaPlugin implements Listener {
     public static McRemote instance;
     private IPermissionManager permissionManager;
     private int defaultBuildRange;
+    // 認証（wire §6.5）：pairing/token の正本は plugin 常駐。複数 session スレッド＋/mcremote pair の
+    // 主スレッドから共有アクセスされるため concurrent 実装（169e64f の CME 教訓）。
+    private TokenStore tokenStore;
+    private PairingManager pairingManager;
+    private boolean authEnforcement;
 
     @Override
     public void onEnable(){
         instance = this;
         this.saveDefaultConfig();
         FileConfiguration config = this.getConfig();
+
+        // 認証ストアを serverThread 起動前に用意する（接続到来時の RemoteSession ctor が参照するため）。
+        // enforcement 既定 OFF＝token 無し hello 通過（3リポ非同期着地・§6.5/§10.11.1 item5）。
+        this.authEnforcement = config.getBoolean("auth.enforcement", false);
+        long pairCodeTtl = config.getLong("auth.pair_code_ttl_seconds", 120);
+        long sessionTokenTtl = config.getLong("auth.session_token_ttl_seconds", 7200);
+        long playerTokenTtl = config.getLong("auth.player_token_ttl_seconds", 0);
+        this.tokenStore = new TokenStore();
+        this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl, playerTokenTtl);
+        PluginCommand mcremoteCommand = getCommand("mcremote");
+        if (mcremoteCommand != null) {
+            mcremoteCommand.setExecutor(new PairCommand(pairingManager));
+        } else {
+            logger.warning("Command 'mcremote' not registered in plugin.yml; /mcremote pair unavailable");
+        }
 
         // APIポート設定を読み込み、サーバースレッドを起動
         int port = config.getInt("api_port");
@@ -120,6 +141,21 @@ public class McRemote extends JavaPlugin implements Listener {
 
     public IPermissionManager getPermissionManager() {
         return this.permissionManager;
+    }
+
+    /** ペアリング state machine の正本（§6.5）。RemoteSession の pre-hello auth.* 経路が使う。 */
+    public PairingManager getPairingManager() {
+        return this.pairingManager;
+    }
+
+    /** 発行済み token ストア（hash のみ保存・§6.5）。hello 検証（次ステップ）が使う。 */
+    public TokenStore getTokenStore() {
+        return this.tokenStore;
+    }
+
+    /** enforcement トグル（§10.11.1 item5）。ON で hello が token 必須になる（次ステップで参照）。 */
+    public boolean isAuthEnforcement() {
+        return this.authEnforcement;
     }
 
     @NullMarked
