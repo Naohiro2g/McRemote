@@ -9,4 +9,4 @@ soft-depend:
 commands:
   mcremote:
     description: McRemote pairing and admin
-    usage: /mcremote pair <code>
+    usage: /mcremote pair <code>（6桁・区切り不要・半角数字 / ASCII digits, separators optional）

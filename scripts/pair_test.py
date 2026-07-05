@@ -18,12 +18,33 @@ token は hash のみサーバ保存。enforcement OFF ゆえ hello は token �
   #   /mcremote pair <code>
 """
 import argparse
+import base64
 import json
+import shutil
 import socket
+import subprocess
 import sys
 import time
 
 PROTOCOL = "21.0.0"
+
+
+def copy_to_clipboard(text: str) -> None:
+    """クリップボードへコピー（best-effort）。OS ツール優先（Wayland→X11）→ OSC 52 fallback。"""
+    for cmd in (["wl-copy"], ["xclip", "-selection", "clipboard"],
+                ["xsel", "--clipboard", "--input"]):
+        if shutil.which(cmd[0]):
+            try:
+                subprocess.run(cmd, input=text.encode("utf-8"), check=True)
+                print(f"  (clipboard: {cmd[0]} でコピー / copied)")
+                return
+            except (OSError, subprocess.SubprocessError):
+                continue
+    # fallback: OSC 52（端末が許可していれば効く・不可視）
+    b64 = base64.b64encode(text.encode("utf-8")).decode("ascii")
+    sys.stdout.write(f"\033]52;c;{b64}\a")
+    sys.stdout.flush()
+    print("  (clipboard: OSC 52 を試行・端末依存 / OSC 52 attempted, terminal-dependent)")
 
 
 def main() -> int:
@@ -35,6 +56,8 @@ def main() -> int:
     ap.add_argument("--device", default=None, help="optional device label (player_token)")
     ap.add_argument("--poll-interval", type=float, default=1.5, help="pairPoll 間隔 (~1-2s)")
     ap.add_argument("--timeout", type=float, default=10.0, help="socket read timeout")
+    ap.add_argument("--clipboard", action="store_true",
+                    help="OSC 52 でコマンドをクリップボードへコピー（対応端末のみ）")
     args = ap.parse_args()
 
     try:
@@ -72,11 +95,18 @@ def main() -> int:
             pairing_id = result["pairing_id"]
             pair_code = result["pair_code"]
             expires_in = result["expires_in"]
+            grouped = f"{pair_code[:3]}-{pair_code[3:]}"
+            command = f"/mcremote pair {grouped}"
             print(f"[pairBegin] pairing_id={pairing_id} expires_in={expires_in}s")
             print()
-            print("  ┌─────────────────────────────────────────────┐")
-            print(f"  │  ゲーム内で実行:  /mcremote pair {pair_code}      │")
-            print("  └─────────────────────────────────────────────┘")
+            print("  ── ペアリング / Pairing ─────────────────────────────")
+            print("    チャットに貼付 / paste into chat:")
+            print(f"      {command}")
+            print("    （区切り不要・半角数字 / ASCII digits, separators optional）")
+            print(f"    コピー用 / copy: {command}")
+            print("  ────────────────────────────────────────────────────")
+            if args.clipboard:
+                copy_to_clipboard(command)
             print()
 
             # 2) auth.pairPoll を pending の間くり返す
