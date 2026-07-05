@@ -134,13 +134,17 @@ def main() -> int:
                 print("FAIL: timed out waiting for /mcremote pair (pair_code expired)")
                 return 1
 
-            # 3) hello(auth:{token})。enforcement OFF ゆえ token 無しでも通るが、発行 token を載せる。
+            # 3) hello(auth:{token})。token を検証し UUID を束縛（§6.1/§6.2）。enforcement OFF でも
+            #    解決できれば player/permissions を返す。ON では token 必須（欠落=auth_required/無効=token_invalid）。
             hello = call("hello", {"protocol": args.protocol, "auth": {"token": token}})
             if "error" in hello:
                 print(f"FAIL: hello -> error {hello['error']}")
                 return 1
             info = hello["result"]
             print(f"[hello]     <- protocol={info.get('protocol')} mc_version={info.get('mc_version')}")
+            print(f"[hello]     <- player={info.get('player')} permissions={info.get('permissions')}")
+            if info.get("player") is None:
+                print("WARN: hello に player が無い（token 未束縛）。enforcement OFF かつ store 失効の可能性。")
             print()
             print("PASS: pairBegin -> /mcremote pair -> pairPoll -> token -> hello 1周")
             return 0

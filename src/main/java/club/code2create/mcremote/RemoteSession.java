@@ -7,6 +7,8 @@ import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 import com.google.gson.Gson;
@@ -14,6 +16,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.entity.ProjectileHitEvent;
@@ -34,6 +37,8 @@ public class RemoteSession {
     // 処理中の要求の JSON-RPC id（応答／エラー封筒の相関キー）。null＝notification。
     private Integer activeId = null;
     private Player attachedPlayer = null;
+    // hello の auth 検証で束縛した UUID（§6.1/§6.2）。enforcement ON では必須、OFF でも token 提示・解決時に束縛。
+    private UUID boundUuid = null;
     private final Socket socket;
     private BufferedReader in;
     private BufferedWriter out;
@@ -176,9 +181,62 @@ public class RemoteSession {
             close();
             return;
         }
+        // hello auth 検証（§6.1/§6.3・versioning §10.11.1 item5 enforcement トグル）。
+        // 検証と強制を分離：OFF（dev 既定）は token 欠落/無効を許容し b1 疎通を保つ（提示され解決できれば UUID 束縛）。
+        // ON は 欠落→auth_required・無効→token_invalid・認可拒否→permission_denied（token 温存）。
+        // error は -32000 帯＋data.reason（既存 pair error と同形。code/message 確定は §7.3 ratify 後）。
+        String token = extractHelloToken(parsed.getParams());
+        boolean enforce = plugin.isAuthEnforcement();
+        if (token == null || token.isEmpty()) {
+            if (enforce) {
+                respondError(-32000, "auth_required", null);
+                logger.warning("Hello rejected: auth_required (enforcement ON, no token)");
+                close();
+                return;
+            }
+        } else {
+            Optional<TokenStore.TokenRecord> rec = plugin.getTokenStore().resolve(token);
+            if (rec.isEmpty()) {
+                if (enforce) {
+                    respondError(-32000, "token_invalid", null);
+                    logger.warning("Hello rejected: token_invalid (enforcement ON)");
+                    close();
+                    return;
+                }
+            } else {
+                UUID uuid = rec.get().uuid();
+                // 認可は常に UUID→LuckPerms（item4・不在時は FallbackPermissionManager が許可）。
+                // ON のときのみ hello を gate：online/offline いずれの建築権も無ければ拒否。
+                if (enforce) {
+                    OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+                    IPermissionManager perms = plugin.getPermissionManager();
+                    if (!perms.canConstructOnline(op) && !perms.canConstructOffline(op)) {
+                        respondError(-32000, "permission_denied", null);
+                        logger.warning("Hello rejected: permission_denied uuid=" + uuid);
+                        close(); // token は温存（resolve のみ・revoke しない）
+                        return;
+                    }
+                }
+                boundUuid = uuid;
+            }
+        }
         respondResult(buildHelloResult());
         helloComplete = true;
-        logger.info("hello OK (client protocol " + clientProtocol + ", advertising " + ProtocolInfo.PROTOCOL + ")");
+        logger.info("hello OK (client protocol " + clientProtocol + ", advertising " + ProtocolInfo.PROTOCOL
+                + (boundUuid != null ? ", player " + boundUuid : ", no auth") + ")");
+    }
+
+    /** hello params（object 形, §6.1）から {@code auth.token} を取り出す。無ければ null。 */
+    private String extractHelloToken(JsonElement params) {
+        if (params == null || !params.isJsonObject()) {
+            return null;
+        }
+        JsonElement auth = params.getAsJsonObject().get("auth");
+        if (auth == null || !auth.isJsonObject()) {
+            return null;
+        }
+        JsonElement t = auth.getAsJsonObject().get("token");
+        return (t != null && t.isJsonPrimitive()) ? t.getAsString().trim() : null;
     }
 
     /** hello params（object 形, §6.1）から protocol を取り出す。配列形は移行中クライアント向けに許容。 */
@@ -219,10 +277,24 @@ public class RemoteSession {
         Map<String, Object> worldConstants = new LinkedHashMap<>();
         worldConstants.put("y_sea", ySea);
         result.put("world_constants", worldConstants);
-        result.put("catalogHash", null); // b1 は無認証ゆえ常に null（§6.2・実値は bN）
+        result.put("catalogHash", null); // catalogHash は b2 でも常在 null（実値化は b3・versioning item14）
+        // auth 済みなら束縛 UUID を返す（§6.2・token→player 束縛ゆえ spoofing 不可）。
+        if (boundUuid != null) {
+            result.put("player", boundUuid.toString());
+        }
         if (origin != null && origin.getWorld() != null) {
             result.put("world", origin.getWorld().getName());
             result.put("origin", List.of(origin.getBlockX(), origin.getBlockY(), origin.getBlockZ()));
+        }
+        // permissions bucket（§6.2）＝UUID→LuckPerms の scopes。auth 済みのときのみ。
+        if (boundUuid != null) {
+            OfflinePlayer op = Bukkit.getOfflinePlayer(boundUuid);
+            IPermissionManager perms = plugin.getPermissionManager();
+            Map<String, Object> permissions = new LinkedHashMap<>();
+            permissions.put("online", perms.canConstructOnline(op));
+            permissions.put("offline", perms.canConstructOffline(op));
+            permissions.put("buildRange", perms.getPlayerRange(op));
+            result.put("permissions", permissions);
         }
         return result;
     }
