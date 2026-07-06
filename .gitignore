@@ -17,3 +17,4 @@ memo_codex*.md
 *.log
 # Python
 __pycache__/
+handoff-materials/
