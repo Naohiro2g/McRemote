@@ -3,6 +3,7 @@ package club.code2create.mcremote;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -49,10 +50,12 @@ public class McRemote extends JavaPlugin implements Listener {
         instance = this;
         this.saveDefaultConfig();
         FileConfiguration config = this.getConfig();
+        migrateMissingConfigDefaults(config);
 
         // 認証ストアを serverThread 起動前に用意する（接続到来時の RemoteSession ctor が参照するため）。
         // enforcement 既定 OFF＝token 無し hello 通過（3リポ非同期着地・§6.5/§10.11.1 item5）。
         this.authEnforcement = config.getBoolean("auth.enforcement", false);
+        logger.info("Auth enforcement: " + this.authEnforcement);
         long pairCodeTtl = config.getLong("auth.pair_code_ttl_seconds", 120);
         long sessionTokenTtl = config.getLong("auth.session_token_ttl_seconds", 7200);
         long playerTokenTtl = config.getLong("auth.player_token_ttl_seconds", 0);
@@ -102,6 +105,29 @@ public class McRemote extends JavaPlugin implements Listener {
         }
         logger.info("PermissionManager instance: " + this.permissionManager);
         // ここ以降、permissionManager を利用して各種処理を実施…
+    }
+
+    private void migrateMissingConfigDefaults(FileConfiguration config) {
+        Configuration defaults = config.getDefaults();
+        if (defaults == null) {
+            return;
+        }
+
+        List<String> added = new ArrayList<>();
+        for (String path : defaults.getKeys(true)) {
+            if (defaults.isConfigurationSection(path)) {
+                continue;
+            }
+            if (!config.contains(path, true)) {
+                config.set(path, defaults.get(path));
+                added.add(path);
+            }
+        }
+
+        if (!added.isEmpty()) {
+            saveConfig();
+            logger.info("Added missing config defaults: " + String.join(", ", added));
+        }
     }
 
     private void saveResources(){
