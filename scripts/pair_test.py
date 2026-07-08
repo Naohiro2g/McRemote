@@ -142,6 +142,17 @@ def main() -> int:
                 return 1
             info = hello["result"]
             print(f"[hello]     <- protocol={info.get('protocol')} mc_version={info.get('mc_version')}")
+            world_constants = info.get("world_constants")
+            if not isinstance(world_constants, dict) or "y_sea" not in world_constants:
+                print(f"FAIL: hello world_constants must contain y_sea: {info}")
+                return 1
+            if "y_sea" in info:
+                print(f"FAIL: y_sea must not be top-level; use world_constants.y_sea: {info}")
+                return 1
+            if "catalogHash" not in info or info.get("catalogHash") is not None:
+                print(f"FAIL: catalogHash must be present and null for b2: {info}")
+                return 1
+            print(f"[hello]     <- world_constants.y_sea={world_constants.get('y_sea')} catalogHash={info.get('catalogHash')}")
             print(f"[hello]     <- player={info.get('player')} permissions={info.get('permissions')}")
             if info.get("player") is None:
                 print("WARN: hello に player が無い（token 未束縛）。enforcement OFF かつ store 失効の可能性。")
