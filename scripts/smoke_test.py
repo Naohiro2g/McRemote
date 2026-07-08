@@ -99,6 +99,9 @@ def main() -> int:
             if not isinstance(wc, dict) or "y_sea" not in wc:
                 print(f"FAIL: world_constants must be an object containing y_sea: {info}")
                 return 1
+            if "y_sea" in info:
+                print(f"FAIL: y_sea must not be top-level; use world_constants.y_sea: {info}")
+                return 1
             print(f"                    protocol={info['protocol']} mc_version={info['mc_version']} "
                   f"supported={info['supported_mc_versions']} world_constants.y_sea={wc['y_sea']} "
                   f"catalogHash={info['catalogHash']}")

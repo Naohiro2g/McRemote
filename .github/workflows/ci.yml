@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       deploy_targets:
-        description: 'Deployment targets (comma-separated, e.g. staging,production)'
+        description: 'Deployment targets (comma-separated, e.g. sb-dev)'
         required: true
-        default: 'staging'
+        default: 'sb-dev'
 
 jobs:
   build-and-deploy:
@@ -53,14 +53,14 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: echo "TARGETS=${{ github.event.inputs.deploy_targets }}" >> $GITHUB_ENV
 
-      # タグプッシュの場合は、デフォルトで staging にデプロイ
+      # タグプッシュの場合は、当面 sb-dev にデプロイ
       - name: Set deploy targets for tag push
         if: github.event_name == 'push'
-        run: echo "TARGETS=staging" >> $GITHUB_ENV
+        run: echo "TARGETS=sb-dev" >> $GITHUB_ENV
 
-      # stagingへのデプロイ
-      - name: Deploy to staging
-        if: contains(env.TARGETS, 'staging')
+      # sb-devへのデプロイ（アップロードのみ。Minecraft サーバー再起動は手動）
+      - name: Deploy to sb-dev
+        if: contains(env.TARGETS, 'sb-dev')
         env:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
@@ -68,13 +68,16 @@ jobs:
           FTP_PATH: ${{ secrets.FTP_PATH }}
         run: |
           JAR_PATH="build/libs/mc-remote-${MC_VERSION}-${PLUGIN_VERSION}.jar"
-          lftp -d -c "
-            open ftp://${FTP_USER}:${FTP_PASS}@${FTP_HOST}${FTP_PATH};
-            glob -a rm mc-remote*.jar;
-            put ${JAR_PATH};
-            bye
-          "
-          echo "Deployed to staging environment"
+          lftp <<EOF
+          set cmd:fail-exit yes
+          open ftp://${FTP_HOST}
+          user ${FTP_USER} ${FTP_PASS}
+          cd ${FTP_PATH}
+          glob -a rm mc-remote*.jar
+          put ${JAR_PATH}
+          bye
+          EOF
+          echo "Deployed to sb-dev environment. Restart the Minecraft server manually."
 
       # タグプッシュ（自動リリースの場合）のときのみリリース作成、アーティファクト添付
       - name: Create GitHub Release with artifact
