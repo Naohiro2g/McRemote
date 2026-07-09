@@ -125,6 +125,14 @@ public class RemoteSession {
 
     public BlockCommands getBlockCommands() { return blockCommands; }
 
+    public boolean isHelloComplete() {
+        return helloComplete;
+    }
+
+    public UUID getBoundUuid() {
+        return boundUuid;
+    }
+
     private void handleLine(String line) {
         try {
             ParsedCommand parsed = commandParser.parse(line);
@@ -217,7 +225,20 @@ public class RemoteSession {
                         return;
                     }
                 }
+                int maxSessions = plugin.getMaxSessionsPerUuid();
+                int currentSessions = plugin.countBoundSessions(uuid);
+                if (currentSessions >= maxSessions) {
+                    Map<String, Object> data = new LinkedHashMap<>();
+                    data.put("limit", maxSessions);
+                    data.put("current", currentSessions);
+                    respondError(-32000, "too_many_sessions", data);
+                    logger.warning("Hello rejected: too_many_sessions uuid=" + uuid
+                            + " current=" + currentSessions + " limit=" + maxSessions);
+                    close();
+                    return;
+                }
                 boundUuid = uuid;
+                playerCommands.bind(uuid);
             }
         }
         respondResult(buildHelloResult());

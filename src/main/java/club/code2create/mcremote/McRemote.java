@@ -44,6 +44,7 @@ public class McRemote extends JavaPlugin implements Listener {
     private TokenStore tokenStore;
     private PairingManager pairingManager;
     private boolean authEnforcement;
+    private int maxSessionsPerUuid;
 
     @Override
     public void onEnable(){
@@ -59,6 +60,8 @@ public class McRemote extends JavaPlugin implements Listener {
         long pairCodeTtl = config.getLong("auth.pair_code_ttl_seconds", 120);
         long sessionTokenTtl = config.getLong("auth.session_token_ttl_seconds", 7200);
         long playerTokenTtl = config.getLong("auth.player_token_ttl_seconds", 0);
+        this.maxSessionsPerUuid = Math.max(1, config.getInt("auth.max_sessions_per_uuid", 16));
+        logger.info("Max sessions per UUID: " + this.maxSessionsPerUuid);
         this.tokenStore = new TokenStore();
         this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl, playerTokenTtl);
         PluginCommand mcremoteCommand = getCommand("mcremote");
@@ -182,6 +185,22 @@ public class McRemote extends JavaPlugin implements Listener {
     /** enforcement トグル（§10.11.1 item5）。ON で hello が token 必須になる（次ステップで参照）。 */
     public boolean isAuthEnforcement() {
         return this.authEnforcement;
+    }
+
+    /** 同一 UUID の同時認証済み session 上限（versioning §10.11.1 item7）。 */
+    public int getMaxSessionsPerUuid() {
+        return this.maxSessionsPerUuid;
+    }
+
+    /** 現在 hello 済みで当該 UUID に束縛されている live session 数。 */
+    public int countBoundSessions(UUID uuid) {
+        int count = 0;
+        for (RemoteSession session : sessions) {
+            if (!session.pendingRemoval && session.isHelloComplete() && uuid.equals(session.getBoundUuid())) {
+                count++;
+            }
+        }
+        return count;
     }
 
     @NullMarked

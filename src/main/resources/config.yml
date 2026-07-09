@@ -20,4 +20,4 @@ auth:
   pair_code_ttl_seconds: 120   # lifetime of the 6-digit pair_code (§6.5)
   session_token_ttl_seconds: 7200   # mcrs_ session token (~2h)
   player_token_ttl_seconds: 0       # mcrp_ player token; 0 = no expiry (issued later; §6.5)
-  max_sessions_per_uuid: 16    # item 7; cap enforcement lands in a later step
+  max_sessions_per_uuid: 16    # item 7; same UUID concurrent hello sessions cap
