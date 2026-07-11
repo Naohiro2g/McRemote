@@ -194,6 +194,100 @@ fun loadFtpSettings(env: String): Map<String, String> {
         }
 }
 
+fun requiredFtpSettings(env: String): Map<String, String> {
+    val ftpSettings = loadFtpSettings(env)
+    val missing = listOf("FTP_USER", "FTP_PASS", "FTP_HOST", "FTP_PATH")
+        .filter { ftpSettings[it].isNullOrBlank() }
+    if (missing.isNotEmpty()) {
+        throw GradleException(
+            "FTP設定が不完全です: $env (${missing.joinToString(", ")}). " +
+                    "ftp_settings.mk に $env.FTP_USER / FTP_PASS / FTP_HOST / FTP_PATH を設定してください。"
+        )
+    }
+    return ftpSettings
+}
+
+fun runLftpDeploy(env: String, displayName: String) {
+    val ftpSettings = requiredFtpSettings(env)
+    val ftpUser = ftpSettings.getValue("FTP_USER")
+    val ftpPass = ftpSettings.getValue("FTP_PASS")
+    val ftpHost = ftpSettings.getValue("FTP_HOST")
+    val ftpPath = ftpSettings.getValue("FTP_PATH")
+    val jarPath = layout.buildDirectory.get().asFile.resolve("libs/mc-remote-$version.jar").absolutePath
+
+    println("Deploying mc-remote-$version.jar via FTP to $displayName: $ftpHost$ftpPath")
+    val process = ProcessBuilder("lftp")
+        .directory(project.rootDir)
+        .redirectErrorStream(true)
+        .start()
+    try {
+        process.outputStream.bufferedWriter().use { stdin ->
+            stdin.write("set cmd:fail-exit yes\n")
+            stdin.write("open ftp://$ftpHost\n")
+            stdin.write("user $ftpUser $ftpPass\n")
+            stdin.write("cd $ftpPath\n")
+            stdin.write("glob -a rm mc-remote*.jar\n")
+            stdin.write("put $jarPath\n")
+            stdin.write("bye\n")
+        }
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+        if (output.isNotBlank()) {
+            println(output)
+        }
+        if (exitCode != 0) {
+            throw GradleException("lftp deploy failed for $displayName (exit=$exitCode)")
+        }
+    } finally {
+        process.destroy()
+    }
+}
+
+fun printFtpSettingsSummary(env: String, displayName: String) {
+    val ftpSettings = requiredFtpSettings(env)
+    println("$displayName FTP deploy settings found.")
+    println("  env: $env")
+    println("  host: ${ftpSettings.getValue("FTP_HOST")}")
+    println("  path: ${ftpSettings.getValue("FTP_PATH")}")
+    println("  user: ${ftpSettings.getValue("FTP_USER")}")
+    println("  pass: ${if (ftpSettings.getValue("FTP_PASS").isNotBlank()) "<set>" else "<missing>"}")
+    println("  note: deploy only; restart the Minecraft server manually after upload.")
+}
+
+tasks.register("checkDeploySbConfig") {
+    group = "deployment"
+    description = "Validate sb FTP deploy settings (ftp1) without connecting."
+    doLast {
+        printFtpSettingsSummary("ftp1", "sb")
+    }
+}
+
+tasks.register("checkDeploySbDevConfig") {
+    group = "deployment"
+    description = "Validate sb-dev FTP deploy settings (ftp2) without connecting."
+    doLast {
+        printFtpSettingsSummary("ftp2", "sb-dev")
+    }
+}
+
+tasks.register("deploySb") {
+    group = "deployment"
+    description = "Build and deploy the McRemote plugin jar to sb via FTP. Restart manually after upload."
+    dependsOn("build")
+    doLast {
+        runLftpDeploy("ftp1", "sb")
+    }
+}
+
+tasks.register("deploySbDev") {
+    group = "deployment"
+    description = "Build and deploy the McRemote plugin jar to sb-dev via FTP. Restart manually after upload."
+    dependsOn("build")
+    doLast {
+        runLftpDeploy("ftp2", "sb-dev")
+    }
+}
+
 // 環境ごとにFTPタスクを作成
 listOf("ftp1", "ftp2", "ftp3").forEach { env ->
     tasks.register<Exec>("deploy_$env") {

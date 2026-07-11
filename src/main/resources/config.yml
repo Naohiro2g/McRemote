@@ -7,3 +7,17 @@ luckperm_permissions:
   build.range: "mcr.build.range"  # meta key for group
 # if there is no LuckPerms, use this
 default_build_range: 1000
+# MC versions this server advertises as compatible in the hello handshake
+# (protocol §8.1). Empty -> falls back to the running server version.
+supported_mc_versions:
+  - "1.21.11"
+# Authentication (wire-format-design §6.5 / versioning-design §10.11.1).
+# enforcement defaults OFF so token-less hello keeps working while the 3 repos
+# (plugin / python / scratch) land auth asynchronously during b2. ON = release
+# default and the b2 completion gate.
+auth:
+  enforcement: false           # ON -> hello requires a valid token (auth_required/token_invalid)
+  pair_code_ttl_seconds: 120   # lifetime of the 6-digit pair_code (§6.5)
+  session_token_ttl_seconds: 7200   # mcrs_ session token (~2h)
+  player_token_ttl_seconds: 0       # mcrp_ player token; 0 = no expiry (issued later; §6.5)
+  max_sessions_per_uuid: 16    # item 7; same UUID concurrent hello sessions cap

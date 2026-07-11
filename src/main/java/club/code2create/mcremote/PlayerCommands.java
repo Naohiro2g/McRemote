@@ -4,143 +4,45 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
-import java.util.UUID;
-import java.util.logging.Logger;
+import org.bukkit.entity.Player;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * セッションに紐づく identity（誰が建てているか）の保持。
+ *
+ * b1（protocol 21.0.0）では identity を build state（setWorld/setBuildOrigin）から分離し、
+ * 旧 setPlayer 経路は撤去した。identity の確立は後続ベータの認証（pair/hello/LuckPerms）で行う。
+ * それまで playerUUID/playerName は未設定（null）＝attached player 無し。
+ *
+ * 互換: build.range は attached player があればその権限から、無ければ config の
+ * default_build_range にフォールバックする（{@link BlockEditCommands} 参照）。
+ */
 public class PlayerCommands {
-    private static final Logger logger = Logger.getLogger("McR_Player");
     private final RemoteSession session;
 
-    // プレイヤー情報を保持するフィールド
+    // 認証（後続ベータ）で確立されるまで未設定
     private UUID playerUUID;
     private String playerName;
-    private int playerRange; // build.range のキャッシュ
-    private Location origin;
 
     public PlayerCommands(RemoteSession session) {
         this.session = session;
     }
 
-    /**
-     * setPlayer コマンドの処理。
-     * 形式：
-     *    setPlayer(playerName, x, y, z)
-     * または
-     *    setPlayer(playerName, x, y, z, world)
-     * オンライン／オフライン問わず、コマンドで渡された座標を採用し、
-     * RemoteSession での起点 (origin) を更新します。
-     */
-    public void handleSetPlayerCommand(String[] args) {
-        // 引数は 4 個または 5 個でなければならない
-        if (args.length != 4 && args.length != 5) {
-            logger.warning("Invalid arguments for setPlayer command. Bye.");
-            session.send("Error: Invalid arguments for setPlayer command. Bye.");
-            return;
-        }
-
-        String pName = args[0];
-        UUID uuid = getPlayerUUID(pName);
-        if (!checkPlayer(pName, uuid)) {
-            return;
-        }
-
-        // プレイヤー情報のフィールドを更新
-        this.playerName = pName;
+    /** hello auth で検証済みの UUID を、この stream の paired player として束縛する。 */
+    public void bind(UUID uuid) {
         this.playerUUID = uuid;
-
-        logger.info("Player " + playerName + " with UUID: " + playerUUID + " is requesting new session.");
-        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
-
-        // build.range をキャッシュ
-        logger.info("Player " + playerName + " has played before: " + offlinePlayer.hasPlayedBefore());
-        try {
-            this.playerRange = McRemote.instance.getPermissionManager().getPlayerRange(offlinePlayer);
-        } catch (Exception e) {
-            logger.warning("Failed to get player range: " + e.getMessage());
-            session.send("Error: Failed to get player range. Bye.");
-            return;
-        }
-//        this.playerRange = PermissionManager.getPlayerRange(offlinePlayer);
-        logger.info("Player " + playerName + " has build.range: " + playerRange);
-
-        if (McRemote.isLuckPermsEnabled()) {
-            if (offlinePlayer.isOnline()) {
-                if (McRemote.instance.getPermissionManager().canConstructOnline(offlinePlayer)) {
-                    logger.info("Player " + playerName + " is online and allowed Minecraft Remote online.");
-                } else {
-                    logger.warning("Player " + playerName + " is online but not allowed Minecraft Remote even online.");
-                    session.send("Error: Player " + playerName + " is online but not allowed Minecraft Remote. Bye.");
-                    return;
-                }
-            } else {
-                logger.info("Player " + playerName + " is offline but has played before.");
-                if (McRemote.getInstance().getPermissionManager().canConstructOffline(offlinePlayer)) {
-                    logger.info("Allowed Minecraft Remote offline for player " + playerName);
-                } else {
-                    logger.warning("Player " + playerName + " is not allowed Minecraft Remote offline. Bye.");
-                    session.send("Error: Player " + playerName + " is not allowed Minecraft Remote offline. Bye.");
-                    return;
-                }
-            }
-        } else {
-            logger.warning("LuckPerms is not available. Allowing player " + playerName + " to connect.");
-        }
-
-
-        int x, y, z;
-        String worldName = "world";
-        World world;
-        // オンライン・オフライン問わず、コマンド引数の座標をパースする
-        try {
-            x = Integer.parseInt(args[1]);
-            y = Integer.parseInt(args[2]);
-            z = Integer.parseInt(args[3]);
-        } catch (NumberFormatException e) {
-            session.send("Error: x, y, z must be integers.");
-            logger.warning("Invalid coordinate values in setPlayer command. Bye.");
-            return;
-        }
-        if (args.length == 5) {
-            world = Bukkit.getWorld(args[4]);
-            if (world == null) {
-                session.send("Error: " + args[4] + " is an invalid world name. Bye.");
-                return;
-            }
-            worldName = args[4];
-        } else {
-            world = Bukkit.getWorld(worldName);
-        }
-
-        this.origin = new Location(world, x, y, z);
-        session.setOrigin(origin);
-
-        logger.warning("Session started for player: " + playerName + " at \n  " + this.origin);
-        session.send("Player " + playerName + " set to location: " + x + ", " + y + ", " + z + " in world \"" + worldName + "\"");
-    }
-
-    private boolean checkPlayer(String playerName, UUID playerUUID) {
-        if (playerUUID == null) {
-            session.send("Error: Player " + playerName + " not found. Bye.");
-            logger.warning("Player " + playerName + " not found. Bye.");
-            return false;
-        }
-        return true;
-    }
-
-    private UUID getPlayerUUID(String playerName) {
-        if (playerName == null || playerName.isEmpty()) {
-            return null;
-        }
-        for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {
-            if (offlinePlayer.getName() != null && offlinePlayer.getName().equalsIgnoreCase(playerName)) {
-                return offlinePlayer.getUniqueId();
-            }
-        }
-        return null;
+        OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
+        this.playerName = player.getName();
     }
 
     /**
-     * オフラインプレイヤーも含め、セッションに紐付けられた最新のプレイヤー情報を返します。
+     * オフラインプレイヤーも含め、セッションに紐付けられたプレイヤーを返す。
+     * identity 未確立（b1）では null。
      */
     public OfflinePlayer getAttachedPlayer() {
         if (playerUUID == null) {
@@ -149,24 +51,107 @@ public class PlayerCommands {
         return Bukkit.getOfflinePlayer(playerUUID);
     }
 
-    /**
-     * セッションに紐付いたプレイヤー名を返します。
-     */
+    /** セッションに紐付いたプレイヤー名（identity 未確立なら null）。 */
     public String getPlayerName() {
         return playerName;
     }
 
-    /**
-     * セッションの起点 (origin) を返します。
-     */
-    public Location getOrigin() {
-        return origin;
+    /** player.getPos: paired player の現在 world と、stream origin 相対の位置を返す。 */
+    public void handleGetPos(String[] args) {
+        if (args.length != 0) {
+            session.respondError(-32602, "invalid_params", null);
+            return;
+        }
+        Player player = requireOnlineAuthorizedPlayer();
+        if (player == null) {
+            return;
+        }
+        session.respondResult(positionResult(player.getLocation()));
     }
 
-    /**
-     * プレイヤーの建築範囲 (build.range) をキャッシュから返します。
-     */
-    public int getPlayerRange(OfflinePlayer offlinePlayer) {
-        return playerRange;
+    /** player.setPos(world, x, y, z): stream origin 相対座標へ paired player を移動する。 */
+    public void handleSetPos(String[] args) {
+        if (args.length != 4) {
+            session.respondError(-32602, "invalid_params", null);
+            return;
+        }
+        Player player = requireOnlineAuthorizedPlayer();
+        if (player == null) {
+            return;
+        }
+        World world = resolveWorld(args[0]);
+        if (world == null) {
+            session.respondError(-32000, "unknown_world", data("world", args[0]));
+            return;
+        }
+        Location origin = session.getOrigin();
+        if (origin == null) {
+            session.respondError(-32000, "origin_not_set", null);
+            return;
+        }
+        try {
+            double x = origin.getX() + Double.parseDouble(args[1]);
+            double y = origin.getY() + Double.parseDouble(args[2]);
+            double z = origin.getZ() + Double.parseDouble(args[3]);
+            Location target = new Location(world, x, y, z, player.getLocation().getYaw(), player.getLocation().getPitch());
+            player.teleport(target);
+            session.respondResult(positionResult(player.getLocation()));
+        } catch (NumberFormatException e) {
+            session.respondError(-32602, "invalid_params", null);
+        }
+    }
+
+    private Player requireOnlineAuthorizedPlayer() {
+        if (playerUUID == null) {
+            session.respondError(-32000, "auth_required", null);
+            return null;
+        }
+        Player player = Bukkit.getPlayer(playerUUID);
+        if (player == null || !player.isOnline()) {
+            session.respondError(-32000, "player_offline", null);
+            return null;
+        }
+        OfflinePlayer offline = Bukkit.getOfflinePlayer(playerUUID);
+        if (!session.getPlugin().getPermissionManager().canConstructOnline(offline)) {
+            session.respondError(-32000, "permission_denied", null);
+            return null;
+        }
+        return player;
+    }
+
+    private Map<String, Object> positionResult(Location loc) {
+        Location origin = session.getOrigin();
+        double x = loc.getX() - origin.getX();
+        double y = loc.getY() - origin.getY();
+        double z = loc.getZ() - origin.getZ();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("world", loc.getWorld().getName());
+        result.put("pos", List.of(x, y, z));
+        return result;
+    }
+
+    private World resolveWorld(String worldName) {
+        String key = worldName.toLowerCase(Locale.ROOT).trim();
+        World.Environment env = switch (key) {
+            case "overworld", "world", "normal" -> World.Environment.NORMAL;
+            case "nether", "the_nether" -> World.Environment.NETHER;
+            case "end", "the_end" -> World.Environment.THE_END;
+            default -> null;
+        };
+        if (env != null) {
+            for (World world : Bukkit.getWorlds()) {
+                if (world.getEnvironment() == env) {
+                    return world;
+                }
+            }
+        }
+        return Bukkit.getWorld(worldName);
+    }
+
+    private Map<String, Object> data(String key, Object value) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(key, value);
+        return data;
     }
 }

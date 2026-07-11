@@ -6,3 +6,14 @@ main: club.code2create.mcremote.McRemote
 api-version: ${plugin.apiVersion}
 soft-depend:
   - LuckPerms
+commands:
+  mcremote:
+    description: McRemote pairing and admin
+    usage: /mcremote pair <code>（6桁・区切り不要・半角数字 / ASCII digits, separators optional）
+permissions:
+  mcr.online:
+    description: Allows paired McRemote clients to act while the player is online.
+    default: false
+  mcr.offline:
+    description: Allows paired McRemote clients to act for offline/background building.
+    default: false
