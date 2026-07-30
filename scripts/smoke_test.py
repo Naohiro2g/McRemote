@@ -102,9 +102,21 @@ def main() -> int:
             if "y_sea" in info:
                 print(f"FAIL: y_sea must not be top-level; use world_constants.y_sea: {info}")
                 return 1
+            catalog_hash = info["catalogHash"]
+            if not (isinstance(catalog_hash, str) and len(catalog_hash) == 64
+                    and all(c in "0123456789abcdef" for c in catalog_hash)):
+                print(f"FAIL: catalogHash must be SHA-256 hex for b3: {catalog_hash!r}")
+                return 1
             print(f"                    protocol={info['protocol']} mc_version={info['mc_version']} "
                   f"supported={info['supported_mc_versions']} world_constants.y_sea={wc['y_sea']} "
                   f"catalogHash={info['catalogHash']}")
+
+            # catalog 本体は認証後配送。token 無し hello が通る開発設定でも取得は拒否される。
+            catalog_err = request_error("catalog.get", [])
+            print(f"[catalog.get unauth] <- {json.dumps(catalog_err, ensure_ascii=False)}")
+            if catalog_err.get("data", {}).get("reason") != "auth_required":
+                print(f"FAIL: unauthenticated catalog.get must return auth_required: {catalog_err}")
+                return 1
 
             print(f"[build.setWorld]  <- {request('build.setWorld', [args.dimension])}")
             print(f"[build.setOrigin] <- {request('build.setOrigin', [args.ox, args.oy, args.oz])}")

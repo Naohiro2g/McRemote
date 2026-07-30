@@ -27,7 +27,7 @@ import net.kyori.adventure.text.Component;
 public class RemoteSession {
     private static final int MAX_COMMANDS_PER_TICK = 1000;
     private static final Logger logger = Logger.getLogger("McR_RemoteSession");
-    // catalogHash:null 等を出すため serializeNulls（§6.2 フィールド常在）。
+    // world_constants の nullable 値等を出すため serializeNulls（§6.2 フィールド常在）。
     private static final Gson GSON = new GsonBuilder().serializeNulls().create();
 
     public boolean pendingRemoval = false;
@@ -63,6 +63,7 @@ public class RemoteSession {
     private final MiscCommands miscCommands;
     private final EntityCommands entityCommands;
     private final BuildStateCommands buildStateCommands;
+    private final CatalogCommands catalogCommands;
     private final CommandParser commandParser;
     private final CommandDispatcher commandDispatcher;
     // pre-hello の auth.* 経路（§6.5）。ペアリングは hello の前段ゆえ門番より前に通す。
@@ -76,12 +77,13 @@ public class RemoteSession {
         this.entityCommands = new EntityCommands(this, miscCommands);
         this.blockCommands = new BlockCommands(this, miscCommands);
         this.buildStateCommands = new BuildStateCommands(this);
+        this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
         // build state は identity から分離（setPlayer 撤去）。接続時点で既定原点を持たせる
         // （overworld / (200,0,200)）ので、クライアントは setBuildOrigin 無しでも建築できる。
         this.origin = buildStateCommands.defaultOrigin();
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
-                this, blockCommands, miscCommands, entityCommands, buildStateCommands));
+                this, blockCommands, miscCommands, entityCommands, buildStateCommands, catalogCommands));
         this.authCommands = new AuthCommands(this, plugin.getPairingManager());
         init();
     }
@@ -278,7 +280,7 @@ public class RemoteSession {
 
     /**
      * hello 応答の flat result（wire-format-design §6.2）。
-     * 版フィールドは clean な protocol semver、catalogHash は b1 で常在 null、
+     * 版フィールドは clean な protocol semver、catalogHash は b3 で実値、
      * y_sea は world_constants に束ねる（DECISIONS 2026-07-02-02）。world/origin は接続時の build state。
      */
     private Map<String, Object> buildHelloResult() {
@@ -288,7 +290,9 @@ public class RemoteSession {
             supported = List.of(mcVersion);
         }
         // y_sea は座標式に使わない情報定数。world 不明時は number|null の null（§6.2 / DECISIONS 2026-07-02-02）。
-        Integer ySea = (origin != null && origin.getWorld() != null) ? origin.getWorld().getSeaLevel() : null;
+        Integer ySea = (origin != null && origin.getWorld() != null)
+                ? origin.getWorld().getSeaLevel() - 1
+                : null;
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("protocol", ProtocolInfo.PROTOCOL);
@@ -298,7 +302,7 @@ public class RemoteSession {
         Map<String, Object> worldConstants = new LinkedHashMap<>();
         worldConstants.put("y_sea", ySea);
         result.put("world_constants", worldConstants);
-        result.put("catalogHash", null); // catalogHash は b2 でも常在 null（実値化は b3・versioning item14）
+        result.put("catalogHash", plugin.getCatalogService().getCatalogHash());
         // auth 済みなら束縛 UUID を返す（§6.2・token→player 束縛ゆえ spoofing 不可）。
         if (boundUuid != null) {
             result.put("player", boundUuid.toString());

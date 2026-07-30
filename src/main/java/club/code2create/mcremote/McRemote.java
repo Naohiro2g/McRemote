@@ -45,6 +45,8 @@ public class McRemote extends JavaPlugin implements Listener {
     private PairingManager pairingManager;
     private boolean authEnforcement;
     private int maxSessionsPerUuid;
+    // b3 resource catalog は registry が確立した plugin enable 時に一度だけ生成し、全 session で共有する。
+    private CatalogService catalogService;
 
     @Override
     public void onEnable(){
@@ -64,6 +66,12 @@ public class McRemote extends JavaPlugin implements Listener {
         logger.info("Max sessions per UUID: " + this.maxSessionsPerUuid);
         this.tokenStore = new TokenStore();
         this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl, playerTokenTtl);
+        this.catalogService = new CatalogService();
+        logger.info("Resource catalog ready: blocks=" + catalogService.getBlockCount()
+                + " entities=" + catalogService.getEntityCount()
+                + " particles=" + catalogService.getParticleCount()
+                + " bytes=" + catalogService.getSerializedBytes()
+                + " hash=" + catalogService.getCatalogHash());
         PluginCommand mcremoteCommand = getCommand("mcremote");
         if (mcremoteCommand != null) {
             mcremoteCommand.setExecutor(new PairCommand(pairingManager));
@@ -180,6 +188,11 @@ public class McRemote extends JavaPlugin implements Listener {
     /** 発行済み token ストア（hash のみ保存・§6.5）。hello 検証（次ステップ）が使う。 */
     public TokenStore getTokenStore() {
         return this.tokenStore;
+    }
+
+    /** b3 resource catalog snapshot（plugin enable 時に生成、全 session 共通）。 */
+    public CatalogService getCatalogService() {
+        return this.catalogService;
     }
 
     /** enforcement トグル（§10.11.1 item5）。ON で hello が token 必須になる（次ステップで参照）。 */

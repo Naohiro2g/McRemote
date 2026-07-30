@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""McRemote pairing smoke test (Python standard library only).
+"""McRemote pairing + b3 catalog smoke test (Python standard library only).
 
 b2 認証マイルストーン1の疎通確認（wire-format-design §6.5）。enforcement OFF の
 まま pair フローを1周させる:
@@ -19,6 +19,7 @@ token は hash のみサーバ保存。enforcement OFF ゆえ hello は token �
 """
 import argparse
 import base64
+import hashlib
 import json
 import shutil
 import socket
@@ -149,15 +150,38 @@ def main() -> int:
             if "y_sea" in info:
                 print(f"FAIL: y_sea must not be top-level; use world_constants.y_sea: {info}")
                 return 1
-            if "catalogHash" not in info or info.get("catalogHash") is not None:
-                print(f"FAIL: catalogHash must be present and null for b2: {info}")
+            catalog_hash = info.get("catalogHash")
+            if not (isinstance(catalog_hash, str) and len(catalog_hash) == 64
+                    and all(c in "0123456789abcdef" for c in catalog_hash)):
+                print(f"FAIL: catalogHash must be SHA-256 hex for b3: {info}")
                 return 1
             print(f"[hello]     <- world_constants.y_sea={world_constants.get('y_sea')} catalogHash={info.get('catalogHash')}")
             print(f"[hello]     <- player={info.get('player')} permissions={info.get('permissions')}")
             if info.get("player") is None:
                 print("WARN: hello に player が無い（token 未束縛）。enforcement OFF かつ store 失効の可能性。")
+
+            # 4) 認証後 catalog.get。response hash・hello hash・本体の再帰的キーソート compact JSON hash を一致させる。
+            catalog_response = call("catalog.get", [])
+            if "error" in catalog_response:
+                print(f"FAIL: catalog.get -> error {catalog_response['error']}")
+                return 1
+            catalog = catalog_response["result"]
+            body = {key: catalog.get(key) for key in ("block", "entity", "particle")}
+            if not all(isinstance(body[key], dict) for key in body):
+                print(f"FAIL: catalog categories must be objects: {catalog}")
+                return 1
+            canonical = json.dumps(
+                body, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+            ).encode("utf-8")
+            computed_hash = hashlib.sha256(canonical).hexdigest()
+            if catalog.get("catalogHash") != catalog_hash or computed_hash != catalog_hash:
+                print("FAIL: catalog hash mismatch "
+                      f"hello={catalog_hash} response={catalog.get('catalogHash')} computed={computed_hash}")
+                return 1
+            print(f"[catalog.get] <- blocks={len(body['block'])} entities={len(body['entity'])} "
+                  f"particles={len(body['particle'])} bytes={len(canonical)} hash=OK")
             print()
-            print("PASS: pairBegin -> /mcremote pair -> pairPoll -> token -> hello 1周")
+            print("PASS: pair -> token -> hello -> catalog.get + SHA-256 verification")
             return 0
     except (OSError, RuntimeError, json.JSONDecodeError, KeyError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
