@@ -138,6 +138,14 @@ class RpcClient:
         self._reader.close()
         self._socket.close()
 
+    def expect_closed(self, timeout: float = 5.0) -> bool:
+        """Wait for server EOF when the protocol requires this session to close."""
+        self._socket.settimeout(timeout)
+        try:
+            return self._reader.readline() == b""
+        except socket.timeout:
+            return False
+
     def call(self, method: str, params) -> dict:
         self._next_id += 1
         request_id = self._next_id
