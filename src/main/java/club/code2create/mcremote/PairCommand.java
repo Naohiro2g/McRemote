@@ -28,16 +28,24 @@ import net.kyori.adventure.text.Component;
 @NullMarked
 public class PairCommand implements TabExecutor {
     private static final String USAGE =
-            "Usage: /mcremote pair <code>（6桁・区切り不要・半角数字 / ASCII digits, separators optional）";
+            "Usage: /mcremote pair <code> | credential status|bootstrap|reset CONFIRM-RESET-ALL-CREDENTIALS";
 
+    private final McRemote plugin;
     private final PairingManager pairingManager;
+    private final CredentialService credentialService;
 
-    public PairCommand(PairingManager pairingManager) {
+    public PairCommand(McRemote plugin, PairingManager pairingManager,
+                       CredentialService credentialService) {
+        this.plugin = plugin;
         this.pairingManager = pairingManager;
+        this.credentialService = credentialService;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length >= 1 && "credential".equalsIgnoreCase(args[0])) {
+            return handleCredentialAdmin(sender, args);
+        }
         if (args.length < 1 || !"pair".equalsIgnoreCase(args[0])) {
             sender.sendMessage(Component.text(USAGE));
             return true;
@@ -75,10 +83,60 @@ public class PairCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
-            return StringUtil.copyPartialMatches(args[0], List.of("pair"), new ArrayList<>());
+            List<String> roots = sender.hasPermission("mcremote.admin")
+                    ? List.of("pair", "credential") : List.of("pair");
+            return StringUtil.copyPartialMatches(args[0], roots, new ArrayList<>());
+        }
+        if (args.length == 2 && "credential".equalsIgnoreCase(args[0])
+                && sender.hasPermission("mcremote.admin")) {
+            return StringUtil.copyPartialMatches(
+                    args[1], List.of("status", "bootstrap", "reset"), new ArrayList<>());
         }
         // コード欄（args[1]）：秘密ゆえ提案しない＋既定のプレイヤー名補完を抑止するため空を返す。
         return Collections.emptyList();
+    }
+
+    private boolean handleCredentialAdmin(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("mcremote.admin")) {
+            sender.sendMessage(Component.text("Permission denied: mcremote.admin"));
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage(Component.text(USAGE));
+            return true;
+        }
+        try {
+            switch (args[1].toLowerCase(java.util.Locale.ROOT)) {
+                case "status" -> sender.sendMessage(Component.text(
+                        "Credential domain: " + credentialService.health() + " / "
+                                + credentialService.healthDetail() + " / id="
+                                + credentialService.credentialDomainId()));
+                case "bootstrap" -> {
+                    java.util.UUID domain = credentialService.bootstrap();
+                    sender.sendMessage(Component.text(
+                            "Credential domain bootstrapped: " + domain));
+                }
+                case "reset" -> {
+                    if (args.length != 3
+                            || !"CONFIRM-RESET-ALL-CREDENTIALS".equals(args[2])) {
+                        sender.sendMessage(Component.text(
+                                "Reset invalidates every long-lived credential. Confirm with: "
+                                        + "/mcremote credential reset CONFIRM-RESET-ALL-CREDENTIALS"));
+                        return true;
+                    }
+                    CredentialService.ResetResult result = credentialService.reset();
+                    plugin.closeAllLongLivedSessions();
+                    sender.sendMessage(Component.text(
+                            "Credential domain reset: " + result.credentialDomainId()
+                                    + " (old state archived, all clients must pair again)"));
+                }
+                default -> sender.sendMessage(Component.text(USAGE));
+            }
+        } catch (Exception e) {
+            sender.sendMessage(Component.text(
+                    "Credential operation failed closed: " + e.getMessage()));
+        }
+        return true;
     }
 
     /**

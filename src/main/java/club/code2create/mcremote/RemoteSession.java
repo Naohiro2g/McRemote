@@ -7,7 +7,6 @@ import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -39,6 +38,8 @@ public class RemoteSession {
     private Player attachedPlayer = null;
     // hello の auth 検証で束縛した UUID（§6.1/§6.2）。enforcement ON では必須、OFF でも token 提示・解決時に束縛。
     private UUID boundUuid = null;
+    private TokenStore.TokenType boundTokenType = null;
+    private UUID boundCredentialId = null;
     private final Socket socket;
     private BufferedReader in;
     private BufferedWriter out;
@@ -46,7 +47,8 @@ public class RemoteSession {
     private Thread outThread;
     private final ArrayDeque<String> inQueue = new ArrayDeque<>();
     private final ArrayDeque<String> outQueue = new ArrayDeque<>();
-    private boolean running = true;
+    private volatile boolean running = true;
+    private volatile boolean closingAfterFlush = false;
     private final McRemote plugin;
 
     // 通知メカニズム用のロックオブジェクト
@@ -84,7 +86,8 @@ public class RemoteSession {
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
                 this, blockCommands, miscCommands, entityCommands, buildStateCommands, catalogCommands));
-        this.authCommands = new AuthCommands(this, plugin.getPairingManager());
+        this.authCommands = new AuthCommands(
+                this, plugin.getPairingManager(), plugin.getCredentialService());
         init();
     }
 
@@ -135,6 +138,14 @@ public class RemoteSession {
         return boundUuid;
     }
 
+    public TokenStore.TokenType getBoundTokenType() {
+        return boundTokenType;
+    }
+
+    public UUID getBoundCredentialId() {
+        return boundCredentialId;
+    }
+
     private void handleLine(String line) {
         try {
             ParsedCommand parsed = commandParser.parse(line);
@@ -143,10 +154,13 @@ public class RemoteSession {
             if (!helloComplete) {
                 // ペアリングは hello の前段の独立メソッド（§6.5）。auth.* を先に捌き、
                 // 対応したら門番を通さない（helloComplete は立てない・close しない）。
-                if (authCommands.handle(parsed)) {
+                if (authCommands.handlePreHello(parsed)) {
                     return;
                 }
                 handleHello(parsed);
+                return;
+            }
+            if (authCommands.handleAuthenticated(parsed)) {
                 return;
             }
             commandDispatcher.dispatch(parsed);
@@ -205,16 +219,32 @@ public class RemoteSession {
                 return;
             }
         } else {
-            Optional<TokenStore.TokenRecord> rec = plugin.getTokenStore().resolve(token);
-            if (rec.isEmpty()) {
+            TokenStore.ResolveResult resolution = plugin.getTokenStore().resolve(token);
+            if (resolution.status() == TokenStore.ResolveStatus.STORE_UNAVAILABLE) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("operation", resolution.operation().wireName());
+                respondError(-32000, "credential_store_unavailable", data);
+                logger.warning("Hello rejected: credential_store_unavailable operation="
+                        + resolution.operation().wireName());
+                requestCloseAfterFlush();
+                return;
+            }
+            if (resolution.status() != TokenStore.ResolveStatus.ACTIVE) {
                 if (enforce) {
-                    respondError(-32000, "token_invalid", null);
-                    logger.warning("Hello rejected: token_invalid (enforcement ON)");
-                    close();
+                    String reason = switch (resolution.status()) {
+                        case EXPIRED -> "token_expired";
+                        case REVOKED -> "token_revoked";
+                        case NOT_FOUND -> "token_not_found";
+                        default -> "token_invalid";
+                    };
+                    respondError(-32000, reason, null);
+                    logger.warning("Hello rejected: " + reason + " (enforcement ON)");
+                    requestCloseAfterFlush();
                     return;
                 }
             } else {
-                UUID uuid = rec.get().uuid();
+                TokenStore.TokenRecord tokenRecord = resolution.record();
+                UUID uuid = tokenRecord.uuid();
                 // 認可は常に UUID→LuckPerms（item4・不在時は FallbackPermissionManager が許可）。
                 // ON のときのみ hello を gate：online/offline いずれの建築権も無ければ拒否。
                 if (enforce) {
@@ -240,6 +270,8 @@ public class RemoteSession {
                     return;
                 }
                 boundUuid = uuid;
+                boundTokenType = tokenRecord.tokenType();
+                boundCredentialId = tokenRecord.credentialId();
                 playerCommands.bind(uuid);
             }
         }
@@ -333,8 +365,12 @@ public class RemoteSession {
             queueLock.notifyAll();
         }
         try {
-            inThread.join(2000);
-            outThread.join(2000);
+            if (Thread.currentThread() != inThread) {
+                inThread.join(2000);
+            }
+            if (Thread.currentThread() != outThread) {
+                outThread.join(2000);
+            }
         } catch (InterruptedException e) {
             logger.warning("Failed to stop in/out thread");
             StringWriter sw = new StringWriter();
@@ -349,6 +385,14 @@ public class RemoteSession {
             logger.warning(sw.toString());
         }
         logger.info("Closed connection from " + socket.getRemoteSocketAddress() + ".");
+    }
+
+    /** 既に queue 済みの成功応答を flush してから transport を閉じる。 */
+    public void requestCloseAfterFlush() {
+        closingAfterFlush = true;
+        synchronized (queueLock) {
+            queueLock.notifyAll();
+        }
     }
 
     public void handlePlayerQuitEvent() {
@@ -382,6 +426,9 @@ public class RemoteSession {
     }
 
     void tick() {
+        if (closingAfterFlush) {
+            return;
+        }
         int maxCommandsPerTick = MAX_COMMANDS_PER_TICK;
         int processedCount = 0;
         String message;
@@ -438,11 +485,12 @@ public class RemoteSession {
                     // queueLockを使用してキューへのアクセスを同期
                     synchronized (queueLock) {
                         // キューが空の場合は通知を待つ
-                        while (running && outQueue.isEmpty()) {
+                        while (running && outQueue.isEmpty() && !closingAfterFlush) {
                             queueLock.wait();
                         }
                         // 終了フラグが立っていて、キューが空であれば終了
-                        if (!running && outQueue.isEmpty()) {
+                        if ((!running || closingAfterFlush) && outQueue.isEmpty()) {
+                            running = false;
                             break;
                         }
                         line = outQueue.poll();
@@ -452,6 +500,11 @@ public class RemoteSession {
                         out.write(line);
                         out.write('\n');
                         out.flush();
+                        synchronized (queueLock) {
+                            if (closingAfterFlush && outQueue.isEmpty()) {
+                                running = false;
+                            }
+                        }
                     }
                 } catch (InterruptedException e) {
                     // スレッドが割り込まれた場合
@@ -465,6 +518,14 @@ public class RemoteSession {
                         logger.warning(sw.toString());
                         running = false;
                     }
+                }
+            }
+            if (closingAfterFlush) {
+                pendingRemoval = true;
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    logger.warning("Failed to close credential-revoked socket: " + e.getMessage());
                 }
             }
             try {

@@ -53,10 +53,12 @@ def main() -> int:
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=25575)
     ap.add_argument("--protocol", default=PROTOCOL)
-    ap.add_argument("--token-type", default="session", choices=["session", "player"])
-    ap.add_argument("--device", default=None, help="optional device label (player_token)")
+    ap.add_argument("--token-type", default="session", choices=["session", "long_lived"])
+    ap.add_argument("--device", default=None, help="optional long-lived credential device label")
     ap.add_argument("--poll-interval", type=float, default=1.5, help="pairPoll 間隔 (~1-2s)")
     ap.add_argument("--timeout", type=float, default=10.0, help="socket read timeout")
+    ap.add_argument("--logout-after-test", action="store_true",
+                    help="long_lived test後にauth.logoutも確認しcredentialを失効する")
     ap.add_argument("--clipboard", action="store_true",
                     help="OSC 52 でコマンドをクリップボードへコピー（対応端末のみ）")
     args = ap.parse_args()
@@ -180,8 +182,31 @@ def main() -> int:
                 return 1
             print(f"[catalog.get] <- blocks={len(body['block'])} entities={len(body['entity'])} "
                   f"particles={len(body['particle'])} bytes={len(canonical)} hash=OK")
+
+            if args.token_type == "long_lived":
+                listed = call("auth.listCredentials", [])
+                if "error" in listed:
+                    print(f"FAIL: auth.listCredentials -> error {listed['error']}")
+                    return 1
+                credentials = listed["result"].get("credentials")
+                current = [item for item in credentials or [] if item.get("current") is True]
+                if len(current) != 1 or current[0].get("type") != "long_lived":
+                    print(f"FAIL: expected exactly one current long_lived credential: {credentials}")
+                    return 1
+                print(f"[auth.listCredentials] <- active={len(credentials)} "
+                      f"current={current[0].get('credential_id')} device={current[0].get('device')!r}")
+
+                if args.logout_after_test:
+                    logout = call("auth.logout", [])
+                    if "error" in logout or logout.get("result", {}).get("revoked") is not True:
+                        print(f"FAIL: auth.logout -> {logout}")
+                        return 1
+                    if logout["result"].get("credential_id") != current[0].get("credential_id"):
+                        print(f"FAIL: auth.logout credential_id mismatch: {logout}")
+                        return 1
+                    print(f"[auth.logout] <- revoked=true id={logout['result']['credential_id']}")
             print()
-            print("PASS: pair -> token -> hello -> catalog.get + SHA-256 verification")
+            print("PASS: pair -> token -> hello -> catalog.get + credential lifecycle verification")
             return 0
     except (OSError, RuntimeError, json.JSONDecodeError, KeyError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
