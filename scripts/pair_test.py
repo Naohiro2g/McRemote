@@ -24,6 +24,7 @@ The raw token is never printed.
 
 import argparse
 import base64
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -35,6 +36,7 @@ import stat
 import subprocess
 import sys
 import time
+import uuid
 
 
 PROTOCOL = "21.0.0"
@@ -271,7 +273,20 @@ def verify_hello_and_catalog(client: RpcClient, token: str, protocol: str) -> No
     )
 
 
-def verify_long_lived(client: RpcClient, logout_after_test: bool) -> None:
+def parse_utc_timestamp(value, field_name: str) -> datetime:
+    if not isinstance(value, str):
+        raise AssertionError(f"{field_name} must be a UTC ISO 8601 string")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise AssertionError(f"{field_name} must be a UTC ISO 8601 string") from error
+    if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+        raise AssertionError(f"{field_name} must use UTC")
+    return parsed
+
+
+def verify_long_lived(
+        client: RpcClient, logout_after_test: bool, expected_device: str | None = None) -> None:
     listed = client.call("auth.listCredentials", [])
     if "error" in listed:
         raise AssertionError(f"auth.listCredentials -> error {listed['error']}")
@@ -280,9 +295,30 @@ def verify_long_lived(client: RpcClient, logout_after_test: bool) -> None:
     if len(current) != 1 or current[0].get("type") != "long_lived":
         raise AssertionError(f"expected exactly one current long_lived credential: {credentials}")
     credential_id = current[0].get("credential_id")
+    try:
+        if str(uuid.UUID(credential_id)) != credential_id:
+            raise ValueError
+    except (AttributeError, TypeError, ValueError) as error:
+        raise AssertionError(f"credential_id must be a canonical UUID: {credential_id!r}") from error
+    device = current[0].get("device")
+    if device is not None and not (isinstance(device, str) and 1 <= len(device) <= 64):
+        raise AssertionError(f"device must be null or a 1..64 character string: {device!r}")
+    if expected_device is not None and device != expected_device:
+        raise AssertionError(f"device mismatch: want {expected_device!r}, got {device!r}")
+    issued_at = parse_utc_timestamp(current[0].get("issued_at"), "issued_at")
+    last_used_at = parse_utc_timestamp(current[0].get("last_used_at"), "last_used_at")
+    if last_used_at < issued_at:
+        raise AssertionError("last_used_at must not precede issued_at")
+    if current[0].get("expires_at") is not None:
+        raise AssertionError("long-lived expires_at must be null")
     print(
         f"[auth.listCredentials] <- active={len(credentials)} "
         f"current={credential_id} device={current[0].get('device')!r}"
+    )
+    print(
+        "[auth.listCredentials] <- schema=OK device="
+        f"{'matched' if expected_device is not None else 'valid'} "
+        "issued_at=UTC last_used_at=UTC expires_at=null"
     )
     if not logout_after_test:
         return
@@ -355,7 +391,8 @@ def main() -> int:
 
         verify_hello_and_catalog(client, token, args.protocol)
         if token_type == "long_lived":
-            verify_long_lived(client, args.logout_after_test)
+            expected_device = args.device if source == "pair" else None
+            verify_long_lived(client, args.logout_after_test, expected_device)
         elif args.logout_after_test:
             raise AssertionError("--logout-after-test requires a long-lived credential")
 
