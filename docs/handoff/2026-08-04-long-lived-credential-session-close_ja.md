@@ -81,8 +81,17 @@ raw bearer 非包含、list metadata、logout/revoke、非 current 個別 revoke
 - `src/main/java/club/code2create/mcremote/CatalogService.java`
 
 内容は catalog/state error hardening（canonical state、`data.allowed`、`invalid_params` の整合）で、
-credential実装の未完了差分ではない。**破棄しない・credential commitへ混ぜない。** clean artifact を
-作る前に、catalog側の正しいbranchへ分離して独立に検証・commitする。
+credential実装の未完了差分ではない。内容は b3 commit `89214cb` を直接の親とする独立branchへ保存・push済みである。
+
+- preservation branch: `feature/b3-catalog-state-hardening`
+- commit: `e391d2eb63eb131d91f8f411c28b223c2f8e9a53`
+- remote: `origin/feature/b3-catalog-state-hardening`
+- isolated verification: `./gradlew test` → compile成功、`BUILD SUCCESSFUL`（b3基点はtest sourceなし）
+- remaining verification: 詳細errorを含む追加live smoke
+
+現在のlong-lived worktreeには同じ5差分が残るが、固有内容はremoteへ退避済みである。credential commitへ
+混ぜない。worktreeをcleanにする場合は、上記branchとの同一性を再確認してから、この5ファイルだけを
+明示的にrestoreする。catalog branch自体をcredential統合artifactへ混ぜるかは、別のrelease判断とする。
 
 `handoff-materials/2026-08-02-long-lived-credential-live-human/` は gitignore 配下の旧搬送素材で、
 正式正本ではない。knowledge着地済みなので、ローカル固有の再確認が不要になった時点で削除できる。
@@ -95,7 +104,8 @@ installed JAR digest、online player を改めて確認してから開始する�
 1. 本文書、knowledge `2026-08-02-01` / `2026-08-02-03`、platform-design §9、正式 evidence recordを読む。
 2. Stack側の実装branch / commit / profile revisionと、同側のhandoffを確認する。McRemote側からStackの
    完了状態を推測しない。
-3. catalogの未コミット差分をcredential branchから分離し、credential＋Stack統合対象をclean commitにする。
+3. catalogの未コミット差分が保存branch `feature/b3-catalog-state-hardening` / `e391d2e` と同一であることを
+   確認し、long-lived worktreeから明示的に分離してcredential＋Stack統合対象をclean commitにする。
 4. clean sourceからJARをbuildし、source commit、JAR SHA-256、installed digestを固定する。
 5. Stack profileでsnapshotとauthorityの独立path/mount、backup archive非包含、doctorのpath/domain healthを確認する。
 6. 下記restore matrixをliveで通し、sanitized transcriptを保存する。
