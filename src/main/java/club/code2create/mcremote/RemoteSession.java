@@ -347,12 +347,16 @@ public class RemoteSession {
         if (boundUuid != null) {
             OfflinePlayer op = Bukkit.getOfflinePlayer(boundUuid);
             IPermissionManager perms = plugin.getPermissionManager();
-            Map<String, Object> permissions = new LinkedHashMap<>();
-            permissions.put("online", perms.canConstructOnline(op));
-            permissions.put("offline", perms.canConstructOffline(op));
-            permissions.put("buildRange", perms.getPlayerRange(op));
-            result.put("permissions", permissions);
+            result.put("permissions", buildPermissions(perms, op));
         }
+        return result;
+    }
+
+    static Map<String, Object> buildPermissions(IPermissionManager permissions, OfflinePlayer player) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("online", permissions.canConstructOnline(player));
+        result.put("offline", permissions.canConstructOffline(player));
+        result.put("buildRange", permissions.getPlayerRange(player));
         return result;
     }
 

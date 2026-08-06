@@ -2,7 +2,6 @@ package club.code2create.mcremote;
 
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.context.ImmutableContextSet;
-import net.luckperms.api.model.group.Group;
 import net.luckperms.api.model.user.User;
 import net.luckperms.api.query.QueryOptions;
 import net.luckperms.api.util.Tristate;
@@ -10,16 +9,20 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 public class LuckPermsPermissionManager implements IPermissionManager {
 
     private static final Logger logger = Logger.getLogger("McR_Permission");
+    static final String SERVER_CONTEXT_KEY = "server";
+    static final String SERVER_CONTEXT_VALUE = "global";
 
     private LuckPerms luckPerms;
     private final String onlinePermission;
     private final String offlinePermission;
     private final String buildRangeMetaKey;
+    private final Supplier<QueryOptions> queryOptionsSupplier;
 
     /**
      * LuckPermsPermissionManager の初期化はこのコンストラクタ内で行う。
@@ -29,12 +32,13 @@ public class LuckPermsPermissionManager implements IPermissionManager {
      * @param plugin            プラグインインスタンス
      * @param onlinePermission  online 用権限ノード
      * @param offlinePermission offline 用権限ノード
-     * @param buildRangeMetaKey グループの meta キー（build.range）
+     * @param buildRangeMetaKey effective meta のキー（build.range）
      */
     public LuckPermsPermissionManager(JavaPlugin plugin, String onlinePermission, String offlinePermission, String buildRangeMetaKey) {
         this.onlinePermission = onlinePermission;
         this.offlinePermission = offlinePermission;
         this.buildRangeMetaKey = buildRangeMetaKey;
+        this.queryOptionsSupplier = LuckPermsPermissionManager::serverGlobalQueryOptions;
         try {
             var provider = plugin.getServer().getServicesManager().getRegistration(LuckPerms.class);
             if (provider != null) {
@@ -46,6 +50,19 @@ public class LuckPermsPermissionManager implements IPermissionManager {
         } catch (Exception e) {
             logger.severe("Exception initializing LuckPermsPermissionManager: " + e.getMessage());
         }
+    }
+
+    LuckPermsPermissionManager(
+            LuckPerms luckPerms,
+            String onlinePermission,
+            String offlinePermission,
+            String buildRangeMetaKey,
+            Supplier<QueryOptions> queryOptionsSupplier) {
+        this.luckPerms = luckPerms;
+        this.onlinePermission = onlinePermission;
+        this.offlinePermission = offlinePermission;
+        this.buildRangeMetaKey = buildRangeMetaKey;
+        this.queryOptionsSupplier = queryOptionsSupplier;
     }
 
     @Override
@@ -66,8 +83,7 @@ public class LuckPermsPermissionManager implements IPermissionManager {
             logger.warning("LuckPerms: User not found for " + uuid);
             return false;
         }
-        ImmutableContextSet contextSet = ImmutableContextSet.builder().add("server", "global").build();
-        QueryOptions options = QueryOptions.contextual(contextSet);
+        QueryOptions options = queryOptionsSupplier.get();
         Tristate result = user.getCachedData().getPermissionData(options).checkPermission(permission);
         logger.info("LuckPerms: Permission check for " + permission + " on " + uuid + " = " + result);
         return result.asBoolean();
@@ -76,36 +92,32 @@ public class LuckPermsPermissionManager implements IPermissionManager {
     @Override
     public int getPlayerRange(OfflinePlayer player) {
         UUID uuid = player.getUniqueId();
-        luckPerms.getUserManager().loadUser(uuid).join();
-        User user = luckPerms.getUserManager().getUser(uuid);
+        User user = luckPerms.getUserManager().loadUser(uuid).join();
         if (user == null) {
             logger.warning("LuckPerms: User not found for " + uuid + ". Returning 0.");
             return 0;
         }
-        String primaryGroup = user.getPrimaryGroup();
-        if (primaryGroup.isEmpty()) {
-            logger.warning("LuckPerms: Primary group not found for user " + player.getName() + ". Returning 0.");
-            return 0;
-        }
-        Group group = luckPerms.getGroupManager().getGroup(primaryGroup);
-        if (group == null) {
-            logger.warning("LuckPerms: Group '" + primaryGroup + "' not found. Returning 0.");
-            return 0;
-        }
-        ImmutableContextSet contextSet = ImmutableContextSet.builder().add("server", "global").build();
-        QueryOptions queryOptions = QueryOptions.contextual(contextSet);
-        String metaValue = group.getCachedData().getMetaData(queryOptions).getMetaValue(buildRangeMetaKey);
+        QueryOptions queryOptions = queryOptionsSupplier.get();
+        String metaValue = user.getCachedData().getMetaData(queryOptions).getMetaValue(buildRangeMetaKey);
         if (metaValue != null) {
             try {
-                int range = Integer.parseInt(metaValue);
-//                logger.info("LuckPerms: Retrieved build.range from group '" + primaryGroup + "': " + range);
-                return range;
+                return Integer.parseInt(metaValue);
             } catch (NumberFormatException e) {
-                logger.warning("LuckPerms: Invalid build.range meta value '" + metaValue + "' for group '" + primaryGroup + "'.");
+                logger.warning("LuckPerms: Invalid effective meta value '" + metaValue
+                        + "' for key '" + buildRangeMetaKey + "' on user " + uuid + ".");
             }
         } else {
-            logger.info("LuckPerms: Group '" + primaryGroup + "' does not have meta '" + buildRangeMetaKey + "'.");
+            logger.info("LuckPerms: User " + uuid + " does not have effective meta '"
+                    + buildRangeMetaKey + "'.");
         }
         return 0;
+    }
+
+    private static QueryOptions serverGlobalQueryOptions() {
+        return QueryOptions.contextual(serverGlobalContext());
+    }
+
+    private static ImmutableContextSet serverGlobalContext() {
+        return ImmutableContextSet.builder().add(SERVER_CONTEXT_KEY, SERVER_CONTEXT_VALUE).build();
     }
 }
