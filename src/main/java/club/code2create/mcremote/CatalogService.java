@@ -75,6 +75,28 @@ public final class CatalogService {
         return serializedBytes;
     }
 
+    /** invalid_property_value の data.allowed に使う、catalog と同じ JSON native value 一覧。 */
+    @SuppressWarnings("unchecked")
+    public List<Object> getAllowedBlockStateValues(String blockKey, String property) {
+        Object blockObject = body.get("block");
+        if (!(blockObject instanceof Map<?, ?> blocks)) {
+            return List.of();
+        }
+        Object entryObject = blocks.get(blockKey);
+        if (!(entryObject instanceof Map<?, ?> entry)) {
+            return List.of();
+        }
+        Object statesObject = entry.get("states");
+        if (!(statesObject instanceof Map<?, ?> states)) {
+            return List.of();
+        }
+        Object allowedObject = states.get(property);
+        if (!(allowedObject instanceof List<?> allowed)) {
+            return List.of();
+        }
+        return List.copyOf((List<Object>) allowed);
+    }
+
     private int sizeOf(String key) {
         Object value = body.get(key);
         return value instanceof Map<?, ?> map ? map.size() : 0;
