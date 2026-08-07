@@ -6,7 +6,7 @@ versioning §10.11.1 item5）。pairing/player を要さないのは、token 欠
 hello 単体で閉じるため（正の経路＝有効 token の束縛は pair_test.py が実プレイヤーで検証）。
 
   hello(protocol のみ・token 無し)      -> ON: error auth_required / OFF: success
-  hello(auth:{token:"mcrs_bogus…"})    -> ON: error token_invalid  / OFF: success
+  hello(auth:{token:"mcrs_bogus…"})    -> ON: error token_not_found / OFF: success
 
 使い方（サーバ側 config.yml の auth.enforcement に合わせて --expect を渡す）:
   python3 scripts/hello_auth_test.py --expect on     # enforcement: true のサーバ
@@ -19,6 +19,8 @@ import sys
 
 PROTOCOL = "21.0.0"
 BOGUS_TOKEN = "mcrs_bogus_token_that_does_not_resolve"
+OLD_PLAYER_TOKEN = "mcrp_legacy_token_is_not_migrated"
+MALFORMED_TOKEN = "not_a_mcremote_token"
 
 
 def hello(host: str, port: int, protocol: str, timeout: float, auth: dict | None) -> dict:
@@ -78,7 +80,15 @@ def main() -> int:
         ok &= check("no-token", r1, enforce, "auth_required")
         # 2) 無効 token
         r2 = hello(args.host, args.port, args.protocol, args.timeout, auth={"token": BOGUS_TOKEN})
-        ok &= check("bad-token", r2, enforce, "token_invalid")
+        ok &= check("bad-token", r2, enforce, "token_not_found")
+        # 3) 旧mcrp_は二重prefix期間を設けず、既存reasonで再ペアリングへ送る
+        r3 = hello(args.host, args.port, args.protocol, args.timeout,
+                   auth={"token": OLD_PLAYER_TOKEN})
+        ok &= check("legacy-mcrp", r3, enforce, "token_not_found")
+        # 4) McRemote token形式ですらない値はtoken_invalid
+        r4 = hello(args.host, args.port, args.protocol, args.timeout,
+                   auth={"token": MALFORMED_TOKEN})
+        ok &= check("malformed-token", r4, enforce, "token_invalid")
     except (OSError, RuntimeError, json.JSONDecodeError, KeyError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 2

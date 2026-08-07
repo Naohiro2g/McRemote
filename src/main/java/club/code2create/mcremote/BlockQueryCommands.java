@@ -4,6 +4,9 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class BlockQueryCommands {
@@ -20,7 +23,7 @@ public class BlockQueryCommands {
 
     public void handleGetBlock(String[] args) {
         if (args.length != 3) {
-            session.respondError(-32602, "malformed_ref", null);
+            session.respondError(-32602, "invalid_params", refData(args));
             logger.warning("Invalid arguments for world.getBlock.");
             return;
         }
@@ -32,7 +35,7 @@ public class BlockQueryCommands {
             // canonical-full block_state_ref（§7.1）を返す。
             session.respondResult(BlockRef.canonical(block.getBlockData()));
         } catch (NumberFormatException e) {
-            session.respondError(-32602, "malformed_ref", null);
+            session.respondError(-32602, "invalid_params", refData(args));
             logger.warning("Invalid coordinates for world.getBlock.");
         }
     }
@@ -89,5 +92,11 @@ public class BlockQueryCommands {
             session.send("Error: " + msg);
         }
         logger.warning(msg);
+    }
+
+    private Map<String, Object> refData(String[] args) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("ref", Arrays.toString(args));
+        return data;
     }
 }

@@ -25,7 +25,6 @@ public class PairingManager {
     private final TokenStore tokenStore;
     private final long pairCodeTtlSeconds;
     private final long sessionTokenTtlSeconds;
-    private final long playerTokenTtlSeconds;
 
     /** pairing_id → pending。 */
     private final ConcurrentHashMap<String, PendingPair> byPairingId = new ConcurrentHashMap<>();
@@ -33,11 +32,10 @@ public class PairingManager {
     private final ConcurrentHashMap<String, String> codeIndex = new ConcurrentHashMap<>();
 
     public PairingManager(TokenStore tokenStore, long pairCodeTtlSeconds,
-                          long sessionTokenTtlSeconds, long playerTokenTtlSeconds) {
+                          long sessionTokenTtlSeconds) {
         this.tokenStore = tokenStore;
         this.pairCodeTtlSeconds = pairCodeTtlSeconds;
         this.sessionTokenTtlSeconds = sessionTokenTtlSeconds;
-        this.playerTokenTtlSeconds = playerTokenTtlSeconds;
     }
 
     private static final class PendingPair {
@@ -114,7 +112,8 @@ public class PairingManager {
     // ── auth.pairPoll ──────────────────────────────────────────────── //
 
     public sealed interface PollResult
-            permits Pending, Ok, PairExpired, PairNotFound {}
+            permits Pending, Ok, PairExpired, PairNotFound, CredentialLimitReached,
+                    CredentialStoreUnavailable {}
 
     public record Pending() implements PollResult {}
 
@@ -123,6 +122,11 @@ public class PairingManager {
     public record PairExpired() implements PollResult {}
 
     public record PairNotFound() implements PollResult {}
+
+    public record CredentialLimitReached(int limit, int active) implements PollResult {}
+
+    public record CredentialStoreUnavailable(
+            CredentialStoreUnavailableException.Operation operation) implements PollResult {}
 
     /**
      * pending を poll。未束縛→{@code Pending}、束縛済→token を発行し pending を1回限り消費して {@code Ok}。
@@ -150,10 +154,15 @@ public class PairingManager {
             return new PairNotFound(); // 既に他 poll が消費済み
         }
         codeIndex.remove(consumed.pairCode, pairingId);
-        long ttl = consumed.tokenType == TokenStore.TokenType.PLAYER
-                ? playerTokenTtlSeconds : sessionTokenTtlSeconds;
-        String token = tokenStore.issue(bound, consumed.tokenType, consumed.device, ttl);
-        return new Ok(token);
+        try {
+            String token = tokenStore.issue(bound, consumed.tokenType, consumed.device,
+                    sessionTokenTtlSeconds);
+            return new Ok(token);
+        } catch (CredentialLimitReachedException e) {
+            return new CredentialLimitReached(e.limit(), e.active());
+        } catch (CredentialStoreUnavailableException e) {
+            return new CredentialStoreUnavailable(e.operation());
+        }
     }
 
     // ── housekeeping ───────────────────────────────────────────────── //

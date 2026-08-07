@@ -1,6 +1,8 @@
 package club.code2create.mcremote;
 
 import java.util.LinkedHashMap;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -30,13 +32,13 @@ public class BlockEditCommands {
     }
 
     public void handleSetBlock(String[] args) {
-        if (args.length < 4) {
-            session.respondError(-32602, "malformed_ref", null);
+        if (args.length != 4) {
+            session.respondError(-32602, "invalid_params", refData(Arrays.toString(args)));
             logger.warning("Invalid arguments for world.setBlock.");
             return;
         }
         if (isInvalidCoordinate(args[0], args[1], args[2])) {
-            session.respondError(-32602, "malformed_ref", refData(args[0] + "," + args[1] + "," + args[2]));
+            session.respondError(-32602, "invalid_params", refData(args[0] + "," + args[1] + "," + args[2]));
             logger.warning("Coordinates out of range for world.setBlock.");
             return;
         }
@@ -45,7 +47,7 @@ public class BlockEditCommands {
         try {
             data = BlockRef.parse(args[3]);
         } catch (BlockRef.BlockRefException e) {
-            session.respondError(e.code, e.reason, refData(args[3]));
+            session.respondError(e.code, e.reason, blockRefErrorData(args[3], e));
             logger.warning("Bad block_state_ref for world.setBlock: " + args[3] + " (" + e.reason + ")");
             return;
         }
@@ -64,19 +66,19 @@ public class BlockEditCommands {
             // id 付き要求には設置後の canonical を返す（§7.1）。notification は no-op。
             session.respondResult(BlockRef.canonical(block.getBlockData()));
         } catch (NumberFormatException e) {
-            session.respondError(-32602, "malformed_ref", refData(args[3]));
+            session.respondError(-32602, "invalid_params", refData(args[0] + "," + args[1] + "," + args[2]));
             logger.warning("Invalid coordinates for world.setBlock.");
         }
     }
 
     public void handleSetBlocks(String[] args) {
-        if (args.length < 7) {
-            session.respondError(-32602, "malformed_ref", null);
+        if (args.length != 7) {
+            session.respondError(-32602, "invalid_params", refData(Arrays.toString(args)));
             logger.warning("Invalid arguments for world.setBlocks.");
             return;
         }
         if (isInvalidCoordinate(args[0], args[1], args[2]) || isInvalidCoordinate(args[3], args[4], args[5])) {
-            session.respondError(-32602, "malformed_ref", null);
+            session.respondError(-32602, "invalid_params", refData(Arrays.toString(args)));
             logger.warning("Coordinates out of range for world.setBlocks.");
             return;
         }
@@ -85,7 +87,7 @@ public class BlockEditCommands {
         try {
             data = BlockRef.parse(args[6]);
         } catch (BlockRef.BlockRefException e) {
-            session.respondError(e.code, e.reason, refData(args[6]));
+            session.respondError(e.code, e.reason, blockRefErrorData(args[6], e));
             logger.warning("Bad block_state_ref for world.setBlocks: " + args[6] + " (" + e.reason + ")");
             return;
         }
@@ -102,7 +104,7 @@ public class BlockEditCommands {
             // 一様充填なので canonical を1つ返す（id 付き要求のみ）。
             session.respondResult(BlockRef.canonical(data));
         } catch (NumberFormatException e) {
-            session.respondError(-32602, "malformed_ref", refData(args[6]));
+            session.respondError(-32602, "invalid_params", refData(Arrays.toString(args)));
             logger.warning("Invalid coordinates for world.setBlocks.");
         }
     }
@@ -167,6 +169,17 @@ public class BlockEditCommands {
     private Map<String, Object> refData(String ref) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("ref", BlockRef.echo(ref));
+        return data;
+    }
+
+    private Map<String, Object> blockRefErrorData(String ref, BlockRef.BlockRefException error) {
+        Map<String, Object> data = refData(ref);
+        if ("invalid_property_value".equals(error.reason)
+                && error.blockKey != null && error.property != null) {
+            List<Object> allowed = session.getPlugin().getCatalogService()
+                    .getAllowedBlockStateValues(error.blockKey, error.property);
+            data.put("allowed", allowed);
+        }
         return data;
     }
 }

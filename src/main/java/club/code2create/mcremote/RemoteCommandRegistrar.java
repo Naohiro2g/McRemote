@@ -6,7 +6,8 @@ public class RemoteCommandRegistrar {
             BlockCommands blockCommands,
             MiscCommands miscCommands,
             EntityCommands entityCommands,
-            BuildStateCommands buildStateCommands
+            BuildStateCommands buildStateCommands,
+            CatalogCommands catalogCommands
     ) {
         CommandRegistry registry = new CommandRegistry();
         PlayerCommands playerCommands = session.getPlayerCommands();
@@ -29,6 +30,7 @@ public class RemoteCommandRegistrar {
         registry.register("entity.remove", args -> entityCommands.handleEntityCommands("entity.remove", args));
         registry.register("player.getPos", playerCommands::handleGetPos);
         registry.register("player.setPos", playerCommands::handleSetPos);
+        registry.register("catalog.get", catalogCommands::handleGet, false);
 
         // Build state (identity から分離) — origin/world をプレイヤー非依存で設定。
         // ワイヤ method は build.* 名前空間（wire-format-design §5.1, DECISIONS 2026-06-26-04）。

@@ -22,11 +22,19 @@ public final class BlockRef {
     public static final class BlockRefException extends Exception {
         public final int code;
         public final String reason;
+        public final String blockKey;
+        public final String property;
 
         public BlockRefException(int code, String reason) {
+            this(code, reason, null, null);
+        }
+
+        public BlockRefException(int code, String reason, String blockKey, String property) {
             super(reason);
             this.code = code;
             this.reason = reason;
+            this.blockKey = blockKey;
+            this.property = property;
         }
     }
 
@@ -77,8 +85,37 @@ public final class BlockRef {
             if (hasUnknownProperty(material, state)) {
                 throw new BlockRefException(-32602, "unknown_property");
             }
-            throw new BlockRefException(-32602, "invalid_property_value");
+            throw new BlockRefException(
+                    -32602,
+                    "invalid_property_value",
+                    material.getKey().toString(),
+                    invalidPropertyValueName(material, state));
         }
+    }
+
+    /** 有効な prop 名のうち、単独でも値が不正になる最初の prop を返す。 */
+    private static String invalidPropertyValueName(Material material, String state) {
+        if (state.isEmpty()) {
+            return null;
+        }
+        Set<String> valid = propertyNames(material.createBlockData());
+        String body = state.substring(1, state.length() - 1);
+        for (String pair : body.split(",")) {
+            int eq = pair.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            String key = pair.substring(0, eq).trim();
+            if (!valid.contains(key)) {
+                continue;
+            }
+            try {
+                material.createBlockData("[" + pair.trim() + "]");
+            } catch (IllegalArgumentException e) {
+                return key;
+            }
+        }
+        return null;
     }
 
     /**

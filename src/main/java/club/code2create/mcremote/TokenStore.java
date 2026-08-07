@@ -6,102 +6,146 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Optional;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 発行済み認証トークンの正本ストア（wire-format-design §6.5・versioning-design §10.11.1 項1）。
- *
- * <p>server は **hash のみ保存**（生 token は発行時にクライアントへ返す一度きり）。認可は常に
- * UUID→LuckPerms ゆえ token 本体には権限を持たせない。b2 マイルストーン1では in-memory
- * （プロセス内 {@link ConcurrentHashMap}）＝サーバ再起動で全 token 失効し、クライアントは
- * {@code auth_required} で再ペアリングする（§6.5 のクライアント契約で自動回復）。永続化は後スコープ。
- *
- * <p>{@link PairingManager} の poll と hello 検証（次ステップ）が複数の session 入力スレッドから
- * 並行アクセスするため、状態は concurrent 構造に閉じる（DECISIONS の CME 教訓・169e64f）。
+ * bearer token の入口。session は in-memory、long-lived は {@link CredentialService} へ委譲する。
+ * server が保持するのはどちらも SHA-256 hash のみで、生 token は発行時に一度だけ返す。
  */
 public class TokenStore {
     private static final SecureRandom RANDOM = new SecureRandom();
-    /** token 本体の乱数バイト数（256bit）。prefix と合わせて十分な entropy。 */
     private static final int TOKEN_BYTES = 32;
 
-    /** token 種別。wire の prefix と既定値は §6.5。 */
     public enum TokenType {
-        SESSION("mcrs_"),
-        PLAYER("mcrp_");
+        SESSION("session", "mcrs_"),
+        LONG_LIVED("long_lived", "mcrl_");
 
+        private final String wireName;
         private final String prefix;
 
-        TokenType(String prefix) {
+        TokenType(String wireName, String prefix) {
+            this.wireName = wireName;
             this.prefix = prefix;
+        }
+
+        public String wireName() {
+            return wireName;
         }
 
         public String prefix() {
             return prefix;
         }
 
-        /** wire の {@code token_type} 文字列 → enum。未知/欠落は既定 {@code session}（§6.5）。 */
-        public static TokenType fromWire(String s) {
-            if (s == null) {
+        /** 欠落だけを既定 session とし、未知値や旧 player は受理しない。 */
+        public static TokenType fromWire(String value) {
+            if (value == null) {
                 return SESSION;
             }
-            return "player".equals(s.trim().toLowerCase()) ? PLAYER : SESSION;
+            String normalized = value.trim().toLowerCase(Locale.ROOT);
+            return switch (normalized) {
+                case "session" -> SESSION;
+                case "long_lived" -> LONG_LIVED;
+                default -> throw new IllegalArgumentException("Unknown token_type: " + value);
+            };
         }
     }
 
-    /** 保存レコード。生 token は保持しない（hash キーで引く）。 */
+    public enum ResolveStatus {
+        ACTIVE,
+        EXPIRED,
+        REVOKED,
+        NOT_FOUND,
+        INVALID,
+        STORE_UNAVAILABLE
+    }
+
     public record TokenRecord(UUID uuid, TokenType tokenType, Instant issuedAt,
-                              Instant expiresAt, String device, Instant lastUsedAt) {
+                              Instant expiresAt, String device, Instant lastUsedAt,
+                              UUID credentialId) {
         public boolean isExpired(Instant now) {
             return expiresAt != null && now.isAfter(expiresAt);
         }
     }
 
-    private final ConcurrentHashMap<String, TokenRecord> byHash = new ConcurrentHashMap<>();
+    public record ResolveResult(ResolveStatus status, TokenRecord record,
+                                CredentialStoreUnavailableException.Operation operation) {}
 
-    /**
-     * 新規 token を発行し hash を保存する。戻り値の生 token は呼び出し側が一度だけクライアントへ返す。
-     *
-     * @param ttlSeconds >0 で有効期限、&lt;=0 は無期限（player_token 長期・§6.5）
-     */
-    public String issue(UUID uuid, TokenType type, String device, long ttlSeconds) {
+    private final ConcurrentHashMap<String, TokenRecord> sessionsByHash = new ConcurrentHashMap<>();
+    private final CredentialService credentialService;
+
+    public TokenStore(CredentialService credentialService) {
+        this.credentialService = credentialService;
+    }
+
+    public String issue(UUID uuid, TokenType type, String device, long sessionTtlSeconds)
+            throws CredentialStoreUnavailableException, CredentialLimitReachedException {
+        if (type == TokenType.LONG_LIVED) {
+            return credentialService.issue(uuid, device).token();
+        }
         byte[] body = new byte[TOKEN_BYTES];
         RANDOM.nextBytes(body);
         String raw = type.prefix() + Base64.getUrlEncoder().withoutPadding().encodeToString(body);
         Instant now = Instant.now();
-        Instant exp = ttlSeconds > 0 ? now.plusSeconds(ttlSeconds) : null;
-        byHash.put(hash(raw), new TokenRecord(uuid, type, now, exp, device, now));
+        Instant expires = sessionTtlSeconds > 0 ? now.plusSeconds(sessionTtlSeconds) : null;
+        sessionsByHash.put(hash(raw), new TokenRecord(
+                uuid, TokenType.SESSION, now, expires, device, now, null));
         return raw;
     }
 
-    /**
-     * 生 token を検証する（hello の auth 検証で使う＝次ステップ）。期限切れは lazy に除去して empty。
-     */
-    public Optional<TokenRecord> resolve(String rawToken) {
-        if (rawToken == null || rawToken.isEmpty()) {
-            return Optional.empty();
+    public ResolveResult resolve(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            return new ResolveResult(ResolveStatus.INVALID, null, null);
         }
-        String h = hash(rawToken);
-        TokenRecord rec = byHash.get(h);
-        if (rec == null) {
-            return Optional.empty();
+        if (rawToken.startsWith("mcrs_")) {
+            return resolveSession(rawToken);
         }
-        if (rec.isExpired(Instant.now())) {
-            byHash.remove(h, rec);
-            return Optional.empty();
+        if (rawToken.startsWith("mcrl_")) {
+            try {
+                CredentialService.ResolveResult result = credentialService.resolveAndTouch(rawToken);
+                return switch (result.status()) {
+                    case ACTIVE -> {
+                        CredentialStore.CredentialRecord record = result.record();
+                        yield new ResolveResult(ResolveStatus.ACTIVE,
+                                new TokenRecord(record.playerUuid(), TokenType.LONG_LIVED,
+                                        record.issuedAt(), record.expiresAt(), record.device(),
+                                        record.lastUsedAt(), record.credentialId()), null);
+                    }
+                    case REVOKED -> new ResolveResult(ResolveStatus.REVOKED, null, null);
+                    case NOT_FOUND -> new ResolveResult(ResolveStatus.NOT_FOUND, null, null);
+                };
+            } catch (CredentialStoreUnavailableException e) {
+                return new ResolveResult(ResolveStatus.STORE_UNAVAILABLE, null, e.operation());
+            }
         }
-        return Optional.of(rec);
+        if (rawToken.startsWith("mcrp_")) {
+            // 旧 player_token は永続 record を持たないため migration せず再ペアリングへ送る。
+            return new ResolveResult(ResolveStatus.NOT_FOUND, null, null);
+        }
+        return new ResolveResult(ResolveStatus.INVALID, null, null);
     }
 
-    /** token 破棄（revoke / logout・§6.5 名前空間の後続用）。 */
-    public void revoke(String rawToken) {
-        if (rawToken != null && !rawToken.isEmpty()) {
-            byHash.remove(hash(rawToken));
+    private ResolveResult resolveSession(String rawToken) {
+        String tokenHash = hash(rawToken);
+        TokenRecord record = sessionsByHash.get(tokenHash);
+        if (record == null) {
+            return new ResolveResult(ResolveStatus.NOT_FOUND, null, null);
+        }
+        if (record.isExpired(Instant.now())) {
+            sessionsByHash.remove(tokenHash, record);
+            return new ResolveResult(ResolveStatus.EXPIRED, null, null);
+        }
+        return new ResolveResult(ResolveStatus.ACTIVE, record, null);
+    }
+
+    public void revokeSession(String rawToken) {
+        if (rawToken != null && rawToken.startsWith("mcrs_")) {
+            sessionsByHash.remove(hash(rawToken));
         }
     }
 
-    /** SHA-256(base64url, no-pad)。保存キーは常にこの hash で、生 token は保持しない。 */
+    /** SHA-256(base64url, no-pad)。 */
     static String hash(String raw) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
