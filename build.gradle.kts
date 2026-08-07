@@ -55,6 +55,15 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:$paperApiVersion")  // Paper API
     compileOnly("net.luckperms:api:5.4")  // LuckPerms API
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    testImplementation("com.google.code.gson:gson:2.11.0")
+    testImplementation("io.papermc.paper:paper-api:$paperApiVersion")
+    testImplementation("net.luckperms:api:5.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 val isWindows: Boolean = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("windows")

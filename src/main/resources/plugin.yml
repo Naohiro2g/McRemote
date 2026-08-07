@@ -17,3 +17,6 @@ permissions:
   mcr.offline:
     description: Allows paired McRemote clients to act for offline/background building.
     default: false
+  mcremote.admin:
+    description: Allows explicit credential domain status/bootstrap/reset operations.
+    default: op

@@ -18,6 +18,7 @@ import org.jspecify.annotations.NullMarked;
 
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
@@ -42,9 +43,12 @@ public class McRemote extends JavaPlugin implements Listener {
     // 認証（wire §6.5）：pairing/token の正本は plugin 常駐。複数 session スレッド＋/mcremote pair の
     // 主スレッドから共有アクセスされるため concurrent 実装（169e64f の CME 教訓）。
     private TokenStore tokenStore;
+    private CredentialService credentialService;
     private PairingManager pairingManager;
     private boolean authEnforcement;
     private int maxSessionsPerUuid;
+    // b3 resource catalog は registry が確立した plugin enable 時に一度だけ生成し、全 session で共有する。
+    private CatalogService catalogService;
 
     @Override
     public void onEnable(){
@@ -52,6 +56,7 @@ public class McRemote extends JavaPlugin implements Listener {
         this.saveDefaultConfig();
         FileConfiguration config = this.getConfig();
         migrateMissingConfigDefaults(config);
+        removeDeprecatedCredentialConfig(config);
 
         // 認証ストアを serverThread 起動前に用意する（接続到来時の RemoteSession ctor が参照するため）。
         // enforcement 既定 OFF＝token 無し hello 通過（3リポ非同期着地・§6.5/§10.11.1 item5）。
@@ -59,36 +64,34 @@ public class McRemote extends JavaPlugin implements Listener {
         logger.info("Auth enforcement: " + this.authEnforcement);
         long pairCodeTtl = config.getLong("auth.pair_code_ttl_seconds", 120);
         long sessionTokenTtl = config.getLong("auth.session_token_ttl_seconds", 7200);
-        long playerTokenTtl = config.getLong("auth.player_token_ttl_seconds", 0);
         this.maxSessionsPerUuid = Math.max(1, config.getInt("auth.max_sessions_per_uuid", 16));
         logger.info("Max sessions per UUID: " + this.maxSessionsPerUuid);
-        this.tokenStore = new TokenStore();
-        this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl, playerTokenTtl);
+        int maxLongLivedCredentials = Math.max(1,
+                config.getInt("auth.max_long_lived_credentials_per_uuid", 16));
+        Path snapshotPath = resolveCredentialPath(config.getString(
+                "auth.credential_store_path", "credential-store/snapshot.json"));
+        Path authorityPath = resolveCredentialPath(config.getString(
+                "auth.revocation_authority_path", "credential-revocations"));
+        this.credentialService = new CredentialService(
+                snapshotPath, authorityPath, maxLongLivedCredentials);
+        logger.info("Credential domain health: " + credentialService.health()
+                + " (" + credentialService.healthDetail() + ")");
+        this.tokenStore = new TokenStore(credentialService);
+        this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl);
+        this.catalogService = new CatalogService();
+        logger.info("Resource catalog ready: blocks=" + catalogService.getBlockCount()
+                + " entities=" + catalogService.getEntityCount()
+                + " particles=" + catalogService.getParticleCount()
+                + " bytes=" + catalogService.getSerializedBytes()
+                + " hash=" + catalogService.getCatalogHash());
         PluginCommand mcremoteCommand = getCommand("mcremote");
         if (mcremoteCommand != null) {
-            mcremoteCommand.setExecutor(new PairCommand(pairingManager));
+            PairCommand command = new PairCommand(this, pairingManager, credentialService);
+            mcremoteCommand.setExecutor(command);
+            mcremoteCommand.setTabCompleter(command);
         } else {
             logger.warning("Command 'mcremote' not registered in plugin.yml; /mcremote pair unavailable");
         }
-
-        // APIポート設定を読み込み、サーバースレッドを起動
-        int port = config.getInt("api_port");
-        try {
-            serverThread = new ServerListenerThread(this, new InetSocketAddress(port));
-            new Thread(serverThread).start();
-            logger.info("Server started at port " + port);
-        } catch (Exception e) {
-            StringWriter sw = new StringWriter();
-            e.printStackTrace(new PrintWriter(sw));
-            logger.warning(sw.toString());
-            logger.warning("Failed to start Server");
-            return;
-        }
-
-        // イベント登録や定期処理のスケジュール
-        getServer().getPluginManager().registerEvents(this, this);
-        getServer().getScheduler().scheduleSyncRepeatingTask(this, new TickHandler(), 1, 1);
-        saveResources();
 
         // config.yml から権限・meta 関連の設定を読み込む
         String onlinePermission = config.getString("luckperm_permissions.online", "mcr.online");
@@ -107,7 +110,32 @@ public class McRemote extends JavaPlugin implements Listener {
             this.permissionManager = new FallbackPermissionManager(onlinePermission, offlinePermission, defaultBuildRange);
         }
         logger.info("PermissionManager instance: " + this.permissionManager);
-        // ここ以降、permissionManager を利用して各種処理を実施…
+
+        // 認証・認可の依存を全て初期化してから socket を公開する。
+        int port = config.getInt("api_port");
+        try {
+            serverThread = new ServerListenerThread(this, new InetSocketAddress(port));
+            new Thread(serverThread).start();
+            logger.info("Server started at port " + port);
+        } catch (Exception e) {
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            logger.warning(sw.toString());
+            logger.warning("Failed to start Server");
+            return;
+        }
+
+        getServer().getPluginManager().registerEvents(this, this);
+        getServer().getScheduler().scheduleSyncRepeatingTask(this, new TickHandler(), 1, 1);
+        getServer().getScheduler().runTaskTimerAsynchronously(
+                this, credentialService::reconcileIfNeeded, 200L, 200L);
+        saveResources();
+    }
+
+    private Path resolveCredentialPath(String configured) {
+        Path value = Path.of(configured == null ? "" : configured.trim());
+        return value.isAbsolute() ? value.normalize()
+                : getDataFolder().toPath().resolve(value).toAbsolutePath().normalize();
     }
 
     private void migrateMissingConfigDefaults(FileConfiguration config) {
@@ -133,6 +161,15 @@ public class McRemote extends JavaPlugin implements Listener {
         }
     }
 
+    private void removeDeprecatedCredentialConfig(FileConfiguration config) {
+        if (config.contains("auth.player_token_ttl_seconds")) {
+            config.set("auth.player_token_ttl_seconds", null);
+            saveConfig();
+            logger.info("Removed deprecated auth.player_token_ttl_seconds; "
+                    + "long-lived credentials use expires_at=null until explicit revoke");
+        }
+    }
+
     private void saveResources(){
         File configFile = new File(getDataFolder(), "config.yml");
         if (!configFile.exists()){
@@ -153,15 +190,17 @@ public class McRemote extends JavaPlugin implements Listener {
                 logger.warning(sw.toString());
             }
         }
-        serverThread.running = false;
-        try {
-            serverThread.serverSocket.close();
-        } catch (Exception e) {
-            StringWriter sw = new StringWriter();
-            e.printStackTrace(new PrintWriter(sw));
-            logger.warning(sw.toString());
+        if (serverThread != null) {
+            serverThread.running = false;
+            try {
+                serverThread.serverSocket.close();
+            } catch (Exception e) {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                logger.warning(sw.toString());
+            }
+            serverThread = null;
         }
-        serverThread = null;
     }
 
     public int getDefaultBuildRange() {
@@ -180,6 +219,15 @@ public class McRemote extends JavaPlugin implements Listener {
     /** 発行済み token ストア（hash のみ保存・§6.5）。hello 検証（次ステップ）が使う。 */
     public TokenStore getTokenStore() {
         return this.tokenStore;
+    }
+
+    public CredentialService getCredentialService() {
+        return credentialService;
+    }
+
+    /** b3 resource catalog snapshot（plugin enable 時に生成、全 session 共通）。 */
+    public CatalogService getCatalogService() {
+        return this.catalogService;
     }
 
     /** enforcement トグル（§10.11.1 item5）。ON で hello が token 必須になる（次ステップで参照）。 */
@@ -201,6 +249,24 @@ public class McRemote extends JavaPlugin implements Listener {
             }
         }
         return count;
+    }
+
+    /** revoke/logout の線形化後、同じ credential で認証された全 session を終了対象へ mark。 */
+    public void closeSessionsForCredential(UUID credentialId) {
+        for (RemoteSession session : sessions) {
+            if (credentialId.equals(session.getBoundCredentialId())) {
+                session.requestCloseAfterFlush();
+            }
+        }
+    }
+
+    /** explicit reset は全 long-lived credential を失効させるため既存 session も閉じる。 */
+    public void closeAllLongLivedSessions() {
+        for (RemoteSession session : sessions) {
+            if (session.getBoundTokenType() == TokenStore.TokenType.LONG_LIVED) {
+                session.requestCloseAfterFlush();
+            }
+        }
     }
 
     @NullMarked

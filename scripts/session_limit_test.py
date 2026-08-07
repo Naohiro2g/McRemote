@@ -83,7 +83,7 @@ def main() -> int:
     ap.add_argument("--timeout", type=float, default=10.0)
     ap.add_argument("--poll-interval", type=float, default=1.5)
     ap.add_argument("--limit", type=int, default=16)
-    ap.add_argument("--token", default=None, help="existing mcrs_/mcrp_ token; skips pairing")
+    ap.add_argument("--token", default=None, help="existing mcrs_/mcrl_ token; skips pairing")
     args = ap.parse_args()
 
     held: list[Conn] = []

@@ -102,9 +102,21 @@ def main() -> int:
             if "y_sea" in info:
                 print(f"FAIL: y_sea must not be top-level; use world_constants.y_sea: {info}")
                 return 1
+            catalog_hash = info["catalogHash"]
+            if not (isinstance(catalog_hash, str) and len(catalog_hash) == 64
+                    and all(c in "0123456789abcdef" for c in catalog_hash)):
+                print(f"FAIL: catalogHash must be SHA-256 hex for b3: {catalog_hash!r}")
+                return 1
             print(f"                    protocol={info['protocol']} mc_version={info['mc_version']} "
                   f"supported={info['supported_mc_versions']} world_constants.y_sea={wc['y_sea']} "
                   f"catalogHash={info['catalogHash']}")
+
+            # catalog 本体は認証後配送。token 無し hello が通る開発設定でも取得は拒否される。
+            catalog_err = request_error("catalog.get", [])
+            print(f"[catalog.get unauth] <- {json.dumps(catalog_err, ensure_ascii=False)}")
+            if catalog_err.get("data", {}).get("reason") != "auth_required":
+                print(f"FAIL: unauthenticated catalog.get must return auth_required: {catalog_err}")
+                return 1
 
             print(f"[build.setWorld]  <- {request('build.setWorld', [args.dimension])}")
             print(f"[build.setOrigin] <- {request('build.setOrigin', [args.ox, args.oy, args.oz])}")
@@ -130,15 +142,57 @@ def main() -> int:
             if not (isinstance(stateful, str) and "axis=z" in stateful and rt == stateful):
                 failures.append(f"stateful round-trip failed: set={stateful!r} get={rt!r}")
 
-            # (4) 未知ブロックは error + data.reason=unknown_block（§7.3）。
+            # (4) 複数property・順不同入力 → canonical-full（prop名昇順・default補完）。
+            stairs = request("world.setBlock", [
+                args.x, args.y + 2, args.z,
+                "oak_stairs[waterlogged=true,half=top,facing=east]",
+            ])
+            expected_stairs = (
+                "minecraft:oak_stairs[facing=east,half=top,shape=straight,waterlogged=true]"
+            )
+            print(f"[setBlock states] <- {stairs!r}")
+            if stairs != expected_stairs:
+                failures.append(f"multi-state canonical mismatch: want={expected_stairs!r} got={stairs!r}")
+
+            # (5) 数値stateをJSON number相当の表現で往復。
+            wheat = request("world.setBlock", [args.x, args.y + 3, args.z, "wheat[age=3]"])
+            print(f"[setBlock number] <- {wheat!r}")
+            if wheat != "minecraft:wheat[age=3]":
+                failures.append(f"numeric state mismatch: {wheat!r}")
+
+            # (6) 未知ブロックは error + data.reason=unknown_block（§7.3）。
             err = request_error("world.setBlock", [args.x, args.y, args.z, "definitely_not_a_block"])
             print(f"[setBlock bad]    <- {json.dumps(err, ensure_ascii=False)}")
             if err.get("data", {}).get("reason") != "unknown_block":
                 failures.append(f"expected unknown_block, got {err}")
 
+            # (7) property名と値のエラーを分離。値エラーはcatalog由来のallowedを必須化。
+            unknown_prop = request_error("world.setBlock", [args.x, args.y, args.z, "stone[axis=y]"])
+            print(f"[unknown property] <- {json.dumps(unknown_prop, ensure_ascii=False)}")
+            if unknown_prop.get("data", {}).get("reason") != "unknown_property":
+                failures.append(f"expected unknown_property, got {unknown_prop}")
+
+            invalid_value = request_error("world.setBlock", [args.x, args.y, args.z, "oak_log[axis=w]"])
+            print(f"[invalid value]   <- {json.dumps(invalid_value, ensure_ascii=False)}")
+            invalid_data = invalid_value.get("data", {})
+            if invalid_data.get("reason") != "invalid_property_value":
+                failures.append(f"expected invalid_property_value, got {invalid_value}")
+            if invalid_data.get("allowed") != ["x", "y", "z"]:
+                failures.append(f"expected allowed=[x,y,z], got {invalid_data.get('allowed')!r}")
+
+            # (8) 固定params個数と座標エラーは block ref ではなく invalid_params。
+            extra_arg = request_error(
+                "world.setBlock", [args.x, args.y, args.z, "stone", "unexpected"]
+            )
+            if extra_arg.get("data", {}).get("reason") != "invalid_params":
+                failures.append(f"extra arg must be invalid_params: {extra_arg}")
+            bad_coord = request_error("world.setBlock", ["not-a-number", args.y, args.z, "stone"])
+            if bad_coord.get("data", {}).get("reason") != "invalid_params":
+                failures.append(f"bad coordinate must be invalid_params: {bad_coord}")
+
             print()
             if not failures:
-                print("PASS: setBlock response + canonical round-trip + reason error")
+                print("PASS: catalog gate + canonical states + detailed state/params errors")
                 return 0
             for f in failures:
                 print(f"FAIL: {f}")
