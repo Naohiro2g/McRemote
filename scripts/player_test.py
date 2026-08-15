@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""McRemote player.* smoke test (Python standard library only).
+"""McRemote player position/pose smoke test (Python standard library only).
 
-pair -> token -> hello の後、player.getPos / player.setPos を確認する。
+pair -> token -> hello の後、player.getPos / player.setPos と
+player.getPose / player.setPose を確認する。
 LuckPerms あり・権限なし環境では --expect permission-denied を指定し、hello の
 permission_denied 到達を b2 gate 証跡として扱う。
 """
 import argparse
 import json
+import math
 import socket
 import sys
 import time
@@ -40,6 +42,33 @@ class Rpc:
 
 def error_reason(resp: dict) -> str | None:
     return resp.get("error", {}).get("data", {}).get("reason")
+
+
+def normalize_yaw(yaw: float) -> float:
+    normalized = math.fmod(yaw, 360.0)
+    if normalized >= 180.0:
+        normalized -= 360.0
+    elif normalized < -180.0:
+        normalized += 360.0
+    return normalized
+
+
+def close_enough(left: float, right: float, tolerance: float = 1.0e-4) -> bool:
+    return abs(left - right) <= tolerance
+
+
+def same_pose(left: dict, right: dict) -> bool:
+    try:
+        return (
+            left.get("world") == right.get("world")
+            and len(left.get("pos", [])) == 3
+            and len(right.get("pos", [])) == 3
+            and all(close_enough(float(a), float(b)) for a, b in zip(left["pos"], right["pos"]))
+            and close_enough(float(left["yaw"]), float(right["yaw"]))
+            and close_enough(float(left["pitch"]), float(right["pitch"]))
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 def pair_and_hello(args) -> tuple[Rpc, dict]:
@@ -122,7 +151,52 @@ def main() -> int:
             print(f"FAIL: player.setPos -> error {set_pos['error']}")
             return 1
         print(f"[player.setPos] result={set_pos['result']}")
-        print("PASS: pair -> hello -> player.getPos -> player.setPos")
+
+        get_pose = rpc.call("player.getPose", [])
+        if "error" in get_pose:
+            print(f"FAIL: player.getPose -> error {get_pose['error']}")
+            return 1
+        pose = get_pose["result"]
+        required = {"world", "pos", "yaw", "pitch"}
+        if not required.issubset(pose):
+            print(f"FAIL: player.getPose missing fields: {pose}")
+            return 1
+        print(f"[player.getPose] world={pose['world']} pos={pose['pos']} "
+              f"yaw={pose['yaw']} pitch={pose['pitch']}")
+
+        # 同じ位置・向きへyawだけ360度加えて送り、見た目を変えず正規化を確認する。
+        input_yaw = float(pose["yaw"]) + 360.0
+        set_pose = rpc.call("player.setPose", [
+            pose["world"], *pose["pos"], input_yaw, pose["pitch"]
+        ])
+        if "error" in set_pose:
+            print(f"FAIL: player.setPose -> error {set_pose['error']}")
+            return 1
+        result_pose = set_pose["result"]
+        expected_yaw = normalize_yaw(input_yaw)
+        if not close_enough(float(result_pose["yaw"]), expected_yaw):
+            print(f"FAIL: yaw normalization: input={input_yaw} "
+                  f"want={expected_yaw} got={result_pose['yaw']}")
+            return 1
+        if not close_enough(float(result_pose["pitch"]), float(pose["pitch"])):
+            print(f"FAIL: pitch changed unexpectedly: before={pose['pitch']} after={result_pose['pitch']}")
+            return 1
+        print(f"[player.setPose] yaw input={input_yaw} normalized={result_pose['yaw']} "
+              f"pitch={result_pose['pitch']}")
+
+        invalid_pitch = rpc.call("player.setPose", [
+            pose["world"], *pose["pos"], pose["yaw"], 90.0001
+        ])
+        if error_reason(invalid_pitch) != "invalid_params":
+            print(f"FAIL: pitch > 90 must return invalid_params: {invalid_pitch}")
+            return 1
+        after_invalid = rpc.call("player.getPose", [])
+        if "error" in after_invalid or not same_pose(result_pose, after_invalid.get("result", {})):
+            print(f"FAIL: invalid player.setPose changed pose: before={result_pose} after={after_invalid}")
+            return 1
+        print("[player.setPose invalid] pitch=90.0001 -> invalid_params, pose unchanged")
+
+        print("PASS: pair -> hello -> getPos/setPos -> getPose/setPose")
         return 0
     except (OSError, RuntimeError, json.JSONDecodeError, KeyError) as e:
         print(f"ERROR: {e}", file=sys.stderr)

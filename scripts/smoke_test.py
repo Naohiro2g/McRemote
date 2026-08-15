@@ -118,6 +118,13 @@ def main() -> int:
                 print(f"FAIL: unauthenticated catalog.get must return auth_required: {catalog_err}")
                 return 1
 
+            # b4 player pose method は登録済みで、paired identity が無い場合は auth_required。
+            pose_err = request_error("player.getPose", [])
+            print(f"[player.getPose unauth] <- {json.dumps(pose_err, ensure_ascii=False)}")
+            if pose_err.get("data", {}).get("reason") != "auth_required":
+                print(f"FAIL: unauthenticated player.getPose must return auth_required: {pose_err}")
+                return 1
+
             print(f"[build.setWorld]  <- {request('build.setWorld', [args.dimension])}")
             print(f"[build.setOrigin] <- {request('build.setOrigin', [args.ox, args.oy, args.oz])}")
 

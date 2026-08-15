@@ -30,6 +30,8 @@ public class RemoteCommandRegistrar {
         registry.register("entity.remove", args -> entityCommands.handleEntityCommands("entity.remove", args));
         registry.register("player.getPos", playerCommands::handleGetPos);
         registry.register("player.setPos", playerCommands::handleSetPos);
+        registry.register("player.getPose", playerCommands::handleGetPose);
+        registry.register("player.setPose", playerCommands::handleSetPose);
         registry.register("catalog.get", catalogCommands::handleGet, false);
 
         // Build state (identity から分離) — origin/world をプレイヤー非依存で設定。

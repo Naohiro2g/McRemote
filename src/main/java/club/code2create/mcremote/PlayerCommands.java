@@ -101,6 +101,102 @@ public class PlayerCommands {
         }
     }
 
+    /** player.getPose: paired player の現在 world・相対位置・yaw/pitch を返す。 */
+    public void handleGetPose(String[] args) {
+        if (args.length != 0) {
+            session.respondError(-32602, "invalid_params", null);
+            return;
+        }
+        Player player = requireOnlineAuthorizedPlayer();
+        if (player == null) {
+            return;
+        }
+        session.respondResult(poseResult(player.getLocation()));
+    }
+
+    /**
+     * player.setPose(world, x, y, z, yaw, pitch):
+     * stream origin 相対位置と向きを1回の teleport で一体反映する。
+     */
+    public void handleSetPose(String[] args) {
+        if (args.length != 6) {
+            session.respondError(-32602, "invalid_params", null);
+            return;
+        }
+        Player player = requireOnlineAuthorizedPlayer();
+        if (player == null) {
+            return;
+        }
+        World world = resolveWorld(args[0]);
+        if (world == null) {
+            session.respondError(-32000, "unknown_world", data("world", args[0]));
+            return;
+        }
+        Location origin = session.getOrigin();
+        if (origin == null) {
+            session.respondError(-32000, "origin_not_set", null);
+            return;
+        }
+
+        try {
+            PoseInput pose = parsePoseInput(args);
+            double x = origin.getX() + pose.relativeX();
+            double y = origin.getY() + pose.relativeY();
+            double z = origin.getZ() + pose.relativeZ();
+            if (!areFinite(x, y, z)) {
+                session.respondError(-32602, "invalid_params", null);
+                return;
+            }
+
+            Location target = new Location(world, x, y, z, pose.yaw(), pose.pitch());
+            if (!player.teleport(target)) {
+                session.respondError(-32000, "teleport_failed", null);
+                return;
+            }
+            session.respondResult(poseResult(player.getLocation()));
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
+        }
+    }
+
+    static PoseInput parsePoseInput(String[] args) {
+        if (args.length != 6) {
+            throw new IllegalArgumentException("player.setPose requires 6 parameters");
+        }
+        double relativeX = Double.parseDouble(args[1]);
+        double relativeY = Double.parseDouble(args[2]);
+        double relativeZ = Double.parseDouble(args[3]);
+        double yaw = Double.parseDouble(args[4]);
+        double pitch = Double.parseDouble(args[5]);
+        if (!areFinite(relativeX, relativeY, relativeZ, yaw, pitch)
+                || pitch < -90.0 || pitch > 90.0) {
+            throw new IllegalArgumentException("pose values must be finite and pitch must be within -90..90");
+        }
+        return new PoseInput(relativeX, relativeY, relativeZ, normalizeYaw(yaw), (float) pitch);
+    }
+
+    static float normalizeYaw(double yaw) {
+        double normalized = yaw % 360.0;
+        if (normalized >= 180.0) {
+            normalized -= 360.0;
+        } else if (normalized < -180.0) {
+            normalized += 360.0;
+        }
+        return (float) normalized;
+    }
+
+    static boolean areFinite(double... values) {
+        for (double value : values) {
+            if (!Double.isFinite(value)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    record PoseInput(double relativeX, double relativeY, double relativeZ, float yaw, float pitch) {
+    }
+
     private Player requireOnlineAuthorizedPlayer() {
         if (playerUUID == null) {
             session.respondError(-32000, "auth_required", null);
@@ -128,6 +224,13 @@ public class PlayerCommands {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("world", loc.getWorld().getName());
         result.put("pos", List.of(x, y, z));
+        return result;
+    }
+
+    private Map<String, Object> poseResult(Location loc) {
+        Map<String, Object> result = positionResult(loc);
+        result.put("yaw", normalizeYaw(loc.getYaw()));
+        result.put("pitch", loc.getPitch());
         return result;
     }
 
