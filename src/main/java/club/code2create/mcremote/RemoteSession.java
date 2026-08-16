@@ -183,16 +183,14 @@ public class RemoteSession {
      */
     private void handleHello(ParsedCommand parsed) {
         if (!"hello".equals(parsed.getName())) {
-            respondError(-32600, "expected_hello", null);
+            respondTerminalError(-32600, "expected_hello", null);
             logger.warning("Pre-hello method rejected: " + parsed.getName());
-            close();
             return;
         }
         String clientProtocol = extractHelloProtocol(parsed.getParams());
         if (clientProtocol == null) {
-            respondError(-32602, "protocol_required", null);
+            respondTerminalError(-32602, "protocol_required", null);
             logger.warning("Malformed hello: missing protocol in params");
-            close();
             return;
         }
         if (!ProtocolInfo.isCompatible(clientProtocol)) {
@@ -200,9 +198,8 @@ public class RemoteSession {
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("server", ProtocolInfo.PROTOCOL);
             data.put("client_requires", clientProtocol);
-            respondError(-32600, "protocol_mismatch", data);
+            respondTerminalError(-32600, "protocol_mismatch", data);
             logger.warning("Protocol mismatch: server=" + ProtocolInfo.PROTOCOL + " client=" + clientProtocol);
-            close();
             return;
         }
         // hello auth 検証（§6.1/§6.3・versioning §10.11.1 item5 enforcement トグル）。
@@ -213,9 +210,8 @@ public class RemoteSession {
         boolean enforce = plugin.isAuthEnforcement();
         if (token == null || token.isEmpty()) {
             if (enforce) {
-                respondError(-32000, "auth_required", null);
+                respondTerminalError(-32000, "auth_required", null);
                 logger.warning("Hello rejected: auth_required (enforcement ON, no token)");
-                close();
                 return;
             }
         } else {
@@ -251,9 +247,9 @@ public class RemoteSession {
                     OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
                     IPermissionManager perms = plugin.getPermissionManager();
                     if (!perms.canConstructOnline(op) && !perms.canConstructOffline(op)) {
-                        respondError(-32000, "permission_denied", null);
+                        respondTerminalError(-32000, "permission_denied", null);
                         logger.warning("Hello rejected: permission_denied uuid=" + uuid);
-                        close(); // token は温存（resolve のみ・revoke しない）
+                        // token は温存（resolve のみ・revoke しない）。
                         return;
                     }
                 }
@@ -263,10 +259,9 @@ public class RemoteSession {
                     Map<String, Object> data = new LinkedHashMap<>();
                     data.put("limit", maxSessions);
                     data.put("current", currentSessions);
-                    respondError(-32000, "too_many_sessions", data);
+                    respondTerminalError(-32000, "too_many_sessions", data);
                     logger.warning("Hello rejected: too_many_sessions uuid=" + uuid
                             + " current=" + currentSessions + " limit=" + maxSessions);
-                    close();
                     return;
                 }
                 boundUuid = uuid;
@@ -391,12 +386,18 @@ public class RemoteSession {
         logger.info("Closed connection from " + socket.getRemoteSocketAddress() + ".");
     }
 
-    /** 既に queue 済みの成功応答を flush してから transport を閉じる。 */
+    /** 既に queue 済みの成功／error応答を flush してから transport を閉じる。 */
     public void requestCloseAfterFlush() {
         closingAfterFlush = true;
         synchronized (queueLock) {
             queueLock.notifyAll();
         }
+    }
+
+    /** hello門番のterminal errorを欠落させず、その直後にFIN/EOFを観測可能にする。 */
+    private void respondTerminalError(int code, String reason, Map<String, Object> extraData) {
+        respondError(code, reason, extraData);
+        requestCloseAfterFlush();
     }
 
     public void handlePlayerQuitEvent() {
