@@ -1,7 +1,9 @@
 package club.code2create.mcremote;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -9,9 +11,15 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PairingManagerTest {
+    @TempDir
+    Path temp;
+
     @Test
-    void sessionPairingAndTokenResolutionRemainUnchanged() {
-        TokenStore tokenStore = new TokenStore(null);
+    void sessionPairingAndTokenResolutionRemainUnchanged() throws Exception {
+        CredentialService credentials = new CredentialService(
+                temp.resolve("snapshot.json"), temp.resolve("authority"), 16);
+        credentials.bootstrap();
+        TokenStore tokenStore = new TokenStore(credentials);
         PairingManager pairing = new PairingManager(tokenStore, 120, 7200);
         UUID player = UUID.randomUUID();
 
