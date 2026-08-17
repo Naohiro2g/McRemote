@@ -25,6 +25,8 @@ import java.util.UUID;
 /** 管理用 credential snapshot。失効の security 正本は {@link RevocationAuthority}。 */
 class CredentialStore {
     static final int SCHEMA_VERSION = 1;
+    static final String TYPE_SESSION = "session";
+    static final String TYPE_LONG_LIVED = "long_lived";
     private static final Gson GSON = new GsonBuilder().serializeNulls().setPrettyPrinting().create();
 
     record CredentialRecord(UUID credentialId, String tokenHash, UUID playerUuid, String type,
@@ -198,7 +200,7 @@ class CredentialStore {
         if (item.token_hash == null || item.token_hash.isBlank()) {
             throw new IOException("Credential token_hash is missing");
         }
-        if (!"long_lived".equals(item.type)) {
+        if (!TYPE_SESSION.equals(item.type) && !TYPE_LONG_LIVED.equals(item.type)) {
             throw new IOException("Unknown persisted credential type: " + item.type);
         }
         if (item.device != null) {
@@ -207,11 +209,22 @@ class CredentialStore {
                 throw new IOException("Invalid persisted device label");
             }
         }
+        Instant issuedAt = parseInstant(item.issued_at, "issued_at", false);
+        Instant lastUsedAt = parseInstant(item.last_used_at, "last_used_at", false);
+        Instant expiresAt = parseInstant(item.expires_at, "expires_at", true);
+        Instant revokedAt = parseInstant(item.revoked_at, "revoked_at", true);
+        if (TYPE_SESSION.equals(item.type)) {
+            if (expiresAt == null) {
+                throw new IOException("Persisted session credential requires expires_at");
+            }
+            if (revokedAt != null) {
+                throw new IOException("Persisted session credential must not have revoked_at");
+            }
+        } else if (expiresAt != null) {
+            throw new IOException("Persisted long-lived credential must not have expires_at");
+        }
         return new CredentialRecord(credentialId, item.token_hash, playerUuid, item.type,
-                item.device, parseInstant(item.issued_at, "issued_at", false),
-                parseInstant(item.last_used_at, "last_used_at", false),
-                parseInstant(item.expires_at, "expires_at", true),
-                parseInstant(item.revoked_at, "revoked_at", true));
+                item.device, issuedAt, lastUsedAt, expiresAt, revokedAt);
     }
 
     private static RecordDocument toDocument(CredentialRecord record) {

@@ -15,7 +15,8 @@ import java.util.UUID;
 import java.util.logging.Logger;
 
 /**
- * long-lived credential の lifecycle。snapshot と authority を常に重ねて判断する。
+ * session token と long-lived credential の永続 lifecycle。
+ * long-lived credential だけは snapshot と authority を常に重ねて判断する。
  */
 public class CredentialService {
     private static final Logger LOGGER = Logger.getLogger("McR_CredentialService");
@@ -31,6 +32,7 @@ public class CredentialService {
 
     public enum ResolveStatus {
         ACTIVE,
+        EXPIRED,
         REVOKED,
         NOT_FOUND
     }
@@ -152,23 +154,50 @@ public class CredentialService {
             throw new CredentialLimitReachedException(activeLimit, active);
         }
 
-        String normalizedDevice = normalizeDevice(device);
+        return issueRecord(playerUuid, normalizeDevice(device),
+                CredentialStore.TYPE_LONG_LIVED, "mcrl_", null);
+    }
+
+    public synchronized IssueResult issueSession(UUID playerUuid, String device,
+                                                  long ttlSeconds)
+            throws CredentialStoreUnavailableException {
+        requireUsable(CredentialStoreUnavailableException.Operation.ISSUE);
+        if (health == Health.DEGRADED) {
+            throw unavailable(CredentialStoreUnavailableException.Operation.ISSUE,
+                    "Snapshot projection is degraded; reconcile before issuing credentials", null);
+        }
+        if (ttlSeconds <= 0) {
+            throw new IllegalArgumentException("session token TTL must be positive");
+        }
+        Instant now = Instant.now();
+        return issueRecord(playerUuid, normalizeDevice(device), CredentialStore.TYPE_SESSION,
+                "mcrs_", now.plusSeconds(ttlSeconds), now);
+    }
+
+    private IssueResult issueRecord(UUID playerUuid, String device, String type,
+                                    String prefix, Instant expiresAt) throws CredentialStoreUnavailableException {
+        return issueRecord(playerUuid, device, type, prefix, expiresAt, Instant.now());
+    }
+
+    private IssueResult issueRecord(UUID playerUuid, String device, String type,
+                                    String prefix, Instant expiresAt, Instant now)
+            throws CredentialStoreUnavailableException {
+
         String raw;
         String tokenHash;
         do {
             byte[] body = new byte[TOKEN_BYTES];
             RANDOM.nextBytes(body);
-            raw = "mcrl_" + Base64.getUrlEncoder().withoutPadding().encodeToString(body);
+            raw = prefix + Base64.getUrlEncoder().withoutPadding().encodeToString(body);
             tokenHash = TokenStore.hash(raw);
         } while (recordsByHash.containsKey(tokenHash) || tombstonesByHash.containsKey(tokenHash));
         UUID credentialId;
         do {
             credentialId = UUID.randomUUID();
         } while (recordsById.containsKey(credentialId) || tombstonesById.containsKey(credentialId));
-        Instant now = Instant.now();
         CredentialStore.CredentialRecord record = new CredentialStore.CredentialRecord(
-                credentialId, tokenHash, playerUuid, "long_lived",
-                normalizedDevice, now, now, null, null);
+                credentialId, tokenHash, playerUuid, type,
+                device, now, now, expiresAt, null);
         List<CredentialStore.CredentialRecord> next = new ArrayList<>(recordsById.values());
         next.add(record);
         try {
@@ -194,6 +223,11 @@ public class CredentialService {
         if (record == null) {
             return new ResolveResult(ResolveStatus.NOT_FOUND, null);
         }
+        Instant now = Instant.now();
+        if (CredentialStore.TYPE_SESSION.equals(record.type())
+                && !now.isBefore(record.expiresAt())) {
+            return new ResolveResult(ResolveStatus.EXPIRED, null);
+        }
         if (record.revokedAt() != null) {
             // load validation normally prevents this. Keep runtime fail closed if memory is ever inconsistent.
             markUnhealthy("Snapshot says revoked but authority has no matching tombstone", null);
@@ -201,7 +235,7 @@ public class CredentialService {
                     healthDetail, null);
         }
 
-        CredentialStore.CredentialRecord touched = record.withLastUsedAt(Instant.now());
+        CredentialStore.CredentialRecord touched = record.withLastUsedAt(now);
         List<CredentialStore.CredentialRecord> next = replace(record.credentialId(), touched);
         try {
             store.persist(domainId, next);
@@ -219,6 +253,7 @@ public class CredentialService {
         requireUsable(CredentialStoreUnavailableException.Operation.LIST);
         return recordsById.values().stream()
                 .filter(record -> playerUuid.equals(record.playerUuid()))
+                .filter(record -> CredentialStore.TYPE_LONG_LIVED.equals(record.type()))
                 .filter(this::isActive)
                 .sorted(Comparator.comparing(CredentialStore.CredentialRecord::issuedAt)
                         .thenComparing(CredentialStore.CredentialRecord::credentialId))
@@ -246,7 +281,9 @@ public class CredentialService {
             }
             return new RevokeResult(credentialId, health != Health.DEGRADED);
         }
-        if (record == null || !playerUuid.equals(record.playerUuid()) || !isActive(record)) {
+        if (record == null
+                || !CredentialStore.TYPE_LONG_LIVED.equals(record.type())
+                || !playerUuid.equals(record.playerUuid()) || !isActive(record)) {
             throw new CredentialNotFoundException(credentialId);
         }
 
@@ -339,6 +376,10 @@ public class CredentialService {
         for (CredentialStore.CredentialRecord record : snapshot.records()) {
             RevocationAuthority.Tombstone byId = tombstonesById.get(record.credentialId());
             RevocationAuthority.Tombstone byHash = tombstonesByHash.get(record.tokenHash());
+            if (CredentialStore.TYPE_SESSION.equals(record.type())
+                    && (byId != null || byHash != null)) {
+                throw new IOException("Session credential must not have a revocation tombstone");
+            }
             if (byId != null && (!record.tokenHash().equals(byId.tokenHash())
                     || !record.playerUuid().equals(byId.playerUuid()))) {
                 throw new IOException("Snapshot record contradicts authority tombstone");
@@ -412,7 +453,8 @@ public class CredentialService {
     private int activeCount(UUID playerUuid) {
         int count = 0;
         for (CredentialStore.CredentialRecord record : recordsById.values()) {
-            if (playerUuid.equals(record.playerUuid()) && isActive(record)) {
+            if (CredentialStore.TYPE_LONG_LIVED.equals(record.type())
+                    && playerUuid.equals(record.playerUuid()) && isActive(record)) {
                 count++;
             }
         }

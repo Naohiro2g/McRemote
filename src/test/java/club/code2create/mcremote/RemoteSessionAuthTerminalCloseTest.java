@@ -10,6 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import sun.misc.Unsafe;
 
 import java.io.BufferedReader;
@@ -24,6 +25,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +43,9 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 class RemoteSessionAuthTerminalCloseTest {
     private static final Unsafe UNSAFE = loadUnsafe();
+    private static final AtomicInteger FIXTURE_IDS = new AtomicInteger();
+    @TempDir
+    static Path temp;
     private static Object previousBukkitServer;
 
     @BeforeAll
@@ -172,13 +177,18 @@ class RemoteSessionAuthTerminalCloseTest {
     private static McRemote pluginFixture(boolean allowPermissions, int maxSessions)
             throws Exception {
         McRemote plugin = (McRemote) UNSAFE.allocateInstance(McRemote.class);
-        TokenStore tokenStore = new TokenStore(null);
+        Path credentialRoot = temp.resolve("credentials-" + FIXTURE_IDS.incrementAndGet());
+        CredentialService credentialService = new CredentialService(
+                credentialRoot.resolve("snapshot.json"),
+                credentialRoot.resolve("authority"), 16);
+        credentialService.bootstrap();
+        TokenStore tokenStore = new TokenStore(credentialService);
         PairingManager pairingManager = new CountingPairingManager(tokenStore);
 
         putObject(plugin, McRemote.class, "sessions", new CopyOnWriteArrayList<RemoteSession>());
         putObject(plugin, McRemote.class, "tokenStore", tokenStore);
         putObject(plugin, McRemote.class, "pairingManager", pairingManager);
-        putObject(plugin, McRemote.class, "credentialService", null);
+        putObject(plugin, McRemote.class, "credentialService", credentialService);
         putObject(plugin, McRemote.class, "catalogService", catalogFixture());
         putObject(plugin, McRemote.class, "permissionManager", permissions(allowPermissions));
         putBoolean(plugin, McRemote.class, "authEnforcement", true);
