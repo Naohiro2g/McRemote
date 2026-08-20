@@ -1,8 +1,9 @@
 package club.code2create.mcremote;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
+import org.bukkit.Location;
 import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
@@ -12,7 +13,10 @@ import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NullMarked;
 
@@ -25,12 +29,7 @@ import java.util.logging.Logger;
 
 public class McRemote extends JavaPlugin implements Listener {
     private static final Logger logger = Logger.getLogger("McRemote");
-    private static final Set<Material> blockBreakDetectionTools = EnumSet.of(
-            Material.DIAMOND_SWORD,
-            Material.GOLDEN_SWORD,
-            Material.IRON_SWORD,
-            Material.STONE_SWORD,
-            Material.WOODEN_SWORD);
+    private final RightClickDeduplicator rightClickDeduplicator = new RightClickDeduplicator();
 
     private ServerListenerThread serverThread;
     // 追加はリスナースレッド、反復（TickHandler / イベント handler）は主スレッドで並行。
@@ -49,6 +48,8 @@ public class McRemote extends JavaPlugin implements Listener {
     private int maxSessionsPerUuid;
     // b3 resource catalog は registry が確立した plugin enable 時に一度だけ生成し、全 session で共有する。
     private CatalogService catalogService;
+    private B5RuntimePolicy b5RuntimePolicy;
+    private WorkAdmission workAdmission;
 
     @Override
     public void onEnable(){
@@ -79,6 +80,10 @@ public class McRemote extends JavaPlugin implements Listener {
         this.tokenStore = new TokenStore(credentialService);
         this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl);
         this.catalogService = new CatalogService();
+        this.b5RuntimePolicy = B5RuntimePolicy.from(config);
+        this.workAdmission = new WorkAdmission(b5RuntimePolicy);
+        logger.info("b5 connection command queue capacity: "
+                + b5RuntimePolicy.connectionQueueCapacity());
         logger.info("Resource catalog ready: blocks=" + catalogService.getBlockCount()
                 + " entities=" + catalogService.getEntityCount()
                 + " particles=" + catalogService.getParticleCount()
@@ -230,6 +235,14 @@ public class McRemote extends JavaPlugin implements Listener {
         return this.catalogService;
     }
 
+    B5RuntimePolicy getB5RuntimePolicy() {
+        return b5RuntimePolicy;
+    }
+
+    WorkAdmission getWorkAdmission() {
+        return workAdmission;
+    }
+
     /** enforcement トグル（§10.11.1 item5）。ON で hello が token 必須になる（次ステップで参照）。 */
     public boolean isAuthEnforcement() {
         return this.authEnforcement;
@@ -273,6 +286,7 @@ public class McRemote extends JavaPlugin implements Listener {
     private class TickHandler implements Runnable {
         @Override
         public void run() {
+            workAdmission.beginTick();
             // CopyOnWriteArrayList の反復は snapshot。要素除去はリスト側 remove(Object) で行う
             // （snapshot iterator は remove() 非対応）。RemoteSession は equals 未override＝同一性判定。
             for (RemoteSession s : sessions) {
@@ -288,28 +302,116 @@ public class McRemote extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled=true)
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        ItemStack currentTool = event.getItem();
-        if (currentTool == null || !blockBreakDetectionTools.contains(currentTool.getType())) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) {
             return;
         }
-        for (RemoteSession session: sessions) {
-            session.queuePlayerInteractEvent(event);
+        Block clicked = event.getClickedBlock();
+        EquipmentSlot hand = event.getHand();
+        if (!rightClickDeduplicator.accept(
+                event.getPlayer().getUniqueId(),
+                clicked.getWorld().getName(),
+                clicked.getX(), clicked.getY(), clicked.getZ(),
+                Bukkit.getCurrentTick(), hand)) {
+            return;
+        }
+        for (RemoteSession session : sessionsFor(event.getPlayer())) {
+            Location origin = capturedOrigin(session);
+            session.queueCapturedEvent(B5EventDto.blockRightClick(
+                    clicked.getWorld().getName(),
+                    blockPosition(origin),
+                    List.of(
+                            clicked.getX() - origin.getBlockX(),
+                            clicked.getY() - origin.getBlockY(),
+                            clicked.getZ() - origin.getBlockZ()),
+                    event.getBlockFace().name().toLowerCase(Locale.ROOT),
+                    BlockCodec.encode(clicked.getBlockData()),
+                    hand == EquipmentSlot.OFF_HAND ? "off" : "main"));
         }
     }
 
     @EventHandler
     public void onChatPosted(AsyncChatEvent event) {
-        for (RemoteSession session: sessions) {
-            session.queueChatPostedEvent(event);
+        String message = PlainTextComponentSerializer.plainText().serialize(event.originalMessage());
+        for (RemoteSession session : sessionsFor(event.getPlayer())) {
+            Location origin = capturedOrigin(session);
+            session.queueCapturedEvent(B5EventDto.chatPosted(
+                    event.getPlayer().getWorld().getName(), blockPosition(origin), message));
         }
     }
 
     @EventHandler
     public void onProjectileHit(ProjectileHitEvent event) {
-        for (RemoteSession session: sessions) {
-            session.queueProjectileHitEvent(event);
+        Projectile projectile = event.getEntity();
+        if (!(projectile.getShooter() instanceof Player shooter)) {
+            return;
         }
+        for (RemoteSession session : sessionsFor(shooter)) {
+            captureProjectileHit(session, event);
+        }
+    }
+
+    private void captureProjectileHit(RemoteSession session, ProjectileHitEvent event) {
+        Projectile projectile = event.getEntity();
+        Location origin = capturedOrigin(session);
+        Location hit = projectile.getLocation();
+        Map<String, Object> target = new LinkedHashMap<>();
+        if (event.getHitBlock() != null) {
+            Block block = event.getHitBlock();
+            target.put("kind", "block");
+            target.put("block", BlockCodec.encode(block.getBlockData()));
+            target.put("pos", List.of(
+                    block.getX() - origin.getBlockX(),
+                    block.getY() - origin.getBlockY(),
+                    block.getZ() - origin.getBlockZ()));
+            if (event.getHitBlockFace() != null) {
+                target.put("face", event.getHitBlockFace().name().toLowerCase(Locale.ROOT));
+            }
+        } else if (event.getHitEntity() instanceof Player) {
+            target.put("kind", "player");
+        } else if (event.getHitEntity() != null) {
+            target.put("kind", "entity");
+            try {
+                target.put("handle", session.issueEntityHandle(event.getHitEntity()));
+            } catch (EntityHandleRegistry.CapacityException e) {
+                session.recordEventCapacityDrop();
+                return;
+            }
+        } else {
+            return;
+        }
+
+        session.queueCapturedEvent(B5EventDto.projectileHit(
+                hit.getWorld().getName(),
+                blockPosition(origin),
+                List.of(
+                        WireNumbers.position(hit.getX() - origin.getX()),
+                        WireNumbers.position(hit.getY() - origin.getY()),
+                        WireNumbers.position(hit.getZ() - origin.getZ())),
+                projectile.getType().getKey().toString(),
+                target));
+    }
+
+    private List<RemoteSession> sessionsFor(Player player) {
+        UUID uuid = player.getUniqueId();
+        List<RemoteSession> matching = new ArrayList<>();
+        for (RemoteSession session : sessions) {
+            if (!session.pendingRemoval && session.isHelloComplete() && uuid.equals(session.getBoundUuid())) {
+                matching.add(session);
+            }
+        }
+        return matching;
+    }
+
+    private static Location capturedOrigin(RemoteSession session) {
+        Location origin = session.getOrigin();
+        if (origin == null || origin.getWorld() == null) {
+            throw new IllegalStateException("authenticated session has no build origin");
+        }
+        return origin.clone();
+    }
+
+    private static List<Integer> blockPosition(Location location) {
+        return List.of(location.getBlockX(), location.getBlockY(), location.getBlockZ());
     }
 
     @EventHandler

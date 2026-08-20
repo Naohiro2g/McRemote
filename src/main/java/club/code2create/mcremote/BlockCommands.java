@@ -10,10 +10,9 @@ public class BlockCommands {
     }
 
     public void register(CommandRegistry registry) {
-        registry.register("world.getBlock", queryCommands::handleGetBlock);
-        registry.register("world.getBlocks", queryCommands::handleGetBlocks);
-        registry.register("world.getBlockWithData", queryCommands::handleGetBlockWithData);
-        registry.register("world.setBlock", editCommands::handleSetBlock);
-        registry.register("world.setBlocks", editCommands::handleSetBlocks);
+        registry.registerStructured("world.getBlock", queryCommands::handleGetBlock);
+        registry.registerStructured("world.getBlocks", queryCommands::handleGetBlocks);
+        registry.registerStructured("world.setBlock", editCommands::handleSetBlock);
+        registry.registerStructured("world.setBlocks", editCommands::handleSetBlocks);
     }
 }

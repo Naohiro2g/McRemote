@@ -1,112 +1,99 @@
 package club.code2create.mcremote;
 
-import java.util.LinkedHashMap;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.logging.Logger;
-
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 
-/**
- * ブロック設置（wire-format-design §7.1/§7.3）。
- * 4番目（setBlock）/7番目（setBlocks）の引数は block_state_ref 文字列で、
- * BlockRef が tolerate パース（無印→minecraft:・部分 state）する。旧 facing int 引数は廃止
- * （向きは state、例 [facing=north] が運ぶ）。
- *
- * 既定は send-only（notification）だが、id 付き要求には同期応答する（§7.3, DECISIONS 2026-06-27-04）。
- * respondResult/respondError は notification では no-op なので、高速建築の fire-and-forget は保たれる。
- */
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.logging.Logger;
+
+/** protocol 22 structured BlockSpec handlers for world.setBlock/setBlocks. */
 public class BlockEditCommands {
     private static final Logger logger = Logger.getLogger("McR_BlockEdit");
+    private static final int WORLD_LIMIT = 1_000_000;
+    private static final int SKY_LIMIT = 1_000;
 
     private final RemoteSession session;
     private final MiscCommands miscCommands;
+    private final BlockCodec blockCodec;
 
     public BlockEditCommands(RemoteSession session, MiscCommands miscCommands) {
         this.session = session;
         this.miscCommands = miscCommands;
+        this.blockCodec = new BlockCodec(session.getPlugin().getCatalogService());
     }
 
-    public void handleSetBlock(String[] args) {
-        if (args.length != 4) {
-            session.respondError(-32602, "invalid_params", refData(Arrays.toString(args)));
-            logger.warning("Invalid arguments for world.setBlock.");
-            return;
-        }
-        if (isInvalidCoordinate(args[0], args[1], args[2])) {
-            session.respondError(-32602, "invalid_params", refData(args[0] + "," + args[1] + "," + args[2]));
-            logger.warning("Coordinates out of range for world.setBlock.");
-            return;
-        }
-
-        BlockData data;
+    public void handleSetBlock(JsonElement params) {
         try {
-            data = BlockRef.parse(args[3]);
-        } catch (BlockRef.BlockRefException e) {
-            session.respondError(e.code, e.reason, blockRefErrorData(args[3], e));
-            logger.warning("Bad block_state_ref for world.setBlock: " + args[3] + " (" + e.reason + ")");
-            return;
-        }
-
-        try {
+            JsonArray args = WireParams.positional(params, 4);
+            int x = coordinate(args, 0);
+            int y = coordinate(args, 1);
+            int z = coordinate(args, 2);
+            BlockData data = blockCodec.decode(args.get(3), "params[3]");
             World world = session.getOrigin().getWorld();
-            Location loc = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
-            // 未ロード/未生成 chunk は getBlockAt/setBlockData が同期でロード・生成する（旧リリース挙動）。
-            // isChunkLoaded での拒否はしない＝生成済み/未生成・プレイヤー在席に依らず設置できる。
+            Location loc = miscCommands.parseRelativeBlockLocation(x, y, z);
             if (!checkRange(loc)) {
-                session.respondError(-32000, "build_denied", refData(args[3]));
+                session.respondError(-32000, "build_denied", null);
+                return;
+            }
+            if (!session.admitSetterWork(1)) {
                 return;
             }
             Block block = world.getBlockAt(loc);
             block.setBlockData(data, false);
-            // id 付き要求には設置後の canonical を返す（§7.1）。notification は no-op。
-            session.respondResult(BlockRef.canonical(block.getBlockData()));
-        } catch (NumberFormatException e) {
-            session.respondError(-32602, "invalid_params", refData(args[0] + "," + args[1] + "," + args[2]));
-            logger.warning("Invalid coordinates for world.setBlock.");
+            session.respondResult(null);
+        } catch (BlockCodec.ValidationException e) {
+            session.respondError(-32602, e.reason, e.data);
+            logger.warning("Invalid BlockSpec for world.setBlock: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", pathData("params"));
+            logger.warning("Invalid parameters for world.setBlock: " + e.getMessage());
         }
     }
 
-    public void handleSetBlocks(String[] args) {
-        if (args.length != 7) {
-            session.respondError(-32602, "invalid_params", refData(Arrays.toString(args)));
-            logger.warning("Invalid arguments for world.setBlocks.");
-            return;
-        }
-        if (isInvalidCoordinate(args[0], args[1], args[2]) || isInvalidCoordinate(args[3], args[4], args[5])) {
-            session.respondError(-32602, "invalid_params", refData(Arrays.toString(args)));
-            logger.warning("Coordinates out of range for world.setBlocks.");
-            return;
-        }
-
-        BlockData data;
+    public void handleSetBlocks(JsonElement params) {
         try {
-            data = BlockRef.parse(args[6]);
-        } catch (BlockRef.BlockRefException e) {
-            session.respondError(e.code, e.reason, blockRefErrorData(args[6], e));
-            logger.warning("Bad block_state_ref for world.setBlocks: " + args[6] + " (" + e.reason + ")");
-            return;
-        }
-
-        try {
+            JsonArray args = WireParams.positional(params, 7);
+            int x1 = coordinate(args, 0);
+            int y1 = coordinate(args, 1);
+            int z1 = coordinate(args, 2);
+            int x2 = coordinate(args, 3);
+            int y2 = coordinate(args, 4);
+            int z2 = coordinate(args, 5);
+            BlockData data = blockCodec.decode(args.get(6), "params[6]");
             World world = session.getOrigin().getWorld();
-            Location loc1 = miscCommands.parseRelativeBlockLocation(args[0], args[1], args[2]);
-            Location loc2 = miscCommands.parseRelativeBlockLocation(args[3], args[4], args[5]);
+            Location loc1 = miscCommands.parseRelativeBlockLocation(x1, y1, z1);
+            Location loc2 = miscCommands.parseRelativeBlockLocation(x2, y2, z2);
             if (!checkRange(loc1) || !checkRange(loc2)) {
-                session.respondError(-32000, "build_denied", refData(args[6]));
+                session.respondError(-32000, "build_denied", null);
+                return;
+            }
+            long volume = BlockEditVolume.between(x1, y1, z1, x2, y2, z2);
+            if (!session.admitSetterWork(volume)) {
                 return;
             }
             setCuboid(world, loc1, loc2, data);
-            // 一様充填なので canonical を1つ返す（id 付き要求のみ）。
-            session.respondResult(BlockRef.canonical(data));
-        } catch (NumberFormatException e) {
-            session.respondError(-32602, "invalid_params", refData(Arrays.toString(args)));
-            logger.warning("Invalid coordinates for world.setBlocks.");
+            session.respondResult(null);
+        } catch (BlockCodec.ValidationException e) {
+            session.respondError(-32602, e.reason, e.data);
+            logger.warning("Invalid BlockSpec for world.setBlocks: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", pathData("params"));
+            logger.warning("Invalid parameters for world.setBlocks: " + e.getMessage());
         }
+    }
+
+    private int coordinate(JsonArray args, int index) {
+        int coordinate = WireParams.integer(args, index);
+        int limit = index % 3 == 1 ? SKY_LIMIT : WORLD_LIMIT;
+        if (coordinate < -limit || coordinate > limit) {
+            throw new IllegalArgumentException("coordinate outside supported range");
+        }
+        return coordinate;
     }
 
     private boolean checkRange(Location targetLoc) {
@@ -120,10 +107,6 @@ public class BlockEditCommands {
         return dx <= allowedRange && dz <= allowedRange;
     }
 
-    /**
-     * 建築許容範囲を返す。プレイヤーが紐付いていれば PermissionManager から、
-     * いなければ（build.setOrigin 経路など）config の default_build_range を使う。
-     */
     private int resolveBuildRange() {
         PlayerCommands playerCommands = session.getPlayerCommands();
         org.bukkit.OfflinePlayer player = playerCommands != null ? playerCommands.getAttachedPlayer() : null;
@@ -150,36 +133,9 @@ public class BlockEditCommands {
         }
     }
 
-    private boolean isInvalidCoordinate(String xStr, String yStr, String zStr) {
-        final int worldLimit = 1000000;
-        final int skyLimit = 1000;
-        try {
-            int x = Integer.parseInt(xStr);
-            int y = Integer.parseInt(yStr);
-            int z = Integer.parseInt(zStr);
-            return x < -worldLimit || x > worldLimit
-                    || y < -skyLimit || y > skyLimit
-                    || z < -worldLimit || z > worldLimit;
-        } catch (NumberFormatException e) {
-            return true;
-        }
-    }
-
-    /** §7.3 data.ref（問題の入力エコー）を1要素 map で返す。 */
-    private Map<String, Object> refData(String ref) {
+    private static Map<String, Object> pathData(String path) {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("ref", BlockRef.echo(ref));
-        return data;
-    }
-
-    private Map<String, Object> blockRefErrorData(String ref, BlockRef.BlockRefException error) {
-        Map<String, Object> data = refData(ref);
-        if ("invalid_property_value".equals(error.reason)
-                && error.blockKey != null && error.property != null) {
-            List<Object> allowed = session.getPlugin().getCatalogService()
-                    .getAllowedBlockStateValues(error.blockKey, error.property);
-            data.put("allowed", allowed);
-        }
+        data.put("path", path);
         return data;
     }
 }

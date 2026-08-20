@@ -7,16 +7,21 @@ public class RemoteCommandRegistrar {
             MiscCommands miscCommands,
             EntityCommands entityCommands,
             BuildStateCommands buildStateCommands,
-            CatalogCommands catalogCommands
+            CatalogCommands catalogCommands,
+            EventCommands eventCommands,
+            WorldB5Commands worldB5Commands
     ) {
         CommandRegistry registry = new CommandRegistry();
         PlayerCommands playerCommands = session.getPlayerCommands();
+        ConnectionCommands connectionCommands = new ConnectionCommands(session);
 
         blockCommands.register(registry);
-        registry.register("world.spawnParticle", miscCommands::handleSpawnParticle);
-        registry.register("world.getHeight", args -> miscCommands.handleGetHeight(session.getOrigin().getWorld(), args));
+        registry.registerStructured("connection.flush", connectionCommands::handleFlush, false);
+        registry.registerStructured("world.spawnParticle", worldB5Commands::handleSpawnParticle);
+        registry.registerStructured("world.getHeight", worldB5Commands::handleGetHeight);
         registry.register("chat.post", miscCommands::handleChatPost, false); // origin 不要・既定 send-only
-        registry.register("world.spawnEntity", miscCommands::handleSpawnEntity);
+        registry.registerStructured("world.spawnEntity", worldB5Commands::handleSpawnEntity);
+        registry.registerStructured("events.poll", eventCommands::handlePoll, false);
         registry.register("world.getNearbyEntities",
                 args -> entityCommands.handleGetNearbyEntities(session.getOrigin().getWorld(), args));
         registry.register("entity.getPos", args -> entityCommands.handleEntityCommands("entity.getPos", args));
@@ -28,10 +33,10 @@ public class RemoteCommandRegistrar {
         registry.register("entity.getYaw", args -> entityCommands.handleEntityCommands("entity.getYaw", args));
         registry.register("entity.setYaw", args -> entityCommands.handleEntityCommands("entity.setYaw", args));
         registry.register("entity.remove", args -> entityCommands.handleEntityCommands("entity.remove", args));
-        registry.register("player.getPos", playerCommands::handleGetPos);
-        registry.register("player.setPos", playerCommands::handleSetPos);
-        registry.register("player.getPose", playerCommands::handleGetPose);
-        registry.register("player.setPose", playerCommands::handleSetPose);
+        registry.registerStructured("player.getPos", playerCommands::handleGetPosStructured);
+        registry.registerStructured("player.setPos", playerCommands::handleSetPosStructured);
+        registry.registerStructured("player.getPose", playerCommands::handleGetPoseStructured);
+        registry.registerStructured("player.setPose", playerCommands::handleSetPoseStructured);
         registry.register("catalog.get", catalogCommands::handleGet, false);
 
         // Build state (identity から分離) — origin/world をプレイヤー非依存で設定。

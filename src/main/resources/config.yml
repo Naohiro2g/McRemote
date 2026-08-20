@@ -25,3 +25,16 @@ auth:
   credential_store_path: "credential-store/snapshot.json"
   revocation_authority_path: "credential-revocations"
   max_long_lived_credentials_per_uuid: 16  # distinct from concurrent session limit
+
+# b5 runtime policy. These are implementation limits, not protocol constants.
+b5:
+  event_ring_capacity: 256
+  event_ring_bytes: 262144
+  event_poll_limit: 64
+  entity_handle_capacity: 256
+  max_particle_count: 1000
+  max_work_per_request: 4096
+  session_work_per_tick: 4096
+  player_work_per_tick: 8192
+  global_work_per_tick: 32768
+  connection_queue_capacity: 1024

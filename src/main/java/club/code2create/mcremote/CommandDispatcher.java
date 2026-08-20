@@ -36,7 +36,9 @@ public class CommandDispatcher {
                 return;
             }
 
-            registration.getCommand().execute(args);
+            registration.execute(parsedCommand);
+        } catch (CommandDeferredException e) {
+            throw e;
         } catch (Exception e) {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));

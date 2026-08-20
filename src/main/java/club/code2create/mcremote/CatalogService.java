@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -95,6 +96,31 @@ public final class CatalogService {
             return List.of();
         }
         return List.copyOf((List<Object>) allowed);
+    }
+
+    /** protocol 22 BlockSpec validation用。未知blockはnull、既知blockはproperty→許容値を返す。 */
+    @SuppressWarnings("unchecked")
+    Map<String, List<Object>> getBlockStateValues(String blockKey) {
+        Object blockObject = body.get("block");
+        if (!(blockObject instanceof Map<?, ?> blocks)) {
+            return null;
+        }
+        Object entryObject = blocks.get(blockKey);
+        if (!(entryObject instanceof Map<?, ?> entry)) {
+            return null;
+        }
+        Object statesObject = entry.get("states");
+        if (!(statesObject instanceof Map<?, ?> states)) {
+            return null;
+        }
+        Map<String, List<Object>> result = new TreeMap<>();
+        for (Map.Entry<?, ?> state : states.entrySet()) {
+            if (!(state.getValue() instanceof List<?> values)) {
+                throw new IllegalStateException("invalid generated state catalog for " + blockKey);
+            }
+            result.put(state.getKey().toString(), List.copyOf((List<Object>) values));
+        }
+        return Collections.unmodifiableMap(result);
     }
 
     private int sizeOf(String key) {

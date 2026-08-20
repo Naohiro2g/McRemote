@@ -1,5 +1,7 @@
 package club.code2create.mcremote;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
@@ -69,6 +71,15 @@ public class PlayerCommands {
         session.respondResult(positionResult(player.getLocation()));
     }
 
+    public void handleGetPosStructured(JsonElement params) {
+        try {
+            WireParams.positional(params, 0);
+            handleGetPos(new String[0]);
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
+        }
+    }
+
     /** player.setPos(world, x, y, z): stream origin 相対座標へ paired player を移動する。 */
     public void handleSetPos(String[] args) {
         if (args.length != 4) {
@@ -101,6 +112,44 @@ public class PlayerCommands {
         }
     }
 
+    public void handleSetPosStructured(JsonElement params) {
+        final JsonArray args;
+        try {
+            args = WireParams.positional(params, 4);
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
+            return;
+        }
+        Player player = requireOnlineAuthorizedPlayer();
+        if (player == null) {
+            return;
+        }
+        try {
+            String worldName = WireParams.string(args, 0);
+            World world = resolveWorld(worldName);
+            if (world == null) {
+                session.respondError(-32000, "unknown_world", data("world", worldName));
+                return;
+            }
+            Location origin = session.getOrigin();
+            double x = origin.getX() + WireParams.finiteDouble(args, 1);
+            double y = origin.getY() + WireParams.finiteDouble(args, 2);
+            double z = origin.getZ() + WireParams.finiteDouble(args, 3);
+            if (!areFinite(x, y, z)) {
+                throw new IllegalArgumentException("absolute coordinates must be finite");
+            }
+            Location current = player.getLocation();
+            Location target = new Location(world, x, y, z, current.getYaw(), current.getPitch());
+            if (!player.teleport(target)) {
+                session.respondError(-32000, "teleport_failed", null);
+                return;
+            }
+            session.respondResult(positionResult(player.getLocation()));
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
+        }
+    }
+
     /** player.getPose: paired player の現在 world・相対位置・yaw/pitch を返す。 */
     public void handleGetPose(String[] args) {
         if (args.length != 0) {
@@ -112,6 +161,15 @@ public class PlayerCommands {
             return;
         }
         session.respondResult(poseResult(player.getLocation()));
+    }
+
+    public void handleGetPoseStructured(JsonElement params) {
+        try {
+            WireParams.positional(params, 0);
+            handleGetPose(new String[0]);
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
+        }
     }
 
     /**
@@ -159,6 +217,49 @@ public class PlayerCommands {
         }
     }
 
+    public void handleSetPoseStructured(JsonElement params) {
+        final JsonArray args;
+        try {
+            args = WireParams.positional(params, 6);
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
+            return;
+        }
+        Player player = requireOnlineAuthorizedPlayer();
+        if (player == null) {
+            return;
+        }
+        try {
+            String worldName = WireParams.string(args, 0);
+            World world = resolveWorld(worldName);
+            if (world == null) {
+                session.respondError(-32000, "unknown_world", data("world", worldName));
+                return;
+            }
+            Location origin = session.getOrigin();
+            double x = origin.getX() + WireParams.finiteDouble(args, 1);
+            double y = origin.getY() + WireParams.finiteDouble(args, 2);
+            double z = origin.getZ() + WireParams.finiteDouble(args, 3);
+            double yaw = WireParams.finiteDouble(args, 4);
+            double pitch = WireParams.finiteDouble(args, 5);
+            WireNumbers.requirePitch(pitch);
+            if (!areFinite(x, y, z)) {
+                throw new IllegalArgumentException("absolute coordinates must be finite");
+            }
+            // Paper stores angles as float. Periodic normalization prevents finite double input
+            // from overflowing that native type; wire display rounding is not applied here.
+            float nativeYaw = (float) WireNumbers.normalizeYaw(yaw);
+            Location target = new Location(world, x, y, z, nativeYaw, (float) pitch);
+            if (!player.teleport(target)) {
+                session.respondError(-32000, "teleport_failed", null);
+                return;
+            }
+            session.respondResult(poseResult(player.getLocation()));
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
+        }
+    }
+
     static PoseInput parsePoseInput(String[] args) {
         if (args.length != 6) {
             throw new IllegalArgumentException("player.setPose requires 6 parameters");
@@ -176,13 +277,7 @@ public class PlayerCommands {
     }
 
     static float normalizeYaw(double yaw) {
-        double normalized = yaw % 360.0;
-        if (normalized >= 180.0) {
-            normalized -= 360.0;
-        } else if (normalized < -180.0) {
-            normalized += 360.0;
-        }
-        return (float) normalized;
+        return (float) WireNumbers.normalizeYaw(yaw);
     }
 
     static boolean areFinite(double... values) {
@@ -223,14 +318,17 @@ public class PlayerCommands {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("world", loc.getWorld().getName());
-        result.put("pos", List.of(x, y, z));
+        result.put("pos", List.of(
+                WireNumbers.position(x),
+                WireNumbers.position(y),
+                WireNumbers.position(z)));
         return result;
     }
 
     private Map<String, Object> poseResult(Location loc) {
         Map<String, Object> result = positionResult(loc);
-        result.put("yaw", normalizeYaw(loc.getYaw()));
-        result.put("pitch", loc.getPitch());
+        result.put("yaw", WireNumbers.yaw(loc.getYaw()));
+        result.put("pitch", WireNumbers.pitch(loc.getPitch()));
         return result;
     }
 

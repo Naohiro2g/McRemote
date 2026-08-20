@@ -5,23 +5,23 @@ minecraft-remote-api モジュールに依存しない素の疎通テスト。JS
 （wire-format-design §3）で build-state 経路（プレイヤー/認証 不要）を流す:
 
     hello -> build.setWorld(dimension) -> build.setOrigin(ox,oy,oz)
-        -> world.setBlock(x,y,z,material) -> world.getBlock(x,y,z)
+        -> world.setBlock(x,y,z,{block_id,state}) -> world.getBlock(x,y,z)
 
-最後に getBlock の戻りが material と一致するかを判定する。
+set成功のresult:nullと、明示getBlockの構造化BlockValueを判定する。
 
 ワイヤ枠（wire-format-design §2/§3）:
   - 直 TCP は 1行=1 JSON（compact, \n 終端）。
   - 要求 {"jsonrpc":"2.0","id":N,"method":...,"params":...}、応答 {... ,"id":N,"result"|"error":...}。
-  - id を省くと notification ＝ 応答が返らない（world.setBlock は既定 send-only）。
-  - hello は最初の1メッセージ（object params {"protocol":"21.0.0"}）。応答は flat result
+  - id を省くと notification ＝ 応答が返らない（FAST modeのworld.setBlock/setBlocks）。
+  - hello は最初の1メッセージ（object params {"protocol":"22.0.0"}）。応答は flat result
     {protocol, mc_version, supported_mc_versions, world_constants:{y_sea}, catalogHash, ...}（§6.2）。非互換は error。
 
 使い方（サーバを runServer 等で起動し、新プラグインを反映してから）:
   python3 scripts/smoke_test.py
   python3 scripts/smoke_test.py --host 127.0.0.1 --port 25575 \
-      --protocol 21.0.0 \
+      --protocol 22.0.0 \
       --dimension overworld --ox 200 --oy 0 --oz 200 \
-      --x 0 --y 0 --z 0 --material GOLD_BLOCK
+      --x 0 --y 0 --z 0 --material gold_block
 """
 import argparse
 import json
@@ -29,7 +29,7 @@ import socket
 import sys
 
 # クライアントが要求する protocol semver（wire-format-design §6.1・clean な protocol 版）
-PROTOCOL = "21.0.0"
+PROTOCOL = "22.0.0"
 
 
 def main() -> int:
@@ -44,7 +44,7 @@ def main() -> int:
     ap.add_argument("--x", type=int, default=0, help="block x relative to origin")
     ap.add_argument("--y", type=int, default=0, help="block y relative to origin")
     ap.add_argument("--z", type=int, default=0, help="block z relative to origin")
-    ap.add_argument("--material", default="GOLD_BLOCK")
+    ap.add_argument("--material", default="gold_block")
     ap.add_argument("--timeout", type=float, default=5.0)
     args = ap.parse_args()
 
@@ -130,56 +130,92 @@ def main() -> int:
 
             failures = []
 
-            # (1) setBlock を id 付き要求で送る → 設置後の canonical を同期応答（§7.3）。
-            placed = request("world.setBlock", [args.x, args.y, args.z, args.material])
+            # (1) protocol 22 BlockSpecを送る → setter成功はexact null。
+            placed = request("world.setBlock", [
+                args.x, args.y, args.z,
+                {"block_id": args.material, "state": {}},
+            ])
             print(f"[setBlock]        <- {placed!r}")
-            if not (isinstance(placed, str) and placed.startswith("minecraft:")):
-                failures.append(f"setBlock response not canonical: {placed!r}")
+            if placed is not None:
+                failures.append(f"setBlock response must be null: {placed!r}")
 
-            # (2) getBlock は canonical-full block_state_ref（§7.1）。round-trip 文字列等価を要求。
+            # (2) 適用後状態は明示getBlockで正準BlockValueとして観察する。
             got = request("world.getBlock", [args.x, args.y, args.z])
             print(f"[getBlock]        <- {got!r}")
-            if got != placed:
-                failures.append(f"round-trip mismatch: setBlock={placed!r} getBlock={got!r}")
+            expected_stateless = {"block_id": "minecraft:gold_block", "state": {}}
+            if got != expected_stateless:
+                failures.append(f"getBlock mismatch: want={expected_stateless!r} got={got!r}")
 
-            # (3) state 付き＋prop ソートの確認（oak_log[axis=z] → minecraft:oak_log[axis=z]）。
-            stateful = request("world.setBlock", [args.x, args.y + 1, args.z, "oak_log[axis=z]"])
+            # (3) 短縮ID＋部分state入力。
+            stateful = request("world.setBlock", [
+                args.x, args.y + 1, args.z,
+                {"block_id": "oak_log", "state": {"axis": "z"}},
+            ])
             print(f"[setBlock state]  <- {stateful!r}")
             rt = request("world.getBlock", [args.x, args.y + 1, args.z])
-            if not (isinstance(stateful, str) and "axis=z" in stateful and rt == stateful):
+            expected_log = {"block_id": "minecraft:oak_log", "state": {"axis": "z"}}
+            if stateful is not None or rt != expected_log:
                 failures.append(f"stateful round-trip failed: set={stateful!r} get={rt!r}")
 
-            # (4) 複数property・順不同入力 → canonical-full（prop名昇順・default補完）。
+            # (4) 複数property・順不同入力 → full state（default補完）。
             stairs = request("world.setBlock", [
                 args.x, args.y + 2, args.z,
-                "oak_stairs[waterlogged=true,half=top,facing=east]",
+                {"block_id": "oak_stairs", "state": {
+                    "waterlogged": True, "half": "top", "facing": "east",
+                }},
             ])
-            expected_stairs = (
-                "minecraft:oak_stairs[facing=east,half=top,shape=straight,waterlogged=true]"
-            )
+            expected_stairs = {"block_id": "minecraft:oak_stairs", "state": {
+                "facing": "east", "half": "top", "shape": "straight", "waterlogged": True,
+            }}
             print(f"[setBlock states] <- {stairs!r}")
-            if stairs != expected_stairs:
-                failures.append(f"multi-state canonical mismatch: want={expected_stairs!r} got={stairs!r}")
+            got_stairs = request("world.getBlock", [args.x, args.y + 2, args.z])
+            if stairs is not None or got_stairs != expected_stairs:
+                failures.append(
+                    f"multi-state canonical mismatch: want={expected_stairs!r} got={got_stairs!r}"
+                )
 
             # (5) 数値stateをJSON number相当の表現で往復。
-            wheat = request("world.setBlock", [args.x, args.y + 3, args.z, "wheat[age=3]"])
+            wheat = request("world.setBlock", [
+                args.x, args.y + 3, args.z,
+                {"block_id": "wheat", "state": {"age": 3}},
+            ])
             print(f"[setBlock number] <- {wheat!r}")
-            if wheat != "minecraft:wheat[age=3]":
-                failures.append(f"numeric state mismatch: {wheat!r}")
+            got_wheat = request("world.getBlock", [args.x, args.y + 3, args.z])
+            expected_wheat = {"block_id": "minecraft:wheat", "state": {"age": 3}}
+            if wheat is not None or got_wheat != expected_wheat:
+                failures.append(f"numeric state mismatch: {got_wheat!r}")
 
-            # (6) 未知ブロックは error + data.reason=unknown_block（§7.3）。
-            err = request_error("world.setBlock", [args.x, args.y, args.z, "definitely_not_a_block"])
+            flushed = request("connection.flush", [])
+            print(f"[connection.flush] <- {flushed!r}")
+            if flushed is not None:
+                failures.append(f"connection.flush response must be null: {flushed!r}")
+
+            # (6) 未知ブロックはerror＋data.block_id。data.refは使用しない。
+            err = request_error("world.setBlock", [
+                args.x, args.y, args.z,
+                {"block_id": "definitely_not_a_block", "state": {}},
+            ])
             print(f"[setBlock bad]    <- {json.dumps(err, ensure_ascii=False)}")
             if err.get("data", {}).get("reason") != "unknown_block":
                 failures.append(f"expected unknown_block, got {err}")
+            if err.get("data", {}).get("block_id") != "minecraft:definitely_not_a_block":
+                failures.append(f"unknown_block missing canonical block_id: {err}")
+            if "ref" in err.get("data", {}):
+                failures.append(f"protocol 22 must not emit data.ref: {err}")
 
             # (7) property名と値のエラーを分離。値エラーはcatalog由来のallowedを必須化。
-            unknown_prop = request_error("world.setBlock", [args.x, args.y, args.z, "stone[axis=y]"])
+            unknown_prop = request_error("world.setBlock", [
+                args.x, args.y, args.z,
+                {"block_id": "stone", "state": {"axis": "y"}},
+            ])
             print(f"[unknown property] <- {json.dumps(unknown_prop, ensure_ascii=False)}")
             if unknown_prop.get("data", {}).get("reason") != "unknown_property":
                 failures.append(f"expected unknown_property, got {unknown_prop}")
 
-            invalid_value = request_error("world.setBlock", [args.x, args.y, args.z, "oak_log[axis=w]"])
+            invalid_value = request_error("world.setBlock", [
+                args.x, args.y, args.z,
+                {"block_id": "oak_log", "state": {"axis": "w"}},
+            ])
             print(f"[invalid value]   <- {json.dumps(invalid_value, ensure_ascii=False)}")
             invalid_data = invalid_value.get("data", {})
             if invalid_data.get("reason") != "invalid_property_value":
@@ -189,13 +225,31 @@ def main() -> int:
 
             # (8) 固定params個数と座標エラーは block ref ではなく invalid_params。
             extra_arg = request_error(
-                "world.setBlock", [args.x, args.y, args.z, "stone", "unexpected"]
+                "world.setBlock", [args.x, args.y, args.z,
+                                   {"block_id": "stone", "state": {}}, "unexpected"]
             )
             if extra_arg.get("data", {}).get("reason") != "invalid_params":
                 failures.append(f"extra arg must be invalid_params: {extra_arg}")
-            bad_coord = request_error("world.setBlock", ["not-a-number", args.y, args.z, "stone"])
+            bad_coord = request_error("world.setBlock", [
+                "not-a-number", args.y, args.z, {"block_id": "stone", "state": {}},
+            ])
             if bad_coord.get("data", {}).get("reason") != "invalid_params":
                 failures.append(f"bad coordinate must be invalid_params: {bad_coord}")
+
+            # (9) exact shape／型／旧文字列union拒否。
+            malformed_specs = [
+                "stone",
+                {"block_id": "stone"},
+                {"block_id": "stone", "state": None},
+                {"block_id": "stone", "state": {}, "ref": "stone"},
+                {"block_id": "oak_log", "state": {"axis": ["z"]}},
+            ]
+            for malformed in malformed_specs:
+                malformed_error = request_error(
+                    "world.setBlock", [args.x, args.y, args.z, malformed]
+                )
+                if malformed_error.get("data", {}).get("reason") != "invalid_params":
+                    failures.append(f"malformed BlockSpec accepted: {malformed!r} -> {malformed_error}")
 
             print()
             if not failures:

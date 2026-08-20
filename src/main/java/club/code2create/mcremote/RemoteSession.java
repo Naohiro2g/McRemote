@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 import com.google.gson.Gson;
@@ -17,10 +18,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
-import org.bukkit.event.entity.ProjectileHitEvent;
-import io.papermc.paper.event.player.AsyncChatEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.entity.Entity;
 import net.kyori.adventure.text.Component;
 
 public class RemoteSession {
@@ -45,19 +43,19 @@ public class RemoteSession {
     private BufferedWriter out;
     private Thread inThread;
     private Thread outThread;
-    private final ArrayDeque<String> inQueue = new ArrayDeque<>();
+    private final ConnectionCommandQueue inQueue;
     private final ArrayDeque<String> outQueue = new ArrayDeque<>();
     private volatile boolean running = true;
     private volatile boolean closingAfterFlush = false;
+    private final AtomicBoolean closeStarted = new AtomicBoolean(false);
     private final McRemote plugin;
+    private final UUID connectionEpoch = UUID.randomUUID();
 
     // 通知メカニズム用のロックオブジェクト
     private final Object queueLock = new Object();
 
-    // イベント用キュー
-    private final ArrayDeque<PlayerInteractEvent> interactEventQueue = new ArrayDeque<>();
-    private final ArrayDeque<AsyncChatEvent> chatPostedQueue = new ArrayDeque<>();
-    private final ArrayDeque<ProjectileHitEvent> projectileHitQueue = new ArrayDeque<>();
+    private final EventRing eventRing;
+    private final EntityHandleRegistry entityHandles;
 
     // コマンド処理担当の各クラス
     private final PlayerCommands playerCommands;
@@ -80,12 +78,22 @@ public class RemoteSession {
         this.blockCommands = new BlockCommands(this, miscCommands);
         this.buildStateCommands = new BuildStateCommands(this);
         this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
+        B5RuntimePolicy b5Policy = plugin.getB5RuntimePolicy();
+        this.inQueue = new ConnectionCommandQueue(b5Policy.connectionQueueCapacity());
+        this.eventRing = new EventRing(
+                b5Policy.eventRingCapacity(),
+                b5Policy.eventRingBytes(),
+                61_312);
+        this.entityHandles = new EntityHandleRegistry(b5Policy.entityHandleCapacity());
+        EventCommands eventCommands = new EventCommands(this, eventRing, b5Policy.eventPollLimit());
+        WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, b5Policy);
         // build state は identity から分離（setPlayer 撤去）。接続時点で既定原点を持たせる
         // （overworld / (200,0,200)）ので、クライアントは setBuildOrigin 無しでも建築できる。
         this.origin = buildStateCommands.defaultOrigin();
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
-                this, blockCommands, miscCommands, entityCommands, buildStateCommands, catalogCommands));
+                this, blockCommands, miscCommands, entityCommands, buildStateCommands, catalogCommands,
+                eventCommands, worldB5Commands));
         this.authCommands = new AuthCommands(
                 this, plugin.getPairingManager(), plugin.getCredentialService());
         init();
@@ -146,7 +154,8 @@ public class RemoteSession {
         return boundCredentialId;
     }
 
-    private void handleLine(String line) {
+    private CommandOutcome handleLine(String line) {
+        activeId = null;
         try {
             ParsedCommand parsed = commandParser.parse(line);
             // 要求 id を相関キーに据える（応答／エラー封筒で使う。null＝notification）。
@@ -155,15 +164,18 @@ public class RemoteSession {
                 // ペアリングは hello の前段の独立メソッド（§6.5）。auth.* を先に捌き、
                 // 対応したら門番を通さない（helloComplete は立てない・close しない）。
                 if (authCommands.handlePreHello(parsed)) {
-                    return;
+                    return CommandOutcome.COMPLETED;
                 }
                 handleHello(parsed);
-                return;
+                return CommandOutcome.COMPLETED;
             }
             if (authCommands.handleAuthenticated(parsed)) {
-                return;
+                return CommandOutcome.COMPLETED;
             }
             commandDispatcher.dispatch(parsed);
+            return CommandOutcome.COMPLETED;
+        } catch (CommandDeferredException e) {
+            return CommandOutcome.DEFERRED;
         } catch (IllegalArgumentException e) {
             // 非 JSON／不正 JSON-RPC 行は破棄（wire-format-design §2）。
             // hello 前なら門番として切断、確立後は1行捨てて継続（堅牢性）。
@@ -171,8 +183,13 @@ public class RemoteSession {
             if (!helloComplete) {
                 close();
             }
+            return CommandOutcome.COMPLETED;
+        } finally {
+            activeId = null;
         }
     }
+
+    private enum CommandOutcome { COMPLETED, DEFERRED }
 
     /**
      * hello ネゴシエーション（wire-format-design §6 / versioning-design §8）。接続後の最初の1行を処理する。
@@ -361,12 +378,20 @@ public class RemoteSession {
     }
 
     public void close() {
-        running = false;
         pendingRemoval = true;
+        if (!closeStarted.compareAndSet(false, true)) {
+            return;
+        }
+        running = false;
+        eventRing.clear();
+        entityHandles.clear();
 
         // 出力スレッドを待機中の場合は通知して解除
         synchronized (queueLock) {
             queueLock.notifyAll();
+        }
+        if (inThread != null && Thread.currentThread() != inThread) {
+            inThread.interrupt();
         }
         try {
             if (Thread.currentThread() != inThread) {
@@ -414,19 +439,67 @@ public class RemoteSession {
         }
     }
 
-    void queueProjectileHitEvent(ProjectileHitEvent event) {
-        Projectile projectile = event.getEntity();
-        if (projectile.getShooter() instanceof Player) {
-            projectileHitQueue.add(event);
+    boolean queueCapturedEvent(Map<String, Object> event) {
+        return eventRing.offer(event);
+    }
+
+    void recordEventCapacityDrop() {
+        eventRing.dropForCapacity();
+    }
+
+    String issueEntityHandle(Entity entity) {
+        return entityHandles.issue(entity);
+    }
+
+    WorkAdmission.Result admitWork(int units) {
+        return plugin.getWorkAdmission().admit(connectionEpoch, boundUuid, units);
+    }
+
+    /**
+     * Applies b5 work admission to a setter before world access. A temporarily pressured
+     * notification stays at the FIFO head because it has no response channel for retry advice.
+     */
+    boolean admitSetterWork(long units) {
+        WorkAdmission.Result result = units > Integer.MAX_VALUE
+                ? WorkAdmission.Result.WORK_LIMIT_EXCEEDED
+                : admitWork((int) units);
+        if (result == WorkAdmission.Result.ACCEPTED) {
+            return true;
         }
+        if (result == WorkAdmission.Result.BACKPRESSURE && activeId == null) {
+            throw CommandDeferredException.INSTANCE;
+        }
+        sessionWorkError(result);
+        return false;
     }
 
-    void queuePlayerInteractEvent(PlayerInteractEvent event) {
-        interactEventQueue.add(event);
+    private void sessionWorkError(WorkAdmission.Result result) {
+        respondError(-32000,
+                result == WorkAdmission.Result.BACKPRESSURE
+                        ? "backpressure" : "work_limit_exceeded",
+                null);
     }
 
-    void queueChatPostedEvent(AsyncChatEvent event) {
-        chatPostedQueue.add(event);
+    boolean hasConstructionPermission() {
+        if (boundUuid == null) {
+            return true;
+        }
+        OfflinePlayer player = Bukkit.getOfflinePlayer(boundUuid);
+        Player online = Bukkit.getPlayer(boundUuid);
+        return online != null && online.isOnline()
+                ? plugin.getPermissionManager().canConstructOnline(player)
+                : plugin.getPermissionManager().canConstructOffline(player);
+    }
+
+    boolean isWithinBuildRange(Location target) {
+        if (origin == null || target == null) {
+            return false;
+        }
+        int range = boundUuid == null
+                ? plugin.getDefaultBuildRange()
+                : plugin.getPermissionManager().getPlayerRange(Bukkit.getOfflinePlayer(boundUuid));
+        return Math.abs(target.getX() - origin.getX()) <= range
+                && Math.abs(target.getZ() - origin.getZ()) <= range;
     }
 
     void tick() {
@@ -436,9 +509,19 @@ public class RemoteSession {
         int maxCommandsPerTick = MAX_COMMANDS_PER_TICK;
         int processedCount = 0;
         String message;
-        while ((message = inQueue.poll()) != null) {
-            handleLine(message);
+        while ((message = inQueue.peek()) != null) {
+            CommandOutcome outcome = handleLine(message);
+            if (outcome == CommandOutcome.DEFERRED) {
+                break;
+            }
+            String removed = inQueue.removeHead();
+            if (removed == null) {
+                throw new IllegalStateException("connection FIFO head disappeared");
+            }
             processedCount++;
+            if (pendingRemoval || closingAfterFlush) {
+                break;
+            }
             if (processedCount >= maxCommandsPerTick) {
                 logger.warning("Over " + maxCommandsPerTick +
                         " commands were queued - deferring " + inQueue.size() + " to next tick");
@@ -460,12 +543,17 @@ public class RemoteSession {
                     if (newLine == null) {
                         running = false;
                     } else {
-                        inQueue.add(newLine);
+                        inQueue.put(newLine);
                     }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    running = false;
                 } catch (Exception e) {
-                    StringWriter sw = new StringWriter();
-                    e.printStackTrace(new PrintWriter(sw));
-                    logger.warning(sw.toString());
+                    if (running) {
+                        StringWriter sw = new StringWriter();
+                        e.printStackTrace(new PrintWriter(sw));
+                        logger.warning(sw.toString());
+                    }
                     running = false;
                 }
             }
