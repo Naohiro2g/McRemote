@@ -20,7 +20,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Entity;
 import net.kyori.adventure.text.Component;
 
-public class RemoteSession {
+public class RemoteSession implements CommandDispatchContext {
     private static final int MAX_COMMANDS_PER_TICK = 1000;
     private static final Logger logger = Logger.getLogger("McR_RemoteSession");
     // world_constants の nullable 値等を出すため serializeNulls（§6.2 フィールド常在）。

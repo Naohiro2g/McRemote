@@ -8,10 +8,10 @@ import java.util.logging.Logger;
 public class CommandDispatcher {
     private static final Logger logger = Logger.getLogger("McR_CommandDispatcher");
 
-    private final RemoteSession session;
+    private final CommandDispatchContext session;
     private final CommandRegistry registry;
 
-    public CommandDispatcher(RemoteSession session, CommandRegistry registry) {
+    public CommandDispatcher(CommandDispatchContext session, CommandRegistry registry) {
         this.session = session;
         this.registry = registry;
     }
