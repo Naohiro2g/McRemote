@@ -21,7 +21,7 @@ public class RemoteCommandRegistrar {
         registry.registerStructured("world.getHeight", worldB5Commands::handleGetHeight);
         registry.register("chat.post", miscCommands::handleChatPost, false); // origin 不要・既定 send-only
         registry.registerStructured("world.spawnEntity", worldB5Commands::handleSpawnEntity);
-        registry.registerStructured("events.poll", eventCommands::handlePoll, false);
+        registerB5EventCommands(registry, eventCommands);
         registry.register("world.getNearbyEntities",
                 args -> entityCommands.handleGetNearbyEntities(session.getOrigin().getWorld(), args));
         registry.register("entity.getPos", args -> entityCommands.handleEntityCommands("entity.getPos", args));
@@ -45,5 +45,10 @@ public class RemoteCommandRegistrar {
         registry.register("build.setOrigin", buildStateCommands::handleSetBuildOrigin, false);
 
         return registry;
+    }
+
+    static void registerB5EventCommands(CommandRegistry registry, EventCommands eventCommands) {
+        registry.registerStructured("events.poll", eventCommands::handlePoll, false);
+        // events.clear and filtered polling remain b6-only and intentionally unregistered in b5.
     }
 }

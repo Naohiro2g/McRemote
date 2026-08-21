@@ -30,7 +30,8 @@ auth:
 b5:
   event_ring_capacity: 256
   event_ring_bytes: 262144
-  event_poll_limit: 64
+  event_poll_default: 64  # applied when events.poll omits the options object
+  event_poll_limit: 64    # hard server cap; larger client hints are reduced to this value
   entity_handle_capacity: 256
   max_particle_count: 1000
   max_work_per_request: 4096
@@ -38,3 +39,4 @@ b5:
   player_work_per_tick: 8192
   global_work_per_tick: 32768
   connection_queue_capacity: 1024
+  connection_response_queue_capacity: 64  # saturation fails the connection; frames are never dropped silently

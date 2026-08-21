@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class WorkAdmissionTest {
     private static final B5RuntimePolicy POLICY = new B5RuntimePolicy(
-            8, 8_000, 8, 8, 10, 10, 6, 8, 12, 4);
+            8, 8_000, 8, 8, 8, 10, 10, 6, 8, 12, 4, 4);
 
     @Test
     void distinguishesOversizedRequestFromTemporaryBudgetPressure() {

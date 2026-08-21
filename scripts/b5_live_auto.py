@@ -323,7 +323,7 @@ def main() -> int:
             "height_not_found",
         )
 
-        empty = result(primary.call("events.poll", [0, 8]))
+        empty = result(primary.call("events.poll", [0]))
         required = {
             "events",
             "through_sequence",
@@ -339,12 +339,28 @@ def main() -> int:
             raise AssertionError(f"new epoch counters must start at zero: {empty}")
         require_reason(
             "events future cursor",
-            primary.call("events.poll", [1, 8]),
+            primary.call("events.poll", [1, {"max_events": 8}]),
             "invalid_params",
         )
-        if result(secondary.call("events.poll", [0, 8])) != empty:
+        require_reason(
+            "events legacy flat limit",
+            primary.call("events.poll", [0, 8]),
+            "invalid_params",
+        )
+        require_reason(
+            "events unknown option",
+            primary.call("events.poll", [0, {"limit": 8}]),
+            "invalid_params",
+        )
+        if result(secondary.call("events.poll", [0, {"max_events": 8}])) != empty:
             raise AssertionError("new connection epoch does not have independent counters")
-        print("PASS events.poll: shape, future cursor, epoch independence")
+        print("PASS events.poll: default/options shape, legacy rejection, epoch independence")
+
+        require_reason(
+            "events.clear is b6-only",
+            primary.call("events.clear", []),
+            "method_not_found",
+        )
 
         particle_params = [0.5, height + 1, 0.5, 0, 0, 0, "minecraft:flame", 0, 1]
         accepted = result(primary.call("world.spawnParticle", particle_params))

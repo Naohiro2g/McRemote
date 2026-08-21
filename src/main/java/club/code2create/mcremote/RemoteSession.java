@@ -3,7 +3,6 @@ package club.code2create.mcremote;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +43,7 @@ public class RemoteSession {
     private Thread inThread;
     private Thread outThread;
     private final ConnectionCommandQueue inQueue;
-    private final ArrayDeque<String> outQueue = new ArrayDeque<>();
+    private final ConnectionFrameQueue outQueue;
     private volatile boolean running = true;
     private volatile boolean closingAfterFlush = false;
     private final AtomicBoolean closeStarted = new AtomicBoolean(false);
@@ -56,6 +55,8 @@ public class RemoteSession {
 
     private final EventRing eventRing;
     private final EntityHandleRegistry entityHandles;
+
+    static final int MAX_EVENT_POLL_RESPONSE_BYTES = 61_440;
 
     // コマンド処理担当の各クラス
     private final PlayerCommands playerCommands;
@@ -80,12 +81,17 @@ public class RemoteSession {
         this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
         B5RuntimePolicy b5Policy = plugin.getB5RuntimePolicy();
         this.inQueue = new ConnectionCommandQueue(b5Policy.connectionQueueCapacity());
+        this.outQueue = new ConnectionFrameQueue(b5Policy.connectionResponseQueueCapacity());
         this.eventRing = new EventRing(
                 b5Policy.eventRingCapacity(),
                 b5Policy.eventRingBytes(),
-                61_312);
+                resultPayloadBudget(Integer.MAX_VALUE, MAX_EVENT_POLL_RESPONSE_BYTES));
         this.entityHandles = new EntityHandleRegistry(b5Policy.entityHandleCapacity());
-        EventCommands eventCommands = new EventCommands(this, eventRing, b5Policy.eventPollLimit());
+        EventCommands eventCommands = new EventCommands(
+                this,
+                eventRing,
+                b5Policy.eventPollDefault(),
+                b5Policy.eventPollLimit());
         WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, b5Policy);
         // build state は identity から分離（setPlayer 撤去）。接続時点で既定原点を持たせる
         // （overworld / (200,0,200)）ので、クライアントは setBuildOrigin 無しでも建築できる。
@@ -647,11 +653,26 @@ public class RemoteSession {
         if (activeId == null) {
             return;
         }
+        enqueue(encodeResultResponse(activeId, value));
+    }
+
+    static String encodeResultResponse(int id, Object value) {
         Map<String, Object> env = new LinkedHashMap<>();
         env.put("jsonrpc", "2.0");
-        env.put("id", activeId);
+        env.put("id", id);
         env.put("result", value);
-        enqueue(GSON.toJson(env));
+        return GSON.toJson(env);
+    }
+
+    static int resultPayloadBudget(int id, int maxResponseBytes) {
+        int nullPayloadBytes = GSON.toJson(null).getBytes(StandardCharsets.UTF_8).length;
+        int envelopeBytes = encodeResultResponse(id, null)
+                .getBytes(StandardCharsets.UTF_8).length - nullPayloadBytes;
+        int budget = maxResponseBytes - envelopeBytes;
+        if (budget < 1) {
+            throw new IllegalArgumentException("response byte limit cannot hold a JSON-RPC envelope");
+        }
+        return budget;
     }
 
     /**
@@ -682,14 +703,41 @@ public class RemoteSession {
         enqueue(GSON.toJson(env));
     }
 
-    /** 直列化済み1行を出力キューへ。終了処理中は捨てる（close 後の遅延書き込み防止）。 */
+    /** 直列化済み1行を有限出力キューへ。飽和は無言dropせずconnection failureにする。 */
     private void enqueue(String line) {
         if (pendingRemoval) {
             return;
         }
+        boolean accepted;
         synchronized (queueLock) {
-            outQueue.add(line);
-            queueLock.notify();
+            accepted = outQueue.offer(line);
+            if (accepted) {
+                queueLock.notify();
+            }
+        }
+        if (!accepted) {
+            failOutputTransport();
+        }
+    }
+
+    private void failOutputTransport() {
+        logger.warning("Bounded response queue saturated; failing connection "
+                + socket.getRemoteSocketAddress());
+        pendingRemoval = true;
+        running = false;
+        synchronized (queueLock) {
+            queueLock.notifyAll();
+        }
+        if (inThread != null) {
+            inThread.interrupt();
+        }
+        if (outThread != null) {
+            outThread.interrupt();
+        }
+        try {
+            socket.close();
+        } catch (IOException e) {
+            logger.warning("Failed to close saturated response transport: " + e.getMessage());
         }
     }
 }

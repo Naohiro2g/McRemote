@@ -111,7 +111,7 @@ def collect_events(rpc: Rpc, timeout: float, poll_interval: float) -> list[dict]
     collected = []
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        batch = successful(rpc.call("events.poll", [cursor, 8]))
+        batch = successful(rpc.call("events.poll", [cursor, {"max_events": 8}]))
         collected.extend(batch["events"])
         cursor = batch["through_sequence"]
         if EVENT_TYPES.issubset({event.get("type") for event in collected}):
@@ -194,13 +194,17 @@ def main() -> int:
             )
         print("PASS FIFO event projection, hand normalization, and epoch replication")
 
-        replay = successful(primary.call("events.poll", [0, 8]))["events"]
+        replay = successful(primary.call(
+            "events.poll", [0, {"max_events": 8}]
+        ))["events"]
         if replay != primary_events:
             raise AssertionError("same cursor did not replay the same immutable DTOs")
         print("PASS non-destructive replay with the same cursor")
 
         successful(primary.call("build.setOrigin", [10, 0, 10]))
-        replay_after_origin_change = successful(primary.call("events.poll", [0, 8]))["events"]
+        replay_after_origin_change = successful(primary.call(
+            "events.poll", [0, {"max_events": 8}]
+        ))["events"]
         if replay_after_origin_change != primary_events:
             raise AssertionError("captured DTO changed after build origin mutation")
         print("PASS event world/origin captured at listener time")

@@ -13,6 +13,7 @@ class CommandParserTest {
     void acceptsPositiveScaleIndependentIntegerIdsAndOmittedNotificationId() {
         assertEquals(1, parser.parse(request("1")).getId());
         assertEquals(1, parser.parse(request("1.0")).getId());
+        assertEquals(Integer.MAX_VALUE, parser.parse(request("2147483647")).getId());
         assertNull(parser.parse("{\"jsonrpc\":\"2.0\",\"method\":\"world.setBlock\",\"params\":[]}")
                 .getId());
     }

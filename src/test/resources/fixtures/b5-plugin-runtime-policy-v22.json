@@ -1,0 +1,40 @@
+{
+  "schema": "mcremote.plugin-b5-runtime-policy.v1",
+  "knowledge_contract": "f50ebb13f00facfc2e73163a24f002f4c8b77d43",
+  "decision": "2026-08-21-02",
+  "protocol": "22.0.0",
+  "artifact": "2200.0.0b5",
+  "runtime_policy": {
+    "connection_fifo_capacity": 1024,
+    "connection_response_queue_capacity": 64,
+    "event_ring_capacity": 256,
+    "event_ring_bytes": 262144,
+    "event_poll_default": 64,
+    "event_poll_limit": 64,
+    "entity_handle_capacity": 256,
+    "max_particle_count": 1000,
+    "max_work_per_request": 4096,
+    "session_work_per_tick": 4096,
+    "player_work_per_tick": 8192,
+    "global_work_per_tick": 32768,
+    "max_compact_poll_response_bytes": 61440,
+    "max_poll_result_payload_bytes": 61397
+  },
+  "events_poll": {
+    "accepted": [
+      {"params": [0], "effective_max_events": 64},
+      {"params": [0, {"max_events": 3}], "effective_max_events": 3},
+      {"params": [0, {"max_events": 1000}], "effective_max_events": 64}
+    ],
+    "rejected": [
+      [0, 8],
+      [0, {}],
+      [0, {"limit": 8}],
+      [0, {"max_events": 0}],
+      [0, {"max_events": -1}],
+      [0, {"max_events": 1.5}],
+      [0, {"max_events": 8, "filter": {}}]
+    ]
+  },
+  "unregistered_b5_methods": ["events.clear"]
+}
