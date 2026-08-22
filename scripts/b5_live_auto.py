@@ -166,14 +166,24 @@ def acquire_interactive_token(
 def connect(args, token: str | None = None, rpc_factory=Rpc) -> Rpc:
     rpc = rpc_factory(args.host, args.port, args.timeout)
     try:
-        hello_params = {"protocol": args.protocol}
+        hello_params = {
+            "protocol": args.protocol,
+            "build": {"dimension": "overworld", "origin": [0, 0, 0]},
+        }
         if token is not None:
             hello_params["auth"] = {"token": token}
         info = result(rpc.call("hello", hello_params))
         if info.get("protocol") != args.protocol:
             raise AssertionError(f"hello protocol mismatch: {info}")
-        result(rpc.call("build.setWorld", ["overworld"]))
-        result(rpc.call("build.setOrigin", [0, 0, 0]))
+        expected_context = {
+            "dimension": "minecraft:overworld", "origin": [0, 0, 0],
+        }
+        if {key: info.get(key) for key in expected_context} != expected_context:
+            raise AssertionError(f"hello build context is not canonical: {info}")
+        if result(rpc.call("build.setDimension", ["minecraft:overworld"])) != expected_context:
+            raise AssertionError("build.setDimension did not return canonical context")
+        if result(rpc.call("build.setOrigin", [0, 0, 0])) != expected_context:
+            raise AssertionError("build.setOrigin did not return canonical context")
         # getHeight intentionally rejects unloaded columns; load the isolated origin first.
         result(rpc.call("world.getBlock", [0, 0, 0]))
         return rpc
@@ -392,6 +402,22 @@ def main() -> int:
         primary = connect(args, token)
         secondary = connect(args, token)
         print("PASS hello/build state: two independent connection epochs")
+        require_reason(
+            "legacy build.setWorld removal",
+            primary.call("build.setWorld", ["overworld"]),
+            "method_not_found",
+        )
+        require_reason(
+            "DimensionRef case rejection",
+            primary.call("build.setDimension", ["Overworld"]),
+            "invalid_params",
+        )
+        require_reason(
+            "world is not an overworld alias",
+            primary.call("build.setDimension", ["world"]),
+            "unknown_dimension",
+        )
+        print("PASS DimensionKey aliases removed and invalid refs rejected")
 
         height = result(primary.call("world.getHeight", [0, 0]))
         if not isinstance(height, int):

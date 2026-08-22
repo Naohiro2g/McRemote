@@ -20,7 +20,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Entity;
 import net.kyori.adventure.text.Component;
 
-public class RemoteSession implements CommandDispatchContext {
+public class RemoteSession implements CommandDispatchContext, BuildContextSession {
     private static final int MAX_COMMANDS_PER_TICK = 1000;
     private static final Logger logger = Logger.getLogger("McR_RemoteSession");
     // world_constants の nullable 値等を出すため serializeNulls（§6.2 フィールド常在）。
@@ -73,11 +73,12 @@ public class RemoteSession implements CommandDispatchContext {
     public RemoteSession(McRemote plugin, Socket socket) throws IOException {
         this.plugin = plugin;
         this.socket = socket;
-        this.playerCommands = new PlayerCommands(this);
+        DimensionResolver dimensions = new DimensionResolver();
+        this.playerCommands = new PlayerCommands(this, dimensions);
         this.miscCommands = new MiscCommands(this);
         this.entityCommands = new EntityCommands(this, miscCommands);
         this.blockCommands = new BlockCommands(this, miscCommands);
-        this.buildStateCommands = new BuildStateCommands(this);
+        this.buildStateCommands = new BuildStateCommands(this, dimensions);
         this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
         B5RuntimePolicy b5Policy = plugin.getB5RuntimePolicy();
         this.inQueue = new ConnectionCommandQueue(b5Policy.connectionQueueCapacity());
@@ -93,8 +94,7 @@ public class RemoteSession implements CommandDispatchContext {
                 b5Policy.eventPollDefault(),
                 b5Policy.eventPollLimit());
         WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, b5Policy);
-        // build state は identity から分離（setPlayer 撤去）。接続時点で既定原点を持たせる
-        // （overworld / (200,0,200)）ので、クライアントは setBuildOrigin 無しでも建築できる。
+        // build state は identity から分離。既定は minecraft:overworld / (200,0,200)。
         this.origin = buildStateCommands.defaultOrigin();
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
@@ -298,6 +298,20 @@ public class RemoteSession implements CommandDispatchContext {
                 playerCommands.bind(uuid);
             }
         }
+        try {
+            // build.dimension と origin は全項目の検証・解決後に一体反映する。
+            origin = buildStateCommands.resolveHelloBuild(parsed.getParams());
+        } catch (BuildStateCommands.InvalidBuildException e) {
+            respondError(-32602, "invalid_params", null);
+            logger.warning("Hello rejected: invalid build context");
+            close();
+            return;
+        } catch (BuildStateCommands.UnknownDimensionException e) {
+            respondError(-32000, "unknown_dimension", BuildStateCommands.dimensionData(e.dimension()));
+            logger.warning("Hello rejected: unknown_dimension");
+            close();
+            return;
+        }
         respondResult(buildHelloResult());
         helloComplete = true;
         logger.info("hello OK (client protocol " + clientProtocol + ", advertising " + ProtocolInfo.PROTOCOL
@@ -317,26 +331,19 @@ public class RemoteSession implements CommandDispatchContext {
         return (t != null && t.isJsonPrimitive()) ? t.getAsString().trim() : null;
     }
 
-    /** hello params（object 形, §6.1）から protocol を取り出す。配列形は移行中クライアント向けに許容。 */
+    /** hello params（protocol 22 object形, §6.1）から protocol を取り出す。 */
     private String extractHelloProtocol(JsonElement params) {
-        if (params == null) {
+        if (params == null || !params.isJsonObject()) {
             return null;
         }
-        if (params.isJsonObject()) {
-            JsonElement p = params.getAsJsonObject().get("protocol");
-            return (p != null && p.isJsonPrimitive()) ? p.getAsString().trim() : null;
-        }
-        if (params.isJsonArray() && !params.getAsJsonArray().isEmpty()) {
-            JsonElement p = params.getAsJsonArray().get(0);
-            return p.isJsonPrimitive() ? p.getAsString().trim() : null;
-        }
-        return null;
+        JsonElement p = params.getAsJsonObject().get("protocol");
+        return (p != null && p.isJsonPrimitive()) ? p.getAsString().trim() : null;
     }
 
     /**
      * hello 応答の flat result（wire-format-design §6.2）。
      * 版フィールドは clean な protocol semver、catalogHash は b3 で実値、
-     * y_sea は world_constants に束ねる（DECISIONS 2026-07-02-02）。world/origin は接続時の build state。
+     * y_sea は world_constants に束ねる。dimension/origin はserver正準build context。
      */
     private Map<String, Object> buildHelloResult() {
         String mcVersion = Bukkit.getMinecraftVersion();
@@ -363,8 +370,7 @@ public class RemoteSession implements CommandDispatchContext {
             result.put("player", boundUuid.toString());
         }
         if (origin != null && origin.getWorld() != null) {
-            result.put("world", origin.getWorld().getName());
-            result.put("origin", List.of(origin.getBlockX(), origin.getBlockY(), origin.getBlockZ()));
+            result.putAll(BuildStateCommands.buildContext(origin));
         }
         // permissions bucket（§6.2）＝UUID→LuckPerms の scopes。auth 済みのときのみ。
         if (boundUuid != null) {

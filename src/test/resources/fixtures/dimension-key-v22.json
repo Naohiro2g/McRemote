@@ -1,0 +1,49 @@
+{
+  "schema": "mcremote.dimension-key.v1",
+  "protocol": "22.0.0",
+  "artifact": "2200.0.0b5",
+  "default_dimension": "minecraft:overworld",
+  "accepted": [
+    {"input": "overworld", "canonical": "minecraft:overworld"},
+    {"input": "the_nether", "canonical": "minecraft:the_nether"},
+    {"input": "minecraft:the_end", "canonical": "minecraft:the_end"},
+    {"input": "myworld:world", "canonical": "myworld:world"}
+  ],
+  "not_aliases": [
+    {"input": "world", "canonical": "minecraft:world"},
+    {"input": "normal", "canonical": "minecraft:normal"},
+    {"input": "nether", "canonical": "minecraft:nether"},
+    {"input": "end", "canonical": "minecraft:end"}
+  ],
+  "invalid": [
+    "Overworld",
+    " overworld",
+    "overworld ",
+    "minecraft:",
+    ":overworld",
+    "minecraft:over:world",
+    ""
+  ],
+  "wire": {
+    "method": "build.setDimension",
+    "removed_method": "build.setWorld",
+    "input_field": "dimension",
+    "removed_field": "world",
+    "unknown_reason": "unknown_dimension",
+    "moved_reason": "entity_dimension_changed",
+    "context_fields": ["dimension", "origin"],
+    "canonical_output_surfaces": [
+      "hello.result",
+      "build.setDimension.result",
+      "build.setOrigin.result",
+      "player.getPos.result",
+      "player.setPos.result",
+      "player.getPose.result",
+      "player.setPose.result",
+      "block_right_click",
+      "chat_posted",
+      "projectile_hit",
+      "entity_handle_location"
+    ]
+  }
+}

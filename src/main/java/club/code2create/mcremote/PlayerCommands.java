@@ -5,12 +5,10 @@ import com.google.gson.JsonElement;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,13 +24,15 @@ import java.util.UUID;
  */
 public class PlayerCommands {
     private final RemoteSession session;
+    private final DimensionResolver dimensions;
 
     // 認証（後続ベータ）で確立されるまで未設定
     private UUID playerUUID;
     private String playerName;
 
-    public PlayerCommands(RemoteSession session) {
+    public PlayerCommands(RemoteSession session, DimensionResolver dimensions) {
         this.session = session;
+        this.dimensions = dimensions;
     }
 
     /** hello auth で検証済みの UUID を、この stream の paired player として束縛する。 */
@@ -58,7 +58,7 @@ public class PlayerCommands {
         return playerName;
     }
 
-    /** player.getPos: paired player の現在 world と、stream origin 相対の位置を返す。 */
+    /** player.getPos: paired player の現在dimensionと、stream origin相対の位置を返す。 */
     public void handleGetPos(String[] args) {
         if (args.length != 0) {
             session.respondError(-32602, "invalid_params", null);
@@ -80,38 +80,6 @@ public class PlayerCommands {
         }
     }
 
-    /** player.setPos(world, x, y, z): stream origin 相対座標へ paired player を移動する。 */
-    public void handleSetPos(String[] args) {
-        if (args.length != 4) {
-            session.respondError(-32602, "invalid_params", null);
-            return;
-        }
-        Player player = requireOnlineAuthorizedPlayer();
-        if (player == null) {
-            return;
-        }
-        World world = resolveWorld(args[0]);
-        if (world == null) {
-            session.respondError(-32000, "unknown_world", data("world", args[0]));
-            return;
-        }
-        Location origin = session.getOrigin();
-        if (origin == null) {
-            session.respondError(-32000, "origin_not_set", null);
-            return;
-        }
-        try {
-            double x = origin.getX() + Double.parseDouble(args[1]);
-            double y = origin.getY() + Double.parseDouble(args[2]);
-            double z = origin.getZ() + Double.parseDouble(args[3]);
-            Location target = new Location(world, x, y, z, player.getLocation().getYaw(), player.getLocation().getPitch());
-            player.teleport(target);
-            session.respondResult(positionResult(player.getLocation()));
-        } catch (NumberFormatException e) {
-            session.respondError(-32602, "invalid_params", null);
-        }
-    }
-
     public void handleSetPosStructured(JsonElement params) {
         final JsonArray args;
         try {
@@ -125,13 +93,18 @@ public class PlayerCommands {
             return;
         }
         try {
-            String worldName = WireParams.string(args, 0);
-            World world = resolveWorld(worldName);
-            if (world == null) {
-                session.respondError(-32000, "unknown_world", data("world", worldName));
+            String dimensionRef = WireParams.string(args, 0);
+            DimensionResolver.ResolvedDimension resolved = dimensions.resolve(dimensionRef);
+            if (!resolved.isLoaded()) {
+                session.respondError(-32000, "unknown_dimension",
+                        BuildStateCommands.dimensionData(resolved.canonicalKey()));
                 return;
             }
             Location origin = session.getOrigin();
+            if (origin == null) {
+                session.respondError(-32000, "origin_not_set", null);
+                return;
+            }
             double x = origin.getX() + WireParams.finiteDouble(args, 1);
             double y = origin.getY() + WireParams.finiteDouble(args, 2);
             double z = origin.getZ() + WireParams.finiteDouble(args, 3);
@@ -139,7 +112,7 @@ public class PlayerCommands {
                 throw new IllegalArgumentException("absolute coordinates must be finite");
             }
             Location current = player.getLocation();
-            Location target = new Location(world, x, y, z, current.getYaw(), current.getPitch());
+            Location target = new Location(resolved.world(), x, y, z, current.getYaw(), current.getPitch());
             if (!player.teleport(target)) {
                 session.respondError(-32000, "teleport_failed", null);
                 return;
@@ -150,7 +123,7 @@ public class PlayerCommands {
         }
     }
 
-    /** player.getPose: paired player の現在 world・相対位置・yaw/pitch を返す。 */
+    /** player.getPose: paired player の現在dimension・相対位置・yaw/pitchを返す。 */
     public void handleGetPose(String[] args) {
         if (args.length != 0) {
             session.respondError(-32602, "invalid_params", null);
@@ -172,51 +145,6 @@ public class PlayerCommands {
         }
     }
 
-    /**
-     * player.setPose(world, x, y, z, yaw, pitch):
-     * stream origin 相対位置と向きを1回の teleport で一体反映する。
-     */
-    public void handleSetPose(String[] args) {
-        if (args.length != 6) {
-            session.respondError(-32602, "invalid_params", null);
-            return;
-        }
-        Player player = requireOnlineAuthorizedPlayer();
-        if (player == null) {
-            return;
-        }
-        World world = resolveWorld(args[0]);
-        if (world == null) {
-            session.respondError(-32000, "unknown_world", data("world", args[0]));
-            return;
-        }
-        Location origin = session.getOrigin();
-        if (origin == null) {
-            session.respondError(-32000, "origin_not_set", null);
-            return;
-        }
-
-        try {
-            PoseInput pose = parsePoseInput(args);
-            double x = origin.getX() + pose.relativeX();
-            double y = origin.getY() + pose.relativeY();
-            double z = origin.getZ() + pose.relativeZ();
-            if (!areFinite(x, y, z)) {
-                session.respondError(-32602, "invalid_params", null);
-                return;
-            }
-
-            Location target = new Location(world, x, y, z, pose.yaw(), pose.pitch());
-            if (!player.teleport(target)) {
-                session.respondError(-32000, "teleport_failed", null);
-                return;
-            }
-            session.respondResult(poseResult(player.getLocation()));
-        } catch (IllegalArgumentException e) {
-            session.respondError(-32602, "invalid_params", null);
-        }
-    }
-
     public void handleSetPoseStructured(JsonElement params) {
         final JsonArray args;
         try {
@@ -230,13 +158,18 @@ public class PlayerCommands {
             return;
         }
         try {
-            String worldName = WireParams.string(args, 0);
-            World world = resolveWorld(worldName);
-            if (world == null) {
-                session.respondError(-32000, "unknown_world", data("world", worldName));
+            String dimensionRef = WireParams.string(args, 0);
+            DimensionResolver.ResolvedDimension resolved = dimensions.resolve(dimensionRef);
+            if (!resolved.isLoaded()) {
+                session.respondError(-32000, "unknown_dimension",
+                        BuildStateCommands.dimensionData(resolved.canonicalKey()));
                 return;
             }
             Location origin = session.getOrigin();
+            if (origin == null) {
+                session.respondError(-32000, "origin_not_set", null);
+                return;
+            }
             double x = origin.getX() + WireParams.finiteDouble(args, 1);
             double y = origin.getY() + WireParams.finiteDouble(args, 2);
             double z = origin.getZ() + WireParams.finiteDouble(args, 3);
@@ -249,7 +182,7 @@ public class PlayerCommands {
             // Paper stores angles as float. Periodic normalization prevents finite double input
             // from overflowing that native type; wire display rounding is not applied here.
             float nativeYaw = (float) WireNumbers.normalizeYaw(yaw);
-            Location target = new Location(world, x, y, z, nativeYaw, (float) pitch);
+            Location target = new Location(resolved.world(), x, y, z, nativeYaw, (float) pitch);
             if (!player.teleport(target)) {
                 session.respondError(-32000, "teleport_failed", null);
                 return;
@@ -311,13 +244,16 @@ public class PlayerCommands {
     }
 
     private Map<String, Object> positionResult(Location loc) {
-        Location origin = session.getOrigin();
+        return positionResult(loc, session.getOrigin());
+    }
+
+    static Map<String, Object> positionResult(Location loc, Location origin) {
         double x = loc.getX() - origin.getX();
         double y = loc.getY() - origin.getY();
         double z = loc.getZ() - origin.getZ();
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("world", loc.getWorld().getName());
+        result.put("dimension", DimensionResolver.canonical(loc.getWorld()));
         result.put("pos", List.of(
                 WireNumbers.position(x),
                 WireNumbers.position(y),
@@ -326,33 +262,14 @@ public class PlayerCommands {
     }
 
     private Map<String, Object> poseResult(Location loc) {
-        Map<String, Object> result = positionResult(loc);
+        return poseResult(loc, session.getOrigin());
+    }
+
+    static Map<String, Object> poseResult(Location loc, Location origin) {
+        Map<String, Object> result = positionResult(loc, origin);
         result.put("yaw", WireNumbers.yaw(loc.getYaw()));
         result.put("pitch", WireNumbers.pitch(loc.getPitch()));
         return result;
     }
 
-    private World resolveWorld(String worldName) {
-        String key = worldName.toLowerCase(Locale.ROOT).trim();
-        World.Environment env = switch (key) {
-            case "overworld", "world", "normal" -> World.Environment.NORMAL;
-            case "nether", "the_nether" -> World.Environment.NETHER;
-            case "end", "the_end" -> World.Environment.THE_END;
-            default -> null;
-        };
-        if (env != null) {
-            for (World world : Bukkit.getWorlds()) {
-                if (world.getEnvironment() == env) {
-                    return world;
-                }
-            }
-        }
-        return Bukkit.getWorld(worldName);
-    }
-
-    private Map<String, Object> data(String key, Object value) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put(key, value);
-        return data;
-    }
 }

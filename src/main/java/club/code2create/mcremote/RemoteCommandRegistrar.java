@@ -39,10 +39,8 @@ public class RemoteCommandRegistrar {
         registry.registerStructured("player.setPose", playerCommands::handleSetPoseStructured);
         registry.register("catalog.get", catalogCommands::handleGet, false);
 
-        // Build state (identity から分離) — origin/world をプレイヤー非依存で設定。
-        // ワイヤ method は build.* 名前空間（wire-format-design §5.1, DECISIONS 2026-06-26-04）。
-        registry.register("build.setWorld", buildStateCommands::handleSetWorld, false);
-        registry.register("build.setOrigin", buildStateCommands::handleSetBuildOrigin, false);
+        // Protocol 22 build context. build.setWorld is intentionally not registered.
+        registerBuildCommands(registry, buildStateCommands);
 
         return registry;
     }
@@ -50,5 +48,10 @@ public class RemoteCommandRegistrar {
     static void registerB5EventCommands(CommandRegistry registry, EventCommands eventCommands) {
         registry.registerStructured("events.poll", eventCommands::handlePoll, false);
         // events.clear and filtered polling remain b6-only and intentionally unregistered in b5.
+    }
+
+    static void registerBuildCommands(CommandRegistry registry, BuildStateCommands buildStateCommands) {
+        registry.registerStructured("build.setDimension", buildStateCommands::handleSetDimension, false);
+        registry.registerStructured("build.setOrigin", buildStateCommands::handleSetOrigin, false);
     }
 }

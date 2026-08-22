@@ -60,7 +60,7 @@ def close_enough(left: float, right: float, tolerance: float = 1.0e-4) -> bool:
 def same_pose(left: dict, right: dict) -> bool:
     try:
         return (
-            left.get("world") == right.get("world")
+            left.get("dimension") == right.get("dimension")
             and len(left.get("pos", [])) == 3
             and len(right.get("pos", [])) == 3
             and all(close_enough(float(a), float(b)) for a, b in zip(left["pos"], right["pos"]))
@@ -104,7 +104,11 @@ def pair_and_hello(args) -> tuple[Rpc, dict]:
     if token is None:
         raise RuntimeError("timed out waiting for /mcremote pair")
 
-    hello = rpc.call("hello", {"protocol": args.protocol, "auth": {"token": token}})
+    hello = rpc.call("hello", {
+        "protocol": args.protocol,
+        "auth": {"token": token},
+        "build": {"dimension": "overworld", "origin": [200, 0, 200]},
+    })
     return rpc, hello
 
 
@@ -137,16 +141,19 @@ def main() -> int:
         if not info.get("player"):
             print("FAIL: hello result has no player; token did not bind a UUID")
             return 1
+        if info.get("dimension") != "minecraft:overworld" or "world" in info:
+            print(f"FAIL: hello result has no canonical dimension: {info}")
+            return 1
 
         get_pos = rpc.call("player.getPos", [])
         if "error" in get_pos:
             print(f"FAIL: player.getPos -> error {get_pos['error']}")
             return 1
-        world = get_pos["result"]["world"]
+        dimension = get_pos["result"]["dimension"]
         pos = get_pos["result"]["pos"]
-        print(f"[player.getPos] world={world} pos={pos}")
+        print(f"[player.getPos] dimension={dimension} pos={pos}")
 
-        set_pos = rpc.call("player.setPos", [world, pos[0], pos[1], pos[2]])
+        set_pos = rpc.call("player.setPos", [dimension, pos[0], pos[1], pos[2]])
         if "error" in set_pos:
             print(f"FAIL: player.setPos -> error {set_pos['error']}")
             return 1
@@ -157,17 +164,17 @@ def main() -> int:
             print(f"FAIL: player.getPose -> error {get_pose['error']}")
             return 1
         pose = get_pose["result"]
-        required = {"world", "pos", "yaw", "pitch"}
+        required = {"dimension", "pos", "yaw", "pitch"}
         if not required.issubset(pose):
             print(f"FAIL: player.getPose missing fields: {pose}")
             return 1
-        print(f"[player.getPose] world={pose['world']} pos={pose['pos']} "
+        print(f"[player.getPose] dimension={pose['dimension']} pos={pose['pos']} "
               f"yaw={pose['yaw']} pitch={pose['pitch']}")
 
         # 同じ位置・向きへyawだけ360度加えて送り、見た目を変えず正規化を確認する。
         input_yaw = float(pose["yaw"]) + 360.0
         set_pose = rpc.call("player.setPose", [
-            pose["world"], *pose["pos"], input_yaw, pose["pitch"]
+            pose["dimension"], *pose["pos"], input_yaw, pose["pitch"]
         ])
         if "error" in set_pose:
             print(f"FAIL: player.setPose -> error {set_pose['error']}")
@@ -185,7 +192,7 @@ def main() -> int:
               f"pitch={result_pose['pitch']}")
 
         invalid_pitch = rpc.call("player.setPose", [
-            pose["world"], *pose["pos"], pose["yaw"], 90.0001
+            pose["dimension"], *pose["pos"], pose["yaw"], 90.0001
         ])
         if error_reason(invalid_pitch) != "invalid_params":
             print(f"FAIL: pitch > 90 must return invalid_params: {invalid_pitch}")

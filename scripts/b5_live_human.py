@@ -82,14 +82,20 @@ def hello(rpc: Rpc, token: str) -> dict:
     info = successful(rpc.call("hello", {
         "protocol": PROTOCOL,
         "auth": {"token": token},
+        "build": {"dimension": "overworld", "origin": [200, 0, 200]},
     }))
     if not info.get("player"):
         raise AssertionError(f"hello did not bind player: {info}")
+    if info.get("dimension") != "minecraft:overworld":
+        raise AssertionError(f"hello dimension is not canonical: {info}")
     return info
 
 
 def canonical_pose(pose: dict) -> bool:
     try:
+        if (not isinstance(pose["dimension"], str) or ":" not in pose["dimension"]
+                or "world" in pose):
+            return False
         if len(pose["pos"]) != 3:
             return False
         position_ok = all(decimal_places(value) <= 3 for value in pose["pos"])
@@ -139,8 +145,10 @@ def validate_events(events: list[dict]) -> None:
         if target.get("kind") == "block":
             validate_block_value(target.get("block"), "projectile_hit.target.block")
     for event in events:
-        if not isinstance(event.get("world"), str) or len(event.get("origin", [])) != 3:
-            raise AssertionError(f"event lacks captured world/origin: {event}")
+        dimension = event.get("dimension")
+        if (not isinstance(dimension, str) or ":" not in dimension
+                or "world" in event or len(event.get("origin", [])) != 3):
+            raise AssertionError(f"event lacks canonical dimension/origin: {event}")
 
 
 def validate_block_value(value, label: str) -> None:
@@ -207,7 +215,7 @@ def main() -> int:
         ))["events"]
         if replay_after_origin_change != primary_events:
             raise AssertionError("captured DTO changed after build origin mutation")
-        print("PASS event world/origin captured at listener time")
+        print("PASS event dimension/origin captured at listener time")
 
         print("PASS: McRemote b5 live-human event/pose subset")
         return 0

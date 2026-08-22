@@ -37,7 +37,13 @@ class PersistentRpc:
         self.calls.append((method, params))
         if method == "hello":
             return {"jsonrpc": "2.0", "id": 1,
-                    "result": {"protocol": "22.0.0"}}
+                    "result": {"protocol": "22.0.0",
+                               "dimension": "minecraft:overworld",
+                               "origin": [0, 0, 0]}}
+        if method in {"build.setDimension", "build.setOrigin"}:
+            return {"jsonrpc": "2.0", "id": len(self.calls),
+                    "result": {"dimension": "minecraft:overworld",
+                               "origin": [0, 0, 0]}}
         return {"jsonrpc": "2.0", "id": len(self.calls), "result": None}
 
     def close(self):
@@ -102,7 +108,9 @@ class LiveAutoAuthenticationTest(unittest.TestCase):
             poll_params,
         )
         self.assertEqual(
-            ("hello", {"protocol": "22.0.0", "auth": {"token": SESSION_TOKEN}}),
+            ("hello", {"protocol": "22.0.0",
+                       "build": {"dimension": "overworld", "origin": [0, 0, 0]},
+                       "auth": {"token": SESSION_TOKEN}}),
             persistent.calls[0],
         )
         connected.close()
@@ -118,7 +126,9 @@ class LiveAutoAuthenticationTest(unittest.TestCase):
 
         self.assertIs(rpc, connected)
         self.assertEqual(
-            ("hello", {"protocol": "22.0.0", "auth": {"token": SESSION_TOKEN}}),
+            ("hello", {"protocol": "22.0.0",
+                       "build": {"dimension": "overworld", "origin": [0, 0, 0]},
+                       "auth": {"token": SESSION_TOKEN}}),
             rpc.calls[0],
         )
         self.assertNotIn(SESSION_TOKEN, output.getvalue())
