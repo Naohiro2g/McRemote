@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """McRemote b5 live-auto smoke test (Python standard library only).
 
-Runs against an isolated Paper server without pairing or a Minecraft client. It
+Runs against an isolated Paper server directly, or bootstraps one in-memory
+session token with ``--interactive-pair`` on an auth-enforced server. It
 exercises b5 request/response behavior that does not require player-generated
-events. Human/pairing cases intentionally remain outside this script.
+events; event-producing Minecraft actions remain outside this script.
 """
 
 import argparse
@@ -11,10 +12,14 @@ import json
 import re
 import socket
 import sys
+import time
 
 
 PROTOCOL = "22.0.0"
 HANDLE = re.compile(r"^mceh_[A-Za-z0-9_-]{22}$")
+PAIR_CODE = re.compile(r"^[0-9]{6}$")
+SESSION_TOKEN = re.compile(r"^mcrs_[A-Za-z0-9_-]{43}$")
+PAIR_POLL_INTERVAL = 0.5
 
 
 class Rpc:
@@ -84,16 +89,97 @@ def require_null_result(label: str, response: dict) -> None:
         raise AssertionError(f"{label}: expected exact result:null, got {response}")
 
 
-def connect(args) -> Rpc:
-    rpc = Rpc(args.host, args.port, args.timeout)
-    info = result(rpc.call("hello", {"protocol": args.protocol}))
-    if info.get("protocol") != args.protocol:
-        raise AssertionError(f"hello protocol mismatch: {info}")
-    result(rpc.call("build.setWorld", ["overworld"]))
-    result(rpc.call("build.setOrigin", [0, 0, 0]))
-    # getHeight intentionally rejects unloaded columns; load the isolated origin first.
-    result(rpc.call("world.getBlock", [0, 0, 0]))
-    return rpc
+def call_once(args, method: str, params, rpc_factory=Rpc):
+    """Send one pre-auth request on its own connection epoch."""
+    rpc = rpc_factory(args.host, args.port, args.timeout)
+    try:
+        return rpc.call(method, params)
+    finally:
+        rpc.close()
+
+
+def acquire_interactive_token(
+        args,
+        *,
+        input_stream=None,
+        output_stream=None,
+        call_once_fn=None,
+        monotonic=None,
+        sleep=None,
+) -> str:
+    """Pair once without persisting or printing the issued session token."""
+    input_stream = sys.stdin if input_stream is None else input_stream
+    output_stream = sys.stdout if output_stream is None else output_stream
+    call_once_fn = call_once if call_once_fn is None else call_once_fn
+    monotonic = time.monotonic if monotonic is None else monotonic
+    sleep = time.sleep if sleep is None else sleep
+
+    if not input_stream.isatty():
+        raise RuntimeError(
+            "--interactive-pair requires an interactive TTY; "
+            "run it from a terminal and approve the displayed Minecraft pair command"
+        )
+
+    unauthenticated = call_once_fn(
+        args, "hello", {"protocol": args.protocol})
+    if reason(unauthenticated) != "auth_required":
+        raise AssertionError(
+            "--interactive-pair requires the initial hello to return auth_required"
+        )
+
+    begun = result(call_once_fn(args, "auth.pairBegin", {
+        "token_type": "session",
+        "client": {"name": "b5_live_auto.py", "version": "0", "locale": "ja"},
+    }))
+    pairing_id = begun.get("pairing_id") if isinstance(begun, dict) else None
+    pair_code = begun.get("pair_code") if isinstance(begun, dict) else None
+    expires_in = begun.get("expires_in") if isinstance(begun, dict) else None
+    if not isinstance(pairing_id, str) or not pairing_id:
+        raise AssertionError("auth.pairBegin returned an invalid pairing correlation")
+    if not isinstance(pair_code, str) or not PAIR_CODE.fullmatch(pair_code):
+        raise AssertionError("auth.pairBegin returned an invalid display code")
+    if (isinstance(expires_in, bool)
+            or not isinstance(expires_in, (int, float))
+            or expires_in <= 0):
+        raise AssertionError("auth.pairBegin returned an invalid expiry")
+
+    print(f"/mcremote pair {pair_code[:3]}-{pair_code[3:]}",
+          file=output_stream, flush=True)
+    deadline = monotonic() + expires_in
+    while monotonic() < deadline:
+        polled = result(call_once_fn(
+            args, "auth.pairPoll", {"pairing_id": pairing_id}))
+        status = polled.get("status") if isinstance(polled, dict) else None
+        if status == "ok":
+            token = polled.get("token")
+            if not isinstance(token, str) or not SESSION_TOKEN.fullmatch(token):
+                raise AssertionError("auth.pairPoll returned an invalid session token")
+            return token
+        if status != "pending":
+            raise AssertionError("auth.pairPoll returned an unexpected status")
+        remaining = deadline - monotonic()
+        if remaining > 0:
+            sleep(min(PAIR_POLL_INTERVAL, remaining))
+    raise RuntimeError("interactive pairing expired before approval")
+
+
+def connect(args, token: str | None = None, rpc_factory=Rpc) -> Rpc:
+    rpc = rpc_factory(args.host, args.port, args.timeout)
+    try:
+        hello_params = {"protocol": args.protocol}
+        if token is not None:
+            hello_params["auth"] = {"token": token}
+        info = result(rpc.call("hello", hello_params))
+        if info.get("protocol") != args.protocol:
+            raise AssertionError(f"hello protocol mismatch: {info}")
+        result(rpc.call("build.setWorld", ["overworld"]))
+        result(rpc.call("build.setOrigin", [0, 0, 0]))
+        # getHeight intentionally rejects unloaded columns; load the isolated origin first.
+        result(rpc.call("world.getBlock", [0, 0, 0]))
+        return rpc
+    except BaseException:
+        rpc.close()
+        raise
 
 
 def verify_protocol_boundary(args) -> None:
@@ -284,7 +370,7 @@ def verify_flush_and_notifications(rpc: Rpc, height: int, queue_capacity: int) -
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="McRemote b5 isolated live-auto")
+    parser = argparse.ArgumentParser(description="McRemote b5 live-auto")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
     parser.add_argument("--protocol", default=PROTOCOL)
@@ -292,13 +378,19 @@ def main() -> int:
     parser.add_argument("--handle-capacity", type=int, default=8)
     parser.add_argument("--particle-limit", type=int, default=100)
     parser.add_argument("--queue-capacity", type=int, default=1024)
+    parser.add_argument(
+        "--interactive-pair",
+        action="store_true",
+        help="pair once in Minecraft and keep the session token in memory only",
+    )
     args = parser.parse_args()
 
     primary = secondary = None
     try:
         verify_protocol_boundary(args)
-        primary = connect(args)
-        secondary = connect(args)
+        token = acquire_interactive_token(args) if args.interactive_pair else None
+        primary = connect(args, token)
+        secondary = connect(args, token)
         print("PASS hello/build state: two independent connection epochs")
 
         height = result(primary.call("world.getHeight", [0, 0]))
