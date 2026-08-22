@@ -38,7 +38,8 @@ final class WorldB5Commands {
             World world = origin.getWorld();
             int absoluteX = Math.addExact(origin.getBlockX(), relativeX);
             int absoluteZ = Math.addExact(origin.getBlockZ(), relativeZ);
-            if (!preflightLocation(new Location(world, absoluteX, origin.getY(), absoluteZ))) {
+            Location location = new Location(world, absoluteX, origin.getY(), absoluteZ);
+            if (!preflightLocation(location)) {
                 return;
             }
             int worldMinY = world.getMinHeight();
@@ -52,6 +53,9 @@ final class WorldB5Commands {
             }
             int scanUnits = startY < worldMinY ? 0 : startY - worldMinY + 1;
             if (!admit(scanUnits)) {
+                return;
+            }
+            if (!prepareChunk(location)) {
                 return;
             }
             OptionalInt found = MiscCommands.findHighestExposedBlockY(
@@ -97,7 +101,7 @@ final class WorldB5Commands {
                 session.respondError(-32602, "particle_data_required", null);
                 return;
             }
-            if (!preflightLocation(location) || !admit(count)) {
+            if (!preflightLocation(location) || !admit(count) || !prepareChunk(location)) {
                 return;
             }
             location.getWorld().spawnParticle(
@@ -135,6 +139,9 @@ final class WorldB5Commands {
                 reservation = handles.reserve();
             } catch (EntityHandleRegistry.CapacityException e) {
                 session.respondError(-32000, "entity_capacity_exhausted", null);
+                return;
+            }
+            if (!prepareChunk(location)) {
                 return;
             }
             spawned = location.getWorld().spawnEntity(location, type);
@@ -175,12 +182,23 @@ final class WorldB5Commands {
             session.respondError(-32000, "build_denied", null);
             return false;
         }
+        return true;
+    }
+
+    private boolean prepareChunk(Location location) {
         World world = location.getWorld();
-        if (!world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)) {
+        int chunkX = location.getBlockX() >> 4;
+        int chunkZ = location.getBlockZ() >> 4;
+        if (!ensureChunkLoaded(world, chunkX, chunkZ)) {
             session.respondError(-32000, "backpressure", null);
             return false;
         }
         return true;
+    }
+
+    static boolean ensureChunkLoaded(World world, int chunkX, int chunkZ) {
+        return world.isChunkLoaded(chunkX, chunkZ)
+                || world.loadChunk(chunkX, chunkZ, true);
     }
 
     private boolean admit(int units) {

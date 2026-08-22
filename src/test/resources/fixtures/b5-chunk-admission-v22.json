@@ -1,0 +1,41 @@
+{
+  "schema": "mcremote.plugin-b5-chunk-admission.v1",
+  "knowledge_contract": "61dc1d9934621d4d762522de841e4e14fd11f403",
+  "decision": "2026-08-21-01",
+  "protocol": "22.0.0",
+  "artifact": "2200.0.0b5",
+  "applies_to": [
+    "world.getHeight",
+    "world.spawnParticle",
+    "world.spawnEntity"
+  ],
+  "cases": [
+    {
+      "name": "already-loaded",
+      "chunk_x": 0,
+      "chunk_z": 0,
+      "initially_loaded": true,
+      "load_result": false,
+      "expected": true,
+      "expected_load_calls": 0
+    },
+    {
+      "name": "load-and-generate-before-world-operation",
+      "chunk_x": 16,
+      "chunk_z": -2,
+      "initially_loaded": false,
+      "load_result": true,
+      "expected": true,
+      "expected_load_calls": 1
+    },
+    {
+      "name": "load-failure-remains-pre-side-effect-rejection",
+      "chunk_x": 50,
+      "chunk_z": 50,
+      "initially_loaded": false,
+      "load_result": false,
+      "expected": false,
+      "expected_load_calls": 1
+    }
+  ]
+}

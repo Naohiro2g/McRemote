@@ -483,11 +483,11 @@ def main() -> int:
             "work_limit_exceeded",
         )
         far_particle = [800, height + 1, 800, 0, 0, 0, "minecraft:flame", 0, 1]
-        require_reason(
-            "particle unloaded chunk admission",
-            primary.call("world.spawnParticle", far_particle),
-            "backpressure",
-        )
+        accepted = result(primary.call("world.spawnParticle", far_particle))
+        if accepted != 1:
+            raise AssertionError(
+                f"particle unloaded chunk accepted count mismatch: {accepted!r}")
+        print("PASS world.spawnParticle: unloaded chunk loaded before spawn")
 
         require_reason(
             "entity unknown ID",
