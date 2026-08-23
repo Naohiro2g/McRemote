@@ -21,6 +21,7 @@ import java.util.concurrent.Future;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,6 +46,118 @@ class CredentialServiceTest {
         assertEquals(CredentialService.ResolveStatus.ACTIVE, resolved.status());
         assertEquals(player, resolved.record().playerUuid());
         assertEquals(issued.credentialId(), resolved.record().credentialId());
+    }
+
+    @Test
+    void sessionTokenSurvivesRestartUntilExpiryAndNeverStoresRawToken() throws Exception {
+        Paths paths = paths("session-restart");
+        CredentialService service = initialized(paths);
+        TokenStore tokens = new TokenStore(service);
+        UUID player = UUID.randomUUID();
+
+        String token = tokens.issue(player, TokenStore.TokenType.SESSION, null, 7200);
+        String snapshot = Files.readString(paths.snapshot());
+        assertTrue(token.startsWith("mcrs_"));
+        assertFalse(snapshot.contains(token));
+        assertTrue(snapshot.contains("\"type\": \"session\""));
+        assertFalse(snapshot.contains("\"expires_at\": null"));
+
+        TokenStore restarted = new TokenStore(
+                new CredentialService(paths.snapshot(), paths.authority(), 16));
+        TokenStore.ResolveResult resolved = restarted.resolve(token);
+        assertEquals(TokenStore.ResolveStatus.ACTIVE, resolved.status());
+        assertEquals(player, resolved.record().uuid());
+        assertEquals(TokenStore.TokenType.SESSION, resolved.record().tokenType());
+        assertNull(resolved.record().credentialId());
+    }
+
+    @Test
+    void expiredSessionRemainsExpiredAcrossSnapshotRestarts() throws Exception {
+        Paths paths = paths("session-expired");
+        CredentialService service = initialized(paths);
+        String token = new TokenStore(service).issue(
+                UUID.randomUUID(), TokenStore.TokenType.SESSION, null, 7200);
+        JsonObject snapshot = JsonParser.parseString(Files.readString(paths.snapshot()))
+                .getAsJsonObject();
+        snapshot.getAsJsonArray("records").get(0).getAsJsonObject().addProperty(
+                "expires_at", "2020-01-01T00:00:00Z");
+        Files.writeString(paths.snapshot(), snapshot.toString(), StandardCharsets.UTF_8);
+
+        TokenStore restarted = new TokenStore(
+                new CredentialService(paths.snapshot(), paths.authority(), 16));
+        assertEquals(TokenStore.ResolveStatus.EXPIRED, restarted.resolve(token).status());
+
+        byte[] expiredSnapshot = Files.readAllBytes(paths.snapshot());
+        Files.write(paths.snapshot(), expiredSnapshot);
+        TokenStore rolledBack = new TokenStore(
+                new CredentialService(paths.snapshot(), paths.authority(), 16));
+        assertEquals(TokenStore.ResolveStatus.EXPIRED, rolledBack.resolve(token).status());
+    }
+
+    @Test
+    void sessionRecordsStayOutsideLongLivedManagementAndLimit() throws Exception {
+        Paths paths = paths("session-management");
+        CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 1);
+        service.bootstrap();
+        UUID player = UUID.randomUUID();
+        CredentialService.IssueResult firstSession = service.issueSession(player, null, 7200);
+        service.issueSession(player, null, 7200);
+        CredentialService.IssueResult longLived = service.issue(player, "teacher-pc");
+
+        assertEquals(1, service.list(player).size());
+        assertEquals(longLived.credentialId(), service.list(player).get(0).credentialId());
+        assertThrows(CredentialService.CredentialNotFoundException.class,
+                () -> service.revoke(player, firstSession.credentialId()));
+        assertThrows(CredentialLimitReachedException.class,
+                () -> service.issue(player, "second-long-lived"));
+    }
+
+    @Test
+    void credentialDomainResetInvalidatesPersistedSession() throws Exception {
+        Paths paths = paths("session-reset");
+        CredentialService service = initialized(paths);
+        String token = new TokenStore(service).issue(
+                UUID.randomUUID(), TokenStore.TokenType.SESSION, null, 7200);
+
+        service.reset();
+
+        assertEquals(TokenStore.ResolveStatus.NOT_FOUND,
+                new TokenStore(service).resolve(token).status());
+    }
+
+    @Test
+    void malformedSessionSnapshotFailsClosed() throws Exception {
+        Paths paths = paths("session-malformed");
+        CredentialService service = initialized(paths);
+        new TokenStore(service).issue(UUID.randomUUID(), TokenStore.TokenType.SESSION, null, 7200);
+        JsonObject snapshot = JsonParser.parseString(Files.readString(paths.snapshot()))
+                .getAsJsonObject();
+        snapshot.getAsJsonArray("records").get(0).getAsJsonObject().add("expires_at", null);
+        Files.writeString(paths.snapshot(), snapshot.toString(), StandardCharsets.UTF_8);
+
+        assertEquals(CredentialService.Health.UNHEALTHY,
+                new CredentialService(paths.snapshot(), paths.authority(), 16).health());
+    }
+
+    @Test
+    void temporarySnapshotFailureDoesNotDeletePersistedSessionToken() throws Exception {
+        Paths paths = paths("session-temporary-failure");
+        CredentialService original = initialized(paths);
+        String token = new TokenStore(original).issue(
+                UUID.randomUUID(), TokenStore.TokenType.SESSION, null, 7200);
+
+        FailingCredentialStore failingStore = new FailingCredentialStore(paths.snapshot());
+        CredentialService failing = new CredentialService(
+                failingStore, new RevocationAuthority(paths.authority()), 16);
+        failingStore.failPersist = true;
+        TokenStore.ResolveResult unavailable = new TokenStore(failing).resolve(token);
+        assertEquals(TokenStore.ResolveStatus.STORE_UNAVAILABLE, unavailable.status());
+        assertEquals(CredentialStoreUnavailableException.Operation.TOUCH,
+                unavailable.operation());
+
+        TokenStore recovered = new TokenStore(
+                new CredentialService(paths.snapshot(), paths.authority(), 16));
+        assertEquals(TokenStore.ResolveStatus.ACTIVE, recovered.resolve(token).status());
     }
 
     @Test
@@ -284,6 +397,10 @@ class CredentialServiceTest {
                 tokens.resolve("mcrl_unbootstrapped").status());
         assertEquals(CredentialStoreUnavailableException.Operation.RESOLVE,
                 tokens.resolve("mcrl_unbootstrapped").operation());
+        assertEquals(TokenStore.ResolveStatus.STORE_UNAVAILABLE,
+                tokens.resolve("mcrs_unbootstrapped").status());
+        assertThrows(CredentialStoreUnavailableException.class,
+                () -> tokens.issue(UUID.randomUUID(), TokenStore.TokenType.SESSION, null, 7200));
         assertThrows(IllegalArgumentException.class,
                 () -> TokenStore.TokenType.fromWire("player"));
         assertEquals(TokenStore.TokenType.SESSION, TokenStore.TokenType.fromWire(null));
