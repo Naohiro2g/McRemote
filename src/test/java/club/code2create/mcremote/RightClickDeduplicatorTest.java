@@ -14,9 +14,9 @@ class RightClickDeduplicatorTest {
         RightClickDeduplicator deduplicator = new RightClickDeduplicator();
         UUID player = UUID.randomUUID();
 
-        assertTrue(deduplicator.accept(player, "world", 1, 2, 3, 10, EquipmentSlot.HAND));
-        assertFalse(deduplicator.accept(player, "world", 1, 2, 3, 10, EquipmentSlot.OFF_HAND));
-        assertTrue(deduplicator.accept(player, "world", 1, 2, 3, 11, EquipmentSlot.OFF_HAND));
-        assertTrue(deduplicator.accept(player, "world", 2, 2, 3, 11, EquipmentSlot.HAND));
+        assertTrue(deduplicator.accept(player, "minecraft:overworld", 1, 2, 3, 10, EquipmentSlot.HAND));
+        assertFalse(deduplicator.accept(player, "minecraft:overworld", 1, 2, 3, 10, EquipmentSlot.OFF_HAND));
+        assertTrue(deduplicator.accept(player, "minecraft:overworld", 1, 2, 3, 11, EquipmentSlot.OFF_HAND));
+        assertTrue(deduplicator.accept(player, "minecraft:overworld", 2, 2, 3, 11, EquipmentSlot.HAND));
     }
 }

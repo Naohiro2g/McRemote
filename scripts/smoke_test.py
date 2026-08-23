@@ -4,7 +4,7 @@
 minecraft-remote-api モジュールに依存しない素の疎通テスト。JSON-RPC 2.0 ワイヤ
 （wire-format-design §3）で build-state 経路（プレイヤー/認証 不要）を流す:
 
-    hello -> build.setWorld(dimension) -> build.setOrigin(ox,oy,oz)
+    hello(build.dimension/origin) -> build.setDimension(dimension) -> build.setOrigin(ox,oy,oz)
         -> world.setBlock(x,y,z,{block_id,state}) -> world.getBlock(x,y,z)
 
 set成功のresult:nullと、明示getBlockの構造化BlockValueを判定する。
@@ -13,7 +13,7 @@ set成功のresult:nullと、明示getBlockの構造化BlockValueを判定する
   - 直 TCP は 1行=1 JSON（compact, \n 終端）。
   - 要求 {"jsonrpc":"2.0","id":N,"method":...,"params":...}、応答 {... ,"id":N,"result"|"error":...}。
   - id を省くと notification ＝ 応答が返らない（FAST modeのworld.setBlock/setBlocks）。
-  - hello は最初の1メッセージ（object params {"protocol":"22.0.0"}）。応答は flat result
+  - hello は最初の1メッセージ（object params、build.dimension/originを含められる）。応答は flat result
     {protocol, mc_version, supported_mc_versions, world_constants:{y_sea}, catalogHash, ...}（§6.2）。非互換は error。
 
 使い方（サーバを runServer 等で起動し、新プラグインを反映してから）:
@@ -85,12 +85,19 @@ def main() -> int:
                 return resp["error"]
 
             # hello（object params・最初の1メッセージ）
-            info = request("hello", {"protocol": args.protocol})
+            info = request("hello", {
+                "protocol": args.protocol,
+                "build": {
+                    "dimension": args.dimension,
+                    "origin": [args.ox, args.oy, args.oz],
+                },
+            })
             print(f"[hello]          <- {json.dumps(info, ensure_ascii=False)}")
             if not isinstance(info, dict):
                 print(f"FAIL: hello result is not an object: {info!r}")
                 return 1
-            for key in ("protocol", "mc_version", "supported_mc_versions", "world_constants", "catalogHash"):
+            for key in ("protocol", "mc_version", "supported_mc_versions", "world_constants",
+                        "catalogHash", "dimension", "origin"):
                 if key not in info:
                     print(f"FAIL: hello result missing {key!r}: {info}")
                     return 1
@@ -110,6 +117,14 @@ def main() -> int:
             print(f"                    protocol={info['protocol']} mc_version={info['mc_version']} "
                   f"supported={info['supported_mc_versions']} world_constants.y_sea={wc['y_sea']} "
                   f"catalogHash={info['catalogHash']}")
+            expected_context = {
+                "dimension": (args.dimension if ":" in args.dimension
+                              else f"minecraft:{args.dimension}"),
+                "origin": [args.ox, args.oy, args.oz],
+            }
+            if {key: info.get(key) for key in expected_context} != expected_context:
+                print(f"FAIL: hello build context is not canonical: {info}")
+                return 1
 
             # catalog 本体は認証後配送。token 無し hello が通る開発設定でも取得は拒否される。
             catalog_err = request_error("catalog.get", [])
@@ -125,8 +140,13 @@ def main() -> int:
                 print(f"FAIL: unauthenticated player.getPose must return auth_required: {pose_err}")
                 return 1
 
-            print(f"[build.setWorld]  <- {request('build.setWorld', [args.dimension])}")
-            print(f"[build.setOrigin] <- {request('build.setOrigin', [args.ox, args.oy, args.oz])}")
+            dimension_context = request("build.setDimension", [args.dimension])
+            origin_context = request("build.setOrigin", [args.ox, args.oy, args.oz])
+            print(f"[build.setDimension] <- {dimension_context}")
+            print(f"[build.setOrigin]    <- {origin_context}")
+            if dimension_context != expected_context or origin_context != expected_context:
+                print("FAIL: build setters must return the same canonical context")
+                return 1
 
             failures = []
 

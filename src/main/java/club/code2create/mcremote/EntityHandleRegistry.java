@@ -9,27 +9,35 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 
 /** Connection-epoch scoped opaque entity handles. */
 final class EntityHandleRegistry {
     static final String PREFIX = "mceh_";
+    static final String DIMENSION_CHANGED_REASON = "entity_dimension_changed";
 
     private final int capacity;
     private final SecureRandom random;
+    private final Function<UUID, Entity> entityLookup;
     private final Map<String, Entry> byHandle = new HashMap<>();
     private final Map<UUID, String> byEntity = new HashMap<>();
     private int reservations;
 
     EntityHandleRegistry(int capacity) {
-        this(capacity, new SecureRandom());
+        this(capacity, new SecureRandom(), Bukkit::getEntity);
     }
 
     EntityHandleRegistry(int capacity, SecureRandom random) {
+        this(capacity, random, Bukkit::getEntity);
+    }
+
+    EntityHandleRegistry(int capacity, SecureRandom random, Function<UUID, Entity> entityLookup) {
         if (capacity < 1) {
             throw new IllegalArgumentException("handle capacity must be positive");
         }
         this.capacity = capacity;
         this.random = random;
+        this.entityLookup = entityLookup;
     }
 
     synchronized Reservation reserve() {
@@ -57,12 +65,12 @@ final class EntityHandleRegistry {
         if (entry == null) {
             return new ResolveResult(ResolveStatus.NOT_FOUND, null);
         }
-        Entity entity = Bukkit.getEntity(entry.entityId());
+        Entity entity = entityLookup.apply(entry.entityId());
         if (entity == null || entity.isDead() || !entity.isValid()) {
             return new ResolveResult(ResolveStatus.REMOVED_OR_UNLOADED, null);
         }
-        if (!entry.world().equals(entity.getWorld().getName())) {
-            return new ResolveResult(ResolveStatus.WORLD_CHANGED, null);
+        if (!entry.dimension().equals(DimensionResolver.canonical(entity.getWorld()))) {
+            return new ResolveResult(ResolveStatus.DIMENSION_CHANGED, null);
         }
         return new ResolveResult(ResolveStatus.ACTIVE, entity);
     }
@@ -98,7 +106,7 @@ final class EntityHandleRegistry {
                     close();
                     return existing;
                 }
-                byHandle.put(handle, new Entry(entity.getUniqueId(), entity.getWorld().getName()));
+                byHandle.put(handle, new Entry(entity.getUniqueId(), DimensionResolver.canonical(entity.getWorld())));
                 byEntity.put(entity.getUniqueId(), handle);
                 reservations--;
                 open = false;
@@ -117,7 +125,7 @@ final class EntityHandleRegistry {
         }
     }
 
-    enum ResolveStatus { ACTIVE, NOT_FOUND, REMOVED_OR_UNLOADED, WORLD_CHANGED }
+    enum ResolveStatus { ACTIVE, NOT_FOUND, REMOVED_OR_UNLOADED, DIMENSION_CHANGED }
 
     record ResolveResult(ResolveStatus status, Entity entity) {
     }
@@ -135,6 +143,6 @@ final class EntityHandleRegistry {
         return handle;
     }
 
-    private record Entry(UUID entityId, String world) {
+    private record Entry(UUID entityId, String dimension) {
     }
 }

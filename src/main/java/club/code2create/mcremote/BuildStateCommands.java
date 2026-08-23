@@ -1,126 +1,188 @@
 package club.code2create.mcremote;
 
-import org.bukkit.Bukkit;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.bukkit.Location;
 import org.bukkit.World;
 
-import java.util.Locale;
-import java.util.logging.Logger;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-/**
- * Build state commands: setWorld(dimension) と setBuildOrigin(x, y, z)。
- * identity（誰か）と build state（どこに建てるか）を分離する設計に基づき、
- * プレイヤー（setPlayer）に依存せず world と origin を設定する。
- *
- * 座標式に暗黙の Y オフセットは持たない（絶対 y = origin_y + dy）。
- * 標高は建築コード側で意識する建付け。
- */
+/** Protocol 22 connection-local DimensionKey and build-origin commands. */
 public class BuildStateCommands {
-    private static final Logger logger = Logger.getLogger("McR_BuildState");
-
-    // 全クライアント統一の既定原点 (200, 0, 200)
     static final int DEFAULT_ORIGIN_X = 200;
     static final int DEFAULT_ORIGIN_Y = 0;
     static final int DEFAULT_ORIGIN_Z = 200;
 
-    private final RemoteSession session;
+    private final BuildContextSession session;
+    private final DimensionResolver dimensions;
 
-    public BuildStateCommands(RemoteSession session) {
+    BuildStateCommands(BuildContextSession session, DimensionResolver dimensions) {
         this.session = session;
+        this.dimensions = dimensions;
     }
 
-    /** setBuildOrigin(x, y, z) — 建築原点を設定（world は現在のもの、無ければ既定ワールド）。 */
-    public void handleSetBuildOrigin(String[] args) {
-        if (args.length != 3) {
-            session.send("Error: setBuildOrigin requires x, y, z.");
-            logger.warning("Invalid arguments for setBuildOrigin command.");
-            return;
-        }
-        int x, y, z;
+    /** build.setOrigin [x,y,z] -> canonical build context. */
+    public void handleSetOrigin(JsonElement params) {
+        final JsonArray args;
         try {
-            x = Integer.parseInt(args[0]);
-            y = Integer.parseInt(args[1]);
-            z = Integer.parseInt(args[2]);
-        } catch (NumberFormatException e) {
-            session.send("Error: x, y, z must be integers.");
-            logger.warning("Invalid coordinates for setBuildOrigin command.");
+            args = WireParams.positional(params, 3);
+            int x = WireParams.integer(args, 0);
+            int y = WireParams.integer(args, 1);
+            int z = WireParams.integer(args, 2);
+            Location current = session.getOrigin();
+            if (current == null || current.getWorld() == null) {
+                session.respondError(-32000, "origin_not_set", null);
+                return;
+            }
+            Location updated = new Location(current.getWorld(), x, y, z);
+            session.setOrigin(updated);
+            session.respondResult(buildContext(updated));
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
+        }
+    }
+
+    /** build.setDimension [dimension_ref] -> canonical build context. */
+    public void handleSetDimension(JsonElement params) {
+        final String dimensionRef;
+        try {
+            JsonArray args = WireParams.positional(params, 1);
+            dimensionRef = WireParams.string(args, 0);
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
             return;
         }
-        World world = currentWorldOrDefault();
-        if (world == null) {
-            session.send("Error: no world available for setBuildOrigin.");
-            logger.warning("No world available for setBuildOrigin command.");
+
+        final DimensionResolver.ResolvedDimension resolved;
+        try {
+            resolved = dimensions.resolve(dimensionRef);
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", null);
             return;
         }
-        session.setOrigin(new Location(world, x, y, z));
-        session.send("Build origin set to: " + x + ", " + y + ", " + z + " in world \"" + world.getName() + "\"");
-    }
-
-    /** setWorld(dimension) — ワールドを設定（origin の x/y/z は維持、未設定なら既定原点）。 */
-    public void handleSetWorld(String[] args) {
-        if (args.length != 1) {
-            session.send("Error: setWorld requires a dimension.");
-            logger.warning("Invalid arguments for setWorld command.");
+        if (!resolved.isLoaded()) {
+            session.respondError(-32000, "unknown_dimension", dimensionData(resolved.canonicalKey()));
             return;
         }
-        World world = resolveWorld(args[0]);
-        if (world == null) {
-            session.send("Error: " + args[0] + " is an invalid dimension/world name.");
-            logger.warning("Invalid dimension for setWorld command: " + args[0]);
-            return;
-        }
-        Location origin = session.getOrigin();
-        int x = origin != null ? origin.getBlockX() : DEFAULT_ORIGIN_X;
-        int y = origin != null ? origin.getBlockY() : DEFAULT_ORIGIN_Y;
-        int z = origin != null ? origin.getBlockZ() : DEFAULT_ORIGIN_Z;
-        session.setOrigin(new Location(world, x, y, z));
-        session.send("World set to \"" + world.getName() + "\" (origin: " + x + ", " + y + ", " + z + ")");
+
+        Location current = session.getOrigin();
+        int x = current != null ? current.getBlockX() : DEFAULT_ORIGIN_X;
+        int y = current != null ? current.getBlockY() : DEFAULT_ORIGIN_Y;
+        int z = current != null ? current.getBlockZ() : DEFAULT_ORIGIN_Z;
+        Location updated = new Location(resolved.world(), x, y, z);
+        session.setOrigin(updated);
+        session.respondResult(buildContext(updated));
     }
 
-    /** 接続時の既定原点（既定ワールド / (200,0,200)）。ワールド未ロード時のみ null。 */
-    public Location defaultOrigin() {
-        World world = defaultWorld();
-        if (world == null) {
-            return null;
+    /** Resolve hello.params.build atomically without mutating the session. */
+    Location resolveHelloBuild(JsonElement helloParams) {
+        if (helloParams == null || !helloParams.isJsonObject()) {
+            throw new InvalidBuildException();
         }
-        return new Location(world, DEFAULT_ORIGIN_X, DEFAULT_ORIGIN_Y, DEFAULT_ORIGIN_Z);
-    }
-
-    private World currentWorldOrDefault() {
-        Location origin = session.getOrigin();
-        if (origin != null && origin.getWorld() != null) {
-            return origin.getWorld();
+        JsonElement buildElement = helloParams.getAsJsonObject().get("build");
+        JsonObject build;
+        if (buildElement == null) {
+            build = new JsonObject();
+        } else if (buildElement.isJsonObject()) {
+            build = buildElement.getAsJsonObject();
+        } else {
+            throw new InvalidBuildException();
         }
-        return defaultWorld();
-    }
-
-    private World defaultWorld() {
-        World world = Bukkit.getWorld("world");
-        if (world == null && !Bukkit.getWorlds().isEmpty()) {
-            world = Bukkit.getWorlds().get(0);
-        }
-        return world;
-    }
-
-    /**
-     * dimension 文字列を解決する。overworld/nether/end を World.Environment で解決し、
-     * 一致しなければ Bukkit のワールド正確名にフォールバックする（両形式を受け付ける）。
-     */
-    private World resolveWorld(String dimension) {
-        String key = dimension.toLowerCase(Locale.ROOT).trim();
-        World.Environment env = switch (key) {
-            case "overworld", "world", "normal" -> World.Environment.NORMAL;
-            case "nether", "the_nether" -> World.Environment.NETHER;
-            case "end", "the_end" -> World.Environment.THE_END;
-            default -> null;
-        };
-        if (env != null) {
-            for (World world : Bukkit.getWorlds()) {
-                if (world.getEnvironment() == env) {
-                    return world;
-                }
+        for (String key : build.keySet()) {
+            if (!"dimension".equals(key) && !"origin".equals(key)) {
+                throw new InvalidBuildException();
             }
         }
-        return Bukkit.getWorld(dimension);
+
+        World world;
+        JsonElement dimensionElement = build.get("dimension");
+        if (dimensionElement != null) {
+            if (!dimensionElement.isJsonPrimitive()
+                    || !dimensionElement.getAsJsonPrimitive().isString()) {
+                throw new InvalidBuildException();
+            }
+            DimensionResolver.ResolvedDimension resolved;
+            try {
+                resolved = dimensions.resolve(dimensionElement.getAsString());
+            } catch (IllegalArgumentException e) {
+                throw new InvalidBuildException();
+            }
+            if (!resolved.isLoaded()) {
+                throw new UnknownDimensionException(resolved.canonicalKey());
+            }
+            world = resolved.world();
+        } else {
+            Location current = session == null ? null : session.getOrigin();
+            if (current != null && current.getWorld() != null) {
+                world = current.getWorld();
+            } else {
+                DimensionResolver.ResolvedDimension resolved = dimensions.resolveDefault();
+                if (!resolved.isLoaded()) {
+                    throw new UnknownDimensionException(resolved.canonicalKey());
+                }
+                world = resolved.world();
+            }
+        }
+
+        int x = DEFAULT_ORIGIN_X;
+        int y = DEFAULT_ORIGIN_Y;
+        int z = DEFAULT_ORIGIN_Z;
+        Location current = session == null ? null : session.getOrigin();
+        if (current != null) {
+            x = current.getBlockX();
+            y = current.getBlockY();
+            z = current.getBlockZ();
+        }
+        JsonElement originElement = build.get("origin");
+        if (originElement != null) {
+            try {
+                JsonArray origin = WireParams.positional(originElement, 3);
+                x = WireParams.integer(origin, 0);
+                y = WireParams.integer(origin, 1);
+                z = WireParams.integer(origin, 2);
+            } catch (IllegalArgumentException e) {
+                throw new InvalidBuildException();
+            }
+        }
+        return new Location(world, x, y, z);
+    }
+
+    Location defaultOrigin() {
+        DimensionResolver.ResolvedDimension resolved = dimensions.resolveDefault();
+        if (!resolved.isLoaded()) {
+            return null;
+        }
+        return new Location(resolved.world(), DEFAULT_ORIGIN_X, DEFAULT_ORIGIN_Y, DEFAULT_ORIGIN_Z);
+    }
+
+    static Map<String, Object> buildContext(Location location) {
+        Map<String, Object> context = new LinkedHashMap<>();
+        context.put("dimension", DimensionResolver.canonical(location.getWorld()));
+        context.put("origin", List.of(location.getBlockX(), location.getBlockY(), location.getBlockZ()));
+        return context;
+    }
+
+    static Map<String, Object> dimensionData(String dimension) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("dimension", dimension);
+        return data;
+    }
+
+    static final class InvalidBuildException extends IllegalArgumentException {
+    }
+
+    static final class UnknownDimensionException extends IllegalArgumentException {
+        private final String dimension;
+
+        UnknownDimensionException(String dimension) {
+            this.dimension = dimension;
+        }
+
+        String dimension() {
+            return dimension;
+        }
     }
 }

@@ -72,6 +72,8 @@ tasks.jar {
     archiveBaseName.set("mc-remote")
     archiveVersion.set(version.toString())
     archiveClassifier.set("")
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }
 
 tasks.processResources {

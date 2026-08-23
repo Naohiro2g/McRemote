@@ -309,7 +309,7 @@ public class McRemote extends JavaPlugin implements Listener {
         EquipmentSlot hand = event.getHand();
         if (!rightClickDeduplicator.accept(
                 event.getPlayer().getUniqueId(),
-                clicked.getWorld().getName(),
+                DimensionResolver.canonical(clicked.getWorld()),
                 clicked.getX(), clicked.getY(), clicked.getZ(),
                 Bukkit.getCurrentTick(), hand)) {
             return;
@@ -317,7 +317,7 @@ public class McRemote extends JavaPlugin implements Listener {
         for (RemoteSession session : sessionsFor(event.getPlayer())) {
             Location origin = capturedOrigin(session);
             session.queueCapturedEvent(B5EventDto.blockRightClick(
-                    clicked.getWorld().getName(),
+                    DimensionResolver.canonical(clicked.getWorld()),
                     blockPosition(origin),
                     List.of(
                             clicked.getX() - origin.getBlockX(),
@@ -335,7 +335,7 @@ public class McRemote extends JavaPlugin implements Listener {
         for (RemoteSession session : sessionsFor(event.getPlayer())) {
             Location origin = capturedOrigin(session);
             session.queueCapturedEvent(B5EventDto.chatPosted(
-                    event.getPlayer().getWorld().getName(), blockPosition(origin), message));
+                    DimensionResolver.canonical(event.getPlayer().getWorld()), blockPosition(origin), message));
         }
     }
 
@@ -381,7 +381,7 @@ public class McRemote extends JavaPlugin implements Listener {
         }
 
         session.queueCapturedEvent(B5EventDto.projectileHit(
-                hit.getWorld().getName(),
+                DimensionResolver.canonical(hit.getWorld()),
                 blockPosition(origin),
                 List.of(
                         WireNumbers.position(hit.getX() - origin.getX()),

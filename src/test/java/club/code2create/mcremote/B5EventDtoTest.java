@@ -18,11 +18,11 @@ class B5EventDtoTest {
     @Test
     void rightClickShapeIsStableAndImmutable() {
         Map<String, Object> dto = B5EventDto.blockRightClick(
-                "world", List.of(200, 0, 200), List.of(1, 2, 3),
+                "minecraft:overworld", List.of(200, 0, 200), List.of(1, 2, 3),
                 "up", blockValue("minecraft:stone", Map.of()), "main");
 
         assertEquals(
-                "{\"type\":\"block_right_click\",\"world\":\"world\","
+                "{\"type\":\"block_right_click\",\"dimension\":\"minecraft:overworld\","
                         + "\"origin\":[200,0,200],\"pos\":[1,2,3],\"face\":\"up\","
                         + "\"block\":{\"block_id\":\"minecraft:stone\",\"state\":{}},"
                         + "\"hand\":\"main\"}",
@@ -33,16 +33,27 @@ class B5EventDtoTest {
     @Test
     void projectilePositionIsCanonicalAtCaptureAndContainsNoBukkitEvent() {
         Map<String, Object> dto = B5EventDto.projectileHit(
-                "world", List.of(0, 0, 0),
+                "myworld:world", List.of(0, 0, 0),
                 List.of(WireNumbers.position(1.2345), WireNumbers.position(-0.0), WireNumbers.position(-1.2345)),
                 "minecraft:arrow", Map.of("kind", "player"));
 
         assertEquals(
-                "{\"type\":\"projectile_hit\",\"world\":\"world\",\"origin\":[0,0,0],"
+                "{\"type\":\"projectile_hit\",\"dimension\":\"myworld:world\",\"origin\":[0,0,0],"
                         + "\"projectile\":\"minecraft:arrow\",\"pos\":[1.235,0,-1.235],"
                         + "\"target\":{\"kind\":\"player\"}}",
                 GSON.toJson(dto));
         assertFalse(containsBukkitEvent(dto));
+    }
+
+    @Test
+    void chatUsesCanonicalDimensionField() {
+        Map<String, Object> dto = B5EventDto.chatPosted(
+                "minecraft:the_nether", List.of(4, 5, 6), "hello");
+
+        assertEquals(
+                "{\"type\":\"chat_posted\",\"dimension\":\"minecraft:the_nether\","
+                        + "\"origin\":[4,5,6],\"message\":\"hello\"}",
+                GSON.toJson(dto));
     }
 
     private static boolean containsBukkitEvent(Object value) {

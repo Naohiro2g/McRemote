@@ -12,14 +12,14 @@ final class RightClickDeduplicator {
 
     synchronized boolean accept(
             UUID player,
-            String world,
+            String dimension,
             int x,
             int y,
             int z,
             long tick,
             EquipmentSlot hand
     ) {
-        Key key = new Key(player, world, x, y, z);
+        Key key = new Key(player, dimension, x, y, z);
         Seen previous = seen.get(key);
         if (previous != null && previous.tick() == tick && previous.hand() != hand) {
             return false;
@@ -31,7 +31,7 @@ final class RightClickDeduplicator {
         return true;
     }
 
-    private record Key(UUID player, String world, int x, int y, int z) {
+    private record Key(UUID player, String dimension, int x, int y, int z) {
     }
 
     private record Seen(long tick, EquipmentSlot hand) {
