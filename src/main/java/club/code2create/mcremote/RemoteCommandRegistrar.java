@@ -9,7 +9,8 @@ public class RemoteCommandRegistrar {
             BuildStateCommands buildStateCommands,
             CatalogCommands catalogCommands,
             EventCommands eventCommands,
-            WorldB5Commands worldB5Commands
+            WorldB5Commands worldB5Commands,
+            SignCommands signCommands
     ) {
         CommandRegistry registry = new CommandRegistry();
         PlayerCommands playerCommands = session.getPlayerCommands();
@@ -37,6 +38,8 @@ public class RemoteCommandRegistrar {
         registry.registerStructured("player.setPos", playerCommands::handleSetPosStructured);
         registry.registerStructured("player.getPose", playerCommands::handleGetPoseStructured);
         registry.registerStructured("player.setPose", playerCommands::handleSetPoseStructured);
+        // b6 candidate wire contract; exact shape pending knowledge-repo ratification (DECISIONS 2026-08-16-06).
+        registry.registerStructured("world.setSign", signCommands::handleSetSign);
         registry.register("catalog.get", catalogCommands::handleGet, false);
 
         // Protocol 22 build context. build.setWorld is intentionally not registered.

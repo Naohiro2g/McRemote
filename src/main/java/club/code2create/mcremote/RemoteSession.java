@@ -94,12 +94,13 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                 b5Policy.eventPollDefault(),
                 b5Policy.eventPollLimit());
         WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, b5Policy);
+        SignCommands signCommands = new SignCommands(this, miscCommands);
         // build state は identity から分離。既定は minecraft:overworld / (200,0,200)。
         this.origin = buildStateCommands.defaultOrigin();
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
                 this, blockCommands, miscCommands, entityCommands, buildStateCommands, catalogCommands,
-                eventCommands, worldB5Commands));
+                eventCommands, worldB5Commands, signCommands));
         this.authCommands = new AuthCommands(
                 this, plugin.getPairingManager(), plugin.getCredentialService());
         init();
