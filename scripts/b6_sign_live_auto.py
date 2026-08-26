@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""McRemote b6 candidate live-auto smoke test for world.setSign/world.getSign (Python standard
-library only).
+"""McRemote b6 candidate live-auto smoke test for world.setSign/world.getSign/world.updateSignLine
+(Python standard library only).
 
-Neither method is a ratified b6 wire contract yet (DECISIONS 2026-08-16-06 names the sign scope
-without fixing params/result shape; the getSign shape and the setSign color/bold/italic style
-extension are a 2026-08-25 design-session candidate, see local NOTES_ja.md). This script exercises
-both against a real Paper server. It reuses the b5_live_auto.py connection harness rather than
-duplicating it.
+None of these are a ratified b6 wire contract yet (DECISIONS 2026-08-16-06 names the sign scope
+without fixing params/result shape; getSign, the setSign color/decorations style extension, and
+updateSignLine are a 2026-08-25/26 design-session candidate, see local NOTES_ja.md). This script
+exercises all three against a real Paper server. It reuses the b5_live_auto.py connection harness
+rather than duplicating it.
 
 Scope note: sign_waxed is not exercised here — waxing a sign requires an in-game honeycomb
 interaction (live-human), which this script cannot perform; that branch is untested here, not
@@ -47,7 +47,7 @@ def verify_get_sign_and_style(rpc: Rpc, height: int) -> None:
     plain_sign = result(rpc.call("world.getSign", [2, y, 5]))
     front = plain_sign["front"]
     back = plain_sign["back"]
-    if front[0] != {"text": "plain", "color": front[0]["color"], "bold": False, "italic": False}:
+    if front[0] != {"text": "plain", "color": front[0]["color"], "decorations": []}:
         raise AssertionError(f"getSign plain line mismatch: {front[0]!r}")
     for i in range(1, 4):
         if front[i]["text"] != "":
@@ -60,13 +60,17 @@ def verify_get_sign_and_style(rpc: Rpc, height: int) -> None:
           f"(convention in code, not a live-verified rendering fact — needs live-human)")
 
     require_null_result(
-        "world.setSign style line (named color + bold + italic)",
+        "world.setSign style line (named color + all 5 decorations)",
         rpc.call("world.setSign", [2, y, 5, {
-            "front": [{"text": "styled", "color": "red", "bold": True, "italic": True}, "", "", ""],
+            "front": [{
+                "text": "styled", "color": "red",
+                "decorations": ["bold", "italic", "underlined", "strikethrough", "obfuscated"],
+            }, "", "", ""],
         }]),
     )
     styled_line = result(rpc.call("world.getSign", [2, y, 5]))["front"][0]
-    if styled_line != {"text": "styled", "color": "red", "bold": True, "italic": True}:
+    expected_decorations = sorted(["bold", "italic", "underlined", "strikethrough", "obfuscated"])
+    if styled_line != {"text": "styled", "color": "red", "decorations": expected_decorations}:
         raise AssertionError(f"getSign named-color style round-trip mismatch: {styled_line!r}")
 
     require_null_result(
@@ -76,19 +80,19 @@ def verify_get_sign_and_style(rpc: Rpc, height: int) -> None:
         }]),
     )
     hex_line = result(rpc.call("world.getSign", [2, y, 5]))["front"][0]
-    if hex_line != {"text": "hexline", "color": "#123456", "bold": False, "italic": False}:
+    if hex_line != {"text": "hexline", "color": "#123456", "decorations": []}:
         raise AssertionError(f"getSign hex-color round-trip mismatch: {hex_line!r}")
 
     require_null_result(
         "world.setSign mixed shorthand string and object lines",
         rpc.call("world.setSign", [2, y, 5, {
-            "front": ["plain again", {"text": "bold only", "bold": True}, "", ""],
+            "front": ["plain again", {"text": "bold only", "decorations": ["bold"]}, "", ""],
         }]),
     )
     mixed_front = result(rpc.call("world.getSign", [2, y, 5]))["front"]
-    if mixed_front[0]["text"] != "plain again" or mixed_front[0]["bold"] is not False:
+    if mixed_front[0]["text"] != "plain again" or mixed_front[0]["decorations"] != []:
         raise AssertionError(f"getSign mixed line0 mismatch: {mixed_front[0]!r}")
-    if mixed_front[1]["text"] != "bold only" or mixed_front[1]["bold"] is not True:
+    if mixed_front[1]["text"] != "bold only" or mixed_front[1]["decorations"] != ["bold"]:
         raise AssertionError(f"getSign mixed line1 mismatch: {mixed_front[1]!r}")
 
     require_reason(
@@ -104,16 +108,86 @@ def verify_get_sign_and_style(rpc: Rpc, height: int) -> None:
         "invalid_property_value",
     )
     require_reason(
-        "world.setSign non-boolean bold",
+        "world.setSign unknown decoration token",
         rpc.call("world.setSign", [2, y, 5, {
-            "front": [{"text": "x", "bold": "yes"}, "", "", ""],
+            "front": [{"text": "x", "decorations": ["glowing"]}, "", "", ""],
+        }]),
+        "invalid_property_value",
+    )
+    require_reason(
+        "world.setSign non-array decorations",
+        rpc.call("world.setSign", [2, y, 5, {
+            "front": [{"text": "x", "decorations": "bold"}, "", "", ""],
         }]),
         "invalid_params",
     )
 
     print("PASS world.getSign / style setSign: default-line shape, named+hex color round-trip, "
-          "mixed string/object lines, not_a_sign, invalid color/bold "
+          "all 5 decoration tokens, mixed string/object lines, not_a_sign, invalid color/decorations "
           "(sign_waxed and rendered-color truth need live-human)")
+
+
+def verify_update_sign_line(rpc: Rpc, height: int) -> None:
+    y = height + 1
+
+    require_null_result(
+        "updateSignLine sign block placement",
+        rpc.call("world.setBlock", [3, y, 5, {"block_id": "oak_sign", "state": {"rotation": 0}}]),
+    )
+    require_null_result(
+        "updateSignLine baseline front (4 distinct lines)",
+        rpc.call("world.setSign", [3, y, 5, {"front": ["L0", "L1", "L2", "L3"]}]),
+    )
+    require_null_result(
+        "updateSignLine baseline back",
+        rpc.call("world.setSign", [3, y, 5, {"back": ["B0", "B1", "B2", "B3"]}]),
+    )
+
+    require_null_result(
+        "world.updateSignLine patches only front line 1",
+        rpc.call("world.updateSignLine", [3, y, 5, "front", 1, {
+            "text": "patched", "color": "red", "decorations": ["bold"],
+        }]),
+    )
+    patched = result(rpc.call("world.getSign", [3, y, 5]))
+    front = patched["front"]
+    if front[1] != {"text": "patched", "color": "red", "decorations": ["bold"]}:
+        raise AssertionError(f"updateSignLine did not apply to the targeted line: {front[1]!r}")
+    if front[0]["text"] != "L0" or front[2]["text"] != "L2" or front[3]["text"] != "L3":
+        raise AssertionError(f"updateSignLine disturbed an untouched front line: {front!r}")
+    back = patched["back"]
+    if [line["text"] for line in back] != ["B0", "B1", "B2", "B3"]:
+        raise AssertionError(f"updateSignLine disturbed the untouched back face: {back!r}")
+
+    require_null_result(
+        "world.updateSignLine on the back face",
+        rpc.call("world.updateSignLine", [3, y, 5, "back", 2, "patched back"]),
+    )
+    back_after = result(rpc.call("world.getSign", [3, y, 5]))["back"]
+    if back_after[2]["text"] != "patched back":
+        raise AssertionError(f"updateSignLine did not patch the targeted back line: {back_after!r}")
+    if [line["text"] for line in back_after] != ["B0", "B1", "patched back", "B3"]:
+        raise AssertionError(f"updateSignLine disturbed an untouched back line: {back_after!r}")
+
+    require_reason(
+        "world.updateSignLine against a non-sign block",
+        rpc.call("world.updateSignLine", [1, y, 5, "front", 0, "x"]),
+        "not_a_sign",
+    )
+    require_reason(
+        "world.updateSignLine invalid face",
+        rpc.call("world.updateSignLine", [3, y, 5, "left", 0, "x"]),
+        "invalid_params",
+    )
+    require_reason(
+        "world.updateSignLine line_index out of range",
+        rpc.call("world.updateSignLine", [3, y, 5, "front", 4, "x"]),
+        "invalid_params",
+    )
+
+    print("PASS world.updateSignLine: patches exactly one line, leaves the rest of the face and "
+          "the other face untouched, not_a_sign, invalid face/line_index "
+          "(sign_waxed needs live-human)")
 
 
 def verify_sign(rpc: Rpc, height: int) -> None:
@@ -210,7 +284,8 @@ def main() -> int:
             raise AssertionError(f"height must be integer: {height!r}")
         verify_sign(rpc, height)
         verify_get_sign_and_style(rpc, height)
-        print("PASS: McRemote b6 world.setSign/world.getSign live-auto candidate")
+        verify_update_sign_line(rpc, height)
+        print("PASS: McRemote b6 world.setSign/world.getSign/world.updateSignLine live-auto candidate")
         return 0
     except (AssertionError, OSError, RuntimeError) as error:
         print(f"FAIL: {error}", file=sys.stderr)

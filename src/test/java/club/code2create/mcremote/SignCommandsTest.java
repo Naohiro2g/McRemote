@@ -6,11 +6,13 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Sign;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -53,19 +55,24 @@ class SignCommandsTest {
         SignCommands.LineSpec line = spec.front[0];
         assertEquals("hello", line.text);
         assertNull(line.color);
-        assertFalse(line.bold);
-        assertFalse(line.italic);
+        assertTrue(line.decorations.isEmpty());
     }
 
     @Test
     void objectLineAcceptsNamedColorAndDecorations() throws SignCommands.ValidationException {
         SignCommands.SignSpec spec = SignCommands.parseSpec(spec("""
-                {"front": [{"text": "hi", "color": "red", "bold": true, "italic": true}, "", "", ""]}"""));
+                {"front": [{"text": "hi", "color": "red", "decorations": ["bold", "italic"]}, "", "", ""]}"""));
         SignCommands.LineSpec line = spec.front[0];
         assertEquals("hi", line.text);
         assertEquals(NamedTextColor.RED, line.color);
-        assertTrue(line.bold);
-        assertTrue(line.italic);
+        assertEquals(Set.of(TextDecoration.BOLD, TextDecoration.ITALIC), line.decorations);
+    }
+
+    @Test
+    void objectLineAcceptsAllFiveDecorationTokens() throws SignCommands.ValidationException {
+        SignCommands.SignSpec spec = SignCommands.parseSpec(spec("""
+                {"front": [{"text": "hi", "decorations": ["bold", "italic", "underlined", "strikethrough", "obfuscated"]}, "", "", ""]}"""));
+        assertEquals(Set.of(TextDecoration.values()), spec.front[0].decorations);
     }
 
     @Test
@@ -76,12 +83,10 @@ class SignCommandsTest {
     }
 
     @Test
-    void objectLineOmittingBoldAndItalicDefaultsToFalse() throws SignCommands.ValidationException {
+    void objectLineOmittingDecorationsDefaultsToEmpty() throws SignCommands.ValidationException {
         SignCommands.SignSpec spec = SignCommands.parseSpec(spec("""
                 {"front": [{"text": "hi", "color": "blue"}, "", "", ""]}"""));
-        SignCommands.LineSpec line = spec.front[0];
-        assertFalse(line.bold);
-        assertFalse(line.italic);
+        assertTrue(spec.front[0].decorations.isEmpty());
     }
 
     @Test
@@ -95,12 +100,31 @@ class SignCommandsTest {
     }
 
     @Test
-    void rejectsNonBooleanBold() {
+    void rejectsUnknownDecorationToken() {
         SignCommands.ValidationException e = assertThrows(SignCommands.ValidationException.class,
                 () -> SignCommands.parseSpec(spec("""
-                        {"front": [{"text": "hi", "bold": "yes"}, "", "", ""]}""")));
+                        {"front": [{"text": "hi", "decorations": ["glowing"]}, "", "", ""]}""")));
+        assertEquals("invalid_property_value", e.reason);
+        assertEquals("decorations", e.data.get("property"));
+        assertEquals("glowing", e.data.get("value"));
+    }
+
+    @Test
+    void rejectsNonArrayDecorations() {
+        SignCommands.ValidationException e = assertThrows(SignCommands.ValidationException.class,
+                () -> SignCommands.parseSpec(spec("""
+                        {"front": [{"text": "hi", "decorations": "bold"}, "", "", ""]}""")));
         assertEquals("invalid_params", e.reason);
-        assertEquals("params[3].front[0].bold", e.data.get("path"));
+        assertEquals("params[3].front[0].decorations", e.data.get("path"));
+    }
+
+    @Test
+    void rejectsNonStringDecorationElement() {
+        SignCommands.ValidationException e = assertThrows(SignCommands.ValidationException.class,
+                () -> SignCommands.parseSpec(spec("""
+                        {"front": [{"text": "hi", "decorations": [1]}, "", "", ""]}""")));
+        assertEquals("invalid_params", e.reason);
+        assertEquals("params[3].front[0].decorations[0]", e.data.get("path"));
     }
 
     @Test
@@ -239,23 +263,30 @@ class SignCommandsTest {
     void encodeLineProducesFullCanonicalMap() {
         net.kyori.adventure.text.Component component = net.kyori.adventure.text.Component.text("hi")
                 .color(NamedTextColor.BLUE)
-                .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, true);
+                .decoration(TextDecoration.BOLD, true);
         var value = SignCommands.encodeLine(component);
         assertEquals("hi", value.get("text"));
         assertEquals("blue", value.get("color"));
-        assertEquals(true, value.get("bold"));
-        assertEquals(false, value.get("italic"));
+        assertEquals(java.util.List.of("bold"), value.get("decorations"));
     }
 
     @Test
-    void encodeLineTreatsUnsetDecorationAsFalse() {
+    void encodeLineTreatsUnsetDecorationAsAbsent() {
         // A component we never touched (e.g. a pre-existing player-placed sign line) has
-        // TextDecoration.State.NOT_SET, which must canonicalize to false, not be left ambiguous.
+        // TextDecoration.State.NOT_SET, which must canonicalize to absent, not be left ambiguous.
         net.kyori.adventure.text.Component component = net.kyori.adventure.text.Component.text("hi");
         var value = SignCommands.encodeLine(component);
-        assertEquals(false, value.get("bold"));
-        assertEquals(false, value.get("italic"));
+        assertEquals(java.util.List.of(), value.get("decorations"));
         assertEquals("black", value.get("color"));
+    }
+
+    @Test
+    void encodeDecorationsReturnsAlphabeticallySortedTokens() {
+        net.kyori.adventure.text.Component component = net.kyori.adventure.text.Component.text("hi")
+                .decoration(TextDecoration.UNDERLINED, true)
+                .decoration(TextDecoration.BOLD, true)
+                .decoration(TextDecoration.OBFUSCATED, true);
+        assertEquals(java.util.List.of("bold", "obfuscated", "underlined"), SignCommands.encodeDecorations(component));
     }
 
     // ---- Availability classification (Sign/BlockState are interfaces, so proxies work) ----

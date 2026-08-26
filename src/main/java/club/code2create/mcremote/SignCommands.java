@@ -18,18 +18,26 @@ import org.bukkit.block.sign.SignSide;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 /**
- * b6 candidate: world.setSign / world.getSign. Exact wire shape is not yet ratified (DECISIONS
- * 2026-08-16-06 names "sign 4-line/face/state validation and rollback" without fixing
- * params/result); this is an implementation candidate pending a knowledge-repo confirmation
+ * b6 candidate: world.setSign / world.getSign / world.updateSignLine. Exact wire shape is not yet
+ * ratified (DECISIONS 2026-08-16-06 names "sign 4-line/face/state validation and rollback" without
+ * fixing params/result); this is an implementation candidate pending a knowledge-repo confirmation
  * ticket, following the same candidate-then-ratify precedent as world.getBlocks (2026-08-19-03).
- * The per-line color/bold/italic style extension and world.getSign shape are a 2026-08-25 design
- * session outcome (local NOTES_ja.md), also pending live verification and ratification.
+ * world.getSign, the per-line color/decorations style extension, and world.updateSignLine are a
+ * 2026-08-25/26 design session outcome (local NOTES_ja.md), also pending live verification and
+ * ratification.
+ *
+ * world.setSign/world.getSign are pure PUT/GET (no-merge, whole-face replace). world.updateSignLine
+ * is the sign-specific PATCH primitive discussed in that session: it targets exactly one line on
+ * one face and leaves everything else untouched, kept as a separate method rather than folded into
+ * setSign's params shape so no single method mixes PUT and PATCH semantics.
  *
  * Depends on the front/back dual-text Sign API introduced in Minecraft 1.20 (org.bukkit.block.Sign
  * #getSide(Side), #isWaxed(), org.bukkit.block.sign.SignSide). Pre-1.20 servers only have a single
@@ -42,11 +50,13 @@ final class SignCommands {
     // Provisional bound, not a protocol invariant: pending cross-repo ratification like other
     // b5/b6 finite placeholder values (queue/ring/particle/work limits).
     private static final int MAX_LINE_CODEPOINTS = 64;
-    // Vanilla's rendered default for a sign line with no explicit color. Pending live verification
-    // against a real 1.21.11 server (see local NOTES_ja.md 2026-08-25) before treating as ratified.
+    // Vanilla's rendered default for a sign line with no explicit color. Live-verified against a
+    // real 1.21.11 server (see local NOTES_ja.md 2026-08-25) but still pending ratification.
     private static final String DEFAULT_COLOR_TOKEN = "black";
     private static final List<Object> ALLOWED_COLOR_TOKENS = List.copyOf(
             Stream.concat(NamedTextColor.NAMES.keys().stream().sorted(), Stream.of("#RRGGBB")).toList());
+    private static final List<Object> ALLOWED_DECORATION_TOKENS = List.copyOf(
+            TextDecoration.NAMES.keys().stream().sorted().toList());
 
     private final RemoteSession session;
     private final MiscCommands miscCommands;
@@ -136,6 +146,84 @@ final class SignCommands {
         }
     }
 
+    /**
+     * Params: [x, y, z, face, line_index, LineSpec]. PATCH-style: replaces exactly one line on
+     * one face, leaving the other three lines on that face and the entire other face untouched.
+     * Kept as a separate method from world.setSign (PUT, no-merge) so no single method mixes PUT
+     * and PATCH semantics — see the class-level note.
+     */
+    void handleUpdateSignLine(JsonElement params) {
+        try {
+            JsonArray args = WireParams.positional(params, 6);
+            int x = WireParams.integer(args, 0);
+            int y = WireParams.integer(args, 1);
+            int z = WireParams.integer(args, 2);
+            Side face = parseFace(args, 3);
+            int lineIndex = parseLineIndex(args, 4);
+            LineSpec spec = lineSpec(args.get(5), "params[5]");
+
+            Location target = miscCommands.parseRelativeBlockLocation(x, y, z);
+            if (!session.hasConstructionPermission()) {
+                session.respondError(-32000, "permission_denied", null);
+                return;
+            }
+            if (!session.isWithinBuildRange(target)) {
+                session.respondError(-32000, "build_denied", null);
+                return;
+            }
+            if (!session.admitSetterWork(1)) {
+                return;
+            }
+            World world = target.getWorld();
+            if (!WorldB5Commands.ensureChunkLoaded(world, target.getBlockX() >> 4, target.getBlockZ() >> 4)) {
+                session.respondError(-32000, "backpressure", null);
+                return;
+            }
+
+            Block block = world.getBlockAt(target);
+            BlockState state = block.getState();
+            SignAvailability availability = checkAvailability(state);
+            if (availability != SignAvailability.OK) {
+                session.respondError(-32000, availability.reason, null);
+                return;
+            }
+
+            // Validation is complete before this point; the single update() call below is the
+            // only point the world changes, and it touches only the one targeted line.
+            Sign sign = (Sign) state;
+            sign.getSide(face).line(lineIndex, componentFor(spec));
+            if (!sign.update(false, false)) {
+                session.respondError(-32000, "sign_update_failed", null);
+                logger.warning("world.updateSignLine: update() rejected a stale BlockState snapshot.");
+                return;
+            }
+            session.respondResult(null);
+        } catch (ValidationException e) {
+            session.respondError(-32602, e.reason, e.data);
+            logger.warning("Invalid line spec for world.updateSignLine: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            session.respondError(-32602, "invalid_params", pathData("params"));
+            logger.warning("Invalid parameters for world.updateSignLine: " + e.getMessage());
+        }
+    }
+
+    private static Side parseFace(JsonArray args, int index) {
+        String value = WireParams.string(args, index);
+        return switch (value) {
+            case "front" -> Side.FRONT;
+            case "back" -> Side.BACK;
+            default -> throw new IllegalArgumentException("face must be \"front\" or \"back\"");
+        };
+    }
+
+    private static int parseLineIndex(JsonArray args, int index) {
+        int value = WireParams.integer(args, index);
+        if (value < 0 || value >= LINE_COUNT) {
+            throw new IllegalArgumentException("line_index must be between 0 and " + (LINE_COUNT - 1));
+        }
+        return value;
+    }
+
     private static void apply(Sign sign, SignSpec spec) {
         if (spec.front != null) {
             applyLines(sign.getSide(Side.FRONT), spec.front);
@@ -149,13 +237,16 @@ final class SignCommands {
         // Component-based line(int, Component), not the deprecated String-based setLine. Each
         // line is a fresh Component built from scratch (no merge with the previous line's style).
         for (int i = 0; i < LINE_COUNT; i++) {
-            LineSpec spec = lines[i];
-            Component component = Component.text(spec.text)
-                    .color(spec.color)
-                    .decoration(TextDecoration.BOLD, spec.bold)
-                    .decoration(TextDecoration.ITALIC, spec.italic);
-            side.line(i, component);
+            side.line(i, componentFor(lines[i]));
         }
+    }
+
+    private static Component componentFor(LineSpec spec) {
+        Component component = Component.text(spec.text).color(spec.color);
+        for (TextDecoration decoration : TextDecoration.values()) {
+            component = component.decoration(decoration, spec.decorations.contains(decoration));
+        }
+        return component;
     }
 
     static Map<String, Object> encode(Sign sign) {
@@ -178,8 +269,7 @@ final class SignCommands {
         Map<String, Object> value = new LinkedHashMap<>();
         value.put("text", PlainTextComponentSerializer.plainText().serialize(component));
         value.put("color", encodeColor(component.color()));
-        value.put("bold", component.decoration(TextDecoration.BOLD) == TextDecoration.State.TRUE);
-        value.put("italic", component.decoration(TextDecoration.ITALIC) == TextDecoration.State.TRUE);
+        value.put("decorations", encodeDecorations(component));
         return Map.copyOf(value);
     }
 
@@ -192,6 +282,18 @@ final class SignCommands {
             return NamedTextColor.NAMES.key(nearest);
         }
         return color.asHexString();
+    }
+
+    /** Canonical output is a sorted array of decoration tokens (only the ones explicitly on). */
+    static List<Object> encodeDecorations(Component component) {
+        List<Object> decorations = new ArrayList<>();
+        for (TextDecoration decoration : TextDecoration.values()) {
+            if (component.decoration(decoration) == TextDecoration.State.TRUE) {
+                decorations.add(TextDecoration.NAMES.key(decoration));
+            }
+        }
+        decorations.sort((left, right) -> ((String) left).compareTo((String) right));
+        return List.copyOf(decorations);
     }
 
     /** Pure classification of a captured BlockState against the b6 setSign preconditions. */
@@ -228,18 +330,16 @@ final class SignCommands {
         }
     }
 
-    /** One line's canonical content after parsing: shorthand string or {text,color?,bold?,italic?}. */
+    /** One line's canonical content after parsing: shorthand string or {text,color?,decorations?}. */
     static final class LineSpec {
         final String text;
         final TextColor color;
-        final boolean bold;
-        final boolean italic;
+        final Set<TextDecoration> decorations;
 
-        LineSpec(String text, TextColor color, boolean bold, boolean italic) {
+        LineSpec(String text, TextColor color, Set<TextDecoration> decorations) {
             this.text = text;
             this.color = color;
-            this.bold = bold;
-            this.italic = italic;
+            this.decorations = decorations;
         }
     }
 
@@ -275,14 +375,14 @@ final class SignCommands {
 
     private static LineSpec lineSpec(JsonElement value, String path) throws ValidationException {
         if (value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
-            return new LineSpec(lineText(value, path), null, false, false);
+            return new LineSpec(lineText(value, path), null, Set.of());
         }
         if (value == null || !value.isJsonObject()) {
-            throw invalid(path, "line must be a string or {text,color?,bold?,italic?} object");
+            throw invalid(path, "line must be a string or {text,color?,decorations?} object");
         }
         JsonObject line = value.getAsJsonObject();
         for (String key : line.keySet()) {
-            if (!"text".equals(key) && !"color".equals(key) && !"bold".equals(key) && !"italic".equals(key)) {
+            if (!"text".equals(key) && !"color".equals(key) && !"decorations".equals(key)) {
                 throw invalid(path + "." + key, "unknown line field");
             }
         }
@@ -291,9 +391,10 @@ final class SignCommands {
         }
         String text = lineText(line.get("text"), path + ".text");
         TextColor color = line.has("color") ? lineColor(line.get("color"), path + ".color") : null;
-        boolean bold = line.has("bold") && lineBoolean(line.get("bold"), path + ".bold");
-        boolean italic = line.has("italic") && lineBoolean(line.get("italic"), path + ".italic");
-        return new LineSpec(text, color, bold, italic);
+        Set<TextDecoration> decorations = line.has("decorations")
+                ? lineDecorations(line.get("decorations"), path + ".decorations")
+                : Set.of();
+        return new LineSpec(text, color, decorations);
     }
 
     private static String lineText(JsonElement value, String path) throws ValidationException {
@@ -330,11 +431,30 @@ final class SignCommands {
         throw new ValidationException("invalid_property_value", data, "unknown color token: " + token);
     }
 
-    private static boolean lineBoolean(JsonElement value, String path) throws ValidationException {
-        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isBoolean()) {
-            throw invalid(path, "must be a boolean");
+    private static Set<TextDecoration> lineDecorations(JsonElement value, String path) throws ValidationException {
+        if (value == null || !value.isJsonArray()) {
+            throw invalid(path, "decorations must be an array");
         }
-        return value.getAsBoolean();
+        JsonArray array = value.getAsJsonArray();
+        Set<TextDecoration> decorations = new LinkedHashSet<>();
+        for (int i = 0; i < array.size(); i++) {
+            JsonElement element = array.get(i);
+            String elementPath = path + "[" + i + "]";
+            if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+                throw invalid(elementPath, "decoration token must be a string");
+            }
+            String token = element.getAsString();
+            TextDecoration decoration = TextDecoration.NAMES.value(token);
+            if (decoration == null) {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("property", "decorations");
+                data.put("value", token);
+                data.put("allowed", ALLOWED_DECORATION_TOKENS);
+                throw new ValidationException("invalid_property_value", data, "unknown decoration token: " + token);
+            }
+            decorations.add(decoration);
+        }
+        return Set.copyOf(decorations);
     }
 
     private static ValidationException invalid(String path, String detail) {

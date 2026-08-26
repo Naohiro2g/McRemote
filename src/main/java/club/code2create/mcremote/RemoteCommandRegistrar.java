@@ -41,6 +41,7 @@ public class RemoteCommandRegistrar {
         // b6 candidate wire contract; exact shape pending knowledge-repo ratification (DECISIONS 2026-08-16-06).
         registry.registerStructured("world.setSign", signCommands::handleSetSign);
         registry.registerStructured("world.getSign", signCommands::handleGetSign);
+        registry.registerStructured("world.updateSignLine", signCommands::handleUpdateSignLine);
         registry.register("catalog.get", catalogCommands::handleGet, false);
 
         // Protocol 22 build context. build.setWorld is intentionally not registered.
