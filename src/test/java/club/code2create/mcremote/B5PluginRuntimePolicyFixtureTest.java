@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class B5PluginRuntimePolicyFixtureTest {
-    private static final String FIXTURE = "/fixtures/b5-plugin-runtime-policy-v22.json";
+    private static final String FIXTURE = "/fixtures/b5-plugin-runtime-policy-v23.json";
 
     @Test
     void fixtureLocksCandidateRuntimePolicy() throws IOException {

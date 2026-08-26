@@ -5,7 +5,7 @@
 None of these are a ratified b6 wire contract yet (DECISIONS 2026-08-16-06 names the sign scope
 without fixing params/result shape; getSign, the setSign color/decorations style extension, and
 updateSignLine are a 2026-08-25/26 design-session candidate, see local NOTES_ja.md). This script
-exercises all three against a real Paper server. It reuses the b5_live_auto.py connection harness
+exercises all three against a real Paper server. It reuses the live_auto.py connection harness
 rather than duplicating it.
 
 Scope note: sign_waxed is not exercised here — waxing a sign requires an in-game honeycomb
@@ -22,7 +22,7 @@ Confirming the rendered color against a live client is a live-human task.
 import argparse
 import sys
 
-from b5_live_auto import (
+from live_auto import (
     Rpc,
     acquire_interactive_token,
     connect,
@@ -266,7 +266,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="McRemote b6 world.setSign live-auto candidate")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
-    parser.add_argument("--protocol", default="22.0.0")
+    parser.add_argument("--protocol", default="23.0.0")
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument(
         "--interactive-pair",

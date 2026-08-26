@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic authentication fixtures for b5_live_auto.py."""
+"""Deterministic authentication fixtures for live_auto.py."""
 
 import importlib.util
 import io
@@ -9,8 +9,8 @@ import unittest
 from unittest import mock
 
 
-SCRIPT_PATH = Path(__file__).with_name("b5_live_auto.py")
-SPEC = importlib.util.spec_from_file_location("b5_live_auto", SCRIPT_PATH)
+SCRIPT_PATH = Path(__file__).with_name("live_auto.py")
+SPEC = importlib.util.spec_from_file_location("live_auto", SCRIPT_PATH)
 LIVE_AUTO = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(LIVE_AUTO)
@@ -37,7 +37,7 @@ class PersistentRpc:
         self.calls.append((method, params))
         if method == "hello":
             return {"jsonrpc": "2.0", "id": 1,
-                    "result": {"protocol": "22.0.0",
+                    "result": {"protocol": "23.0.0",
                                "dimension": "minecraft:overworld",
                                "origin": [0, 0, 0]}}
         if method in {"build.setDimension", "build.setOrigin"}:
@@ -53,7 +53,7 @@ class PersistentRpc:
 class LiveAutoAuthenticationTest(unittest.TestCase):
     def setUp(self):
         self.args = SimpleNamespace(
-            host="127.0.0.1", port=25575, timeout=10.0, protocol="22.0.0")
+            host="127.0.0.1", port=25575, timeout=10.0, protocol="23.0.0")
 
     def test_auth_required_pair_pending_token_authenticated_hello_sequence(self):
         calls = []
@@ -108,7 +108,7 @@ class LiveAutoAuthenticationTest(unittest.TestCase):
             poll_params,
         )
         self.assertEqual(
-            ("hello", {"protocol": "22.0.0",
+            ("hello", {"protocol": "23.0.0",
                        "build": {"dimension": "overworld", "origin": [0, 0, 0]},
                        "auth": {"token": SESSION_TOKEN}}),
             persistent.calls[0],
@@ -126,7 +126,7 @@ class LiveAutoAuthenticationTest(unittest.TestCase):
 
         self.assertIs(rpc, connected)
         self.assertEqual(
-            ("hello", {"protocol": "22.0.0",
+            ("hello", {"protocol": "23.0.0",
                        "build": {"dimension": "overworld", "origin": [0, 0, 0]},
                        "auth": {"token": SESSION_TOKEN}}),
             rpc.calls[0],

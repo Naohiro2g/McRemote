@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class WorldB5ChunkAdmissionTest {
-    private static final String FIXTURE = "/fixtures/b5-chunk-admission-v22.json";
+    private static final String FIXTURE = "/fixtures/b5-chunk-admission-v23.json";
 
     @Test
     void unloadedChunksAreLoadedAndGeneratedBeforeWorldOperations() throws IOException {

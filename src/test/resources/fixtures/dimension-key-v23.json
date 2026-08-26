@@ -1,7 +1,7 @@
 {
   "schema": "mcremote.dimension-key.v1",
-  "protocol": "22.0.0",
-  "artifact": "2200.0.0b5",
+  "protocol": "23.0.0",
+  "artifact": "2300.0.0b6",
   "default_dimension": "minecraft:overworld",
   "accepted": [
     {"input": "overworld", "canonical": "minecraft:overworld"},
@@ -40,7 +40,7 @@
       "player.setPos.result",
       "player.getPose.result",
       "player.setPose.result",
-      "block_right_click",
+      "pickaxe_poke",
       "chat_posted",
       "projectile_hit",
       "entity_handle_location"

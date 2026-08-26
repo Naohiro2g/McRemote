@@ -39,7 +39,7 @@ import time
 import uuid
 
 
-PROTOCOL = "22.0.0"
+PROTOCOL = "23.0.0"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 

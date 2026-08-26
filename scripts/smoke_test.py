@@ -19,7 +19,7 @@ set成功のresult:nullと、明示getBlockの構造化BlockValueを判定する
 使い方（サーバを runServer 等で起動し、新プラグインを反映してから）:
   python3 scripts/smoke_test.py
   python3 scripts/smoke_test.py --host 127.0.0.1 --port 25575 \
-      --protocol 22.0.0 \
+      --protocol 23.0.0 \
       --dimension overworld --ox 200 --oy 0 --oz 200 \
       --x 0 --y 0 --z 0 --material gold_block
 """
@@ -29,7 +29,7 @@ import socket
 import sys
 
 # クライアントが要求する protocol semver（wire-format-design §6.1・clean な protocol 版）
-PROTOCOL = "22.0.0"
+PROTOCOL = "23.0.0"
 
 
 def main() -> int:

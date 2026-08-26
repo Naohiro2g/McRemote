@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""McRemote b5 live-auto smoke test (Python standard library only).
+"""McRemote live-auto smoke test (Python standard library only).
 
 Runs against an isolated Paper server directly, or bootstraps one in-memory
 session token with ``--interactive-pair`` on an auth-enforced server. It
@@ -15,7 +15,7 @@ import sys
 import time
 
 
-PROTOCOL = "22.0.0"
+PROTOCOL = "23.0.0"
 HANDLE = re.compile(r"^mceh_[A-Za-z0-9_-]{22}$")
 PAIR_CODE = re.compile(r"^[0-9]{6}$")
 SESSION_TOKEN = re.compile(r"^mcrs_[A-Za-z0-9_-]{43}$")
@@ -129,7 +129,7 @@ def acquire_interactive_token(
 
     begun = result(call_once_fn(args, "auth.pairBegin", {
         "token_type": "session",
-        "client": {"name": "b5_live_auto.py", "version": "0", "locale": "ja"},
+        "client": {"name": "live_auto.py", "version": "0", "locale": "ja"},
     }))
     pairing_id = begun.get("pairing_id") if isinstance(begun, dict) else None
     pair_code = begun.get("pair_code") if isinstance(begun, dict) else None
@@ -380,7 +380,7 @@ def verify_flush_and_notifications(rpc: Rpc, height: int, queue_capacity: int) -
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="McRemote b5 live-auto")
+    parser = argparse.ArgumentParser(description="McRemote live-auto")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
     parser.add_argument("--protocol", default=PROTOCOL)
@@ -556,7 +556,7 @@ def main() -> int:
             "invalid_params",
         )
 
-        print("PASS: McRemote b5 live-auto (non-human subset)")
+        print("PASS: McRemote live-auto (non-human subset)")
         return 0
     except (AssertionError, OSError, RuntimeError, json.JSONDecodeError) as error:
         print(f"FAIL: {error}", file=sys.stderr)
