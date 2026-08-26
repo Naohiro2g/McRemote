@@ -26,13 +26,12 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 /**
- * b6 candidate: world.setSign / world.getSign / world.updateSignLine. Exact wire shape is not yet
- * ratified (DECISIONS 2026-08-16-06 names "sign 4-line/face/state validation and rollback" without
- * fixing params/result); this is an implementation candidate pending a knowledge-repo confirmation
- * ticket, following the same candidate-then-ratify precedent as world.getBlocks (2026-08-19-03).
- * world.getSign, the per-line color/decorations style extension, and world.updateSignLine are a
- * 2026-08-25/26 design session outcome (local NOTES_ja.md), also pending live verification and
- * ratification.
+ * b6 sign three-op slice: world.setSign / world.getSign / world.updateSignLine. The exact wire
+ * contract (LineSpec/LineValue shape, allowed color/decoration tokens, canonical output, result
+ * and error reasons) is locked by DECISIONS 2026-08-26-05; this implementation is the plugin
+ * candidate that decision carries (McRemote codex/b6-set-sign@a34fec0). Method-set state (shared
+ * fixture, cross-client parity, formal evidence, release) remains `candidate` until those separate
+ * gates close.
  *
  * world.setSign/world.getSign are pure PUT/GET (no-merge, whole-face replace). world.updateSignLine
  * is the sign-specific PATCH primitive discussed in that session: it targets exactly one line on
@@ -50,8 +49,8 @@ final class SignCommands {
     // Provisional bound, not a protocol invariant: pending cross-repo ratification like other
     // b5/b6 finite placeholder values (queue/ring/particle/work limits).
     private static final int MAX_LINE_CODEPOINTS = 64;
-    // Vanilla's rendered default for a sign line with no explicit color. Live-verified against a
-    // real 1.21.11 server (see local NOTES_ja.md 2026-08-25) but still pending ratification.
+    // Vanilla's rendered default for a sign line with no explicit color. Ratified by DECISIONS
+    // 2026-08-26-05 ("無色をblackへ正規化する").
     private static final String DEFAULT_COLOR_TOKEN = "black";
     private static final List<Object> ALLOWED_COLOR_TOKENS = List.copyOf(
             Stream.concat(NamedTextColor.NAMES.keys().stream().sorted(), Stream.of("#RRGGBB")).toList());

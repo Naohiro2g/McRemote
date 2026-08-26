@@ -26,7 +26,7 @@ public class RemoteCommandRegistrar {
         registry.registerStructured("player.setPos", playerCommands::handleSetPosStructured);
         registry.registerStructured("player.getPose", playerCommands::handleGetPoseStructured);
         registry.registerStructured("player.setPose", playerCommands::handleSetPoseStructured);
-        // b6 candidate wire contract; exact shape pending knowledge-repo ratification (DECISIONS 2026-08-16-06).
+        // b6 sign three-op slice; exact wire contract locked by DECISIONS 2026-08-26-05.
         registry.registerStructured("world.setSign", signCommands::handleSetSign);
         registry.registerStructured("world.getSign", signCommands::handleGetSign);
         registry.registerStructured("world.updateSignLine", signCommands::handleUpdateSignLine);

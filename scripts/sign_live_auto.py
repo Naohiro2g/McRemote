@@ -2,9 +2,9 @@
 """McRemote b6 candidate live-auto smoke test for world.setSign/world.getSign/world.updateSignLine
 (Python standard library only).
 
-None of these are a ratified b6 wire contract yet (DECISIONS 2026-08-16-06 names the sign scope
-without fixing params/result shape; getSign, the setSign color/decorations style extension, and
-updateSignLine are a 2026-08-25/26 design-session candidate, see local NOTES_ja.md). This script
+The exact wire contract for all three is locked by DECISIONS 2026-08-26-05. This plugin is the
+candidate that decision carries (McRemote codex/b6-set-sign@a34fec0); method-set state (shared
+fixture, cross-client parity, formal evidence, release) is separate and still open. This script
 exercises all three against a real Paper server. It reuses the live_auto.py connection harness
 rather than duplicating it.
 
