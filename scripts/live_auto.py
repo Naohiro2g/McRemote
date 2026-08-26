@@ -16,7 +16,7 @@ import time
 
 
 PROTOCOL = "23.0.0"
-HANDLE = re.compile(r"^mceh_[A-Za-z0-9_-]{22}$")
+HANDLE = re.compile(r"^mcr_eh_[A-Za-z0-9_-]{22}$")
 PAIR_CODE = re.compile(r"^[0-9]{6}$")
 SESSION_TOKEN = re.compile(r"^mcrs_[A-Za-z0-9_-]{43}$")
 PAIR_POLL_INTERVAL = 0.5

@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class CommandRegistry {
     private final Map<String, CommandRegistration> commands = new HashMap<>();
@@ -26,6 +27,10 @@ public class CommandRegistry {
 
     public CommandRegistration get(String name) {
         return commands.get(name);
+    }
+
+    public Set<String> names() {
+        return commands.keySet();
     }
 
     public static class CommandRegistration {

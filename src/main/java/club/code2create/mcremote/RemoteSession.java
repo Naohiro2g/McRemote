@@ -62,7 +62,6 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     private final PlayerCommands playerCommands;
     private final BlockCommands blockCommands;
     private final MiscCommands miscCommands;
-    private final EntityCommands entityCommands;
     private final BuildStateCommands buildStateCommands;
     private final CatalogCommands catalogCommands;
     private final CommandParser commandParser;
@@ -76,7 +75,6 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         DimensionResolver dimensions = new DimensionResolver();
         this.playerCommands = new PlayerCommands(this, dimensions);
         this.miscCommands = new MiscCommands(this);
-        this.entityCommands = new EntityCommands(this, miscCommands);
         this.blockCommands = new BlockCommands(this, miscCommands);
         this.buildStateCommands = new BuildStateCommands(this, dimensions);
         this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
@@ -99,7 +97,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         this.origin = buildStateCommands.defaultOrigin();
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
-                this, blockCommands, miscCommands, entityCommands, buildStateCommands, catalogCommands,
+                this, blockCommands, miscCommands, buildStateCommands, catalogCommands,
                 eventCommands, worldB5Commands, signCommands));
         this.authCommands = new AuthCommands(
                 this, plugin.getPairingManager(), plugin.getCredentialService());

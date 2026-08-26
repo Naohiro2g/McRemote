@@ -5,7 +5,6 @@ public class RemoteCommandRegistrar {
             RemoteSession session,
             BlockCommands blockCommands,
             MiscCommands miscCommands,
-            EntityCommands entityCommands,
             BuildStateCommands buildStateCommands,
             CatalogCommands catalogCommands,
             EventCommands eventCommands,
@@ -23,17 +22,6 @@ public class RemoteCommandRegistrar {
         registry.register("chat.post", miscCommands::handleChatPost, false); // origin 不要・既定 send-only
         registry.registerStructured("world.spawnEntity", worldB5Commands::handleSpawnEntity);
         registerB5EventCommands(registry, eventCommands);
-        registry.register("world.getNearbyEntities",
-                args -> entityCommands.handleGetNearbyEntities(session.getOrigin().getWorld(), args));
-        registry.register("entity.getPos", args -> entityCommands.handleEntityCommands("entity.getPos", args));
-        registry.register("entity.setPos", args -> entityCommands.handleEntityCommands("entity.setPos", args));
-        registry.register("entity.getRotation", args -> entityCommands.handleEntityCommands("entity.getRotation", args));
-        registry.register("entity.setRotation", args -> entityCommands.handleEntityCommands("entity.setRotation", args));
-        registry.register("entity.getPitch", args -> entityCommands.handleEntityCommands("entity.getPitch", args));
-        registry.register("entity.setPitch", args -> entityCommands.handleEntityCommands("entity.setPitch", args));
-        registry.register("entity.getYaw", args -> entityCommands.handleEntityCommands("entity.getYaw", args));
-        registry.register("entity.setYaw", args -> entityCommands.handleEntityCommands("entity.setYaw", args));
-        registry.register("entity.remove", args -> entityCommands.handleEntityCommands("entity.remove", args));
         registry.registerStructured("player.getPos", playerCommands::handleGetPosStructured);
         registry.registerStructured("player.setPos", playerCommands::handleSetPosStructured);
         registry.registerStructured("player.getPose", playerCommands::handleGetPoseStructured);
