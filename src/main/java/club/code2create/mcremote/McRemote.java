@@ -309,6 +309,13 @@ public class McRemote extends JavaPlugin implements Listener {
      * This is purely observational — {@code ignoreCancelled=true} and no result/use-item mutation
      * here — so the target block's own vanilla interaction (opening a chest, a door, etc.) still
      * happens unimpeded.
+     *
+     * Vanilla only swings the player's arm on right-click when the interaction itself has an
+     * effect (opens a GUI, places a block, etc.) — poking a plain block with a pickaxe has none,
+     * so a captured poke would otherwise give the player no visible confirmation it registered.
+     * We swing explicitly once a poke is actually captured, so this never fires for unpaired
+     * players or players without an active session — it is feedback for McRemote users only, not
+     * a general animation change for every pickaxe right-click on the server.
      */
     @EventHandler(ignoreCancelled=true)
     public void onPlayerInteract(PlayerInteractEvent event) {
@@ -328,7 +335,12 @@ public class McRemote extends JavaPlugin implements Listener {
                 Bukkit.getCurrentTick(), hand)) {
             return;
         }
-        for (RemoteSession session : sessionsFor(event.getPlayer())) {
+        List<RemoteSession> sessions = sessionsFor(event.getPlayer());
+        if (sessions.isEmpty()) {
+            return;
+        }
+        event.getPlayer().swingHand(hand);
+        for (RemoteSession session : sessions) {
             Location origin = capturedOrigin(session);
             session.queueCapturedEvent(B5EventDto.pickaxePoke(
                     DimensionResolver.canonical(clicked.getWorld()),
