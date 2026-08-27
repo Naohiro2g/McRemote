@@ -240,7 +240,7 @@ final class SignCommands {
         }
     }
 
-    private static Component componentFor(LineSpec spec) {
+    static Component componentFor(LineSpec spec) {
         Component component = Component.text(spec.text).color(spec.color);
         for (TextDecoration decoration : TextDecoration.values()) {
             component = component.decoration(decoration, spec.decorations.contains(decoration));
