@@ -126,11 +126,7 @@ class SignFixtureContractTest {
         JsonObject colorData = unknownColor.getAsJsonObject("data");
         assertEquals(colorData.get("property").getAsString(), colorError.data.get("property"));
         assertEquals(colorData.get("value").getAsString(), colorError.data.get("value"));
-        // Token set, not list order: DECISIONS 2026-08-26-05 fixes the allowed token vocabulary but
-        // not an "allowed" list ordering, and this fixture happens to list colors in Minecraft's
-        // traditional code order while McRemote emits them alphabetically sorted.
-        assertEquals(Set.copyOf(jsonStrings(colorData.getAsJsonArray("allowed"))),
-                Set.copyOf((List<?>) colorError.data.get("allowed")));
+        assertEquals(jsonStrings(colorData.getAsJsonArray("allowed")), colorError.data.get("allowed"));
 
         // updateSignLine validates one LineSpec via the same lineSpec() code path parseSpec calls
         // for each of the 4 array slots, so wrapping it as a single-line face exercises the exact
@@ -149,8 +145,7 @@ class SignFixtureContractTest {
         JsonObject decorationData = unknownDecoration.getAsJsonObject("data");
         assertEquals(decorationData.get("property").getAsString(), decorationError.data.get("property"));
         assertEquals(decorationData.get("value").getAsString(), decorationError.data.get("value"));
-        assertEquals(Set.copyOf(jsonStrings(decorationData.getAsJsonArray("allowed"))),
-                Set.copyOf((List<?>) decorationError.data.get("allowed")));
+        assertEquals(jsonStrings(decorationData.getAsJsonArray("allowed")), decorationError.data.get("allowed"));
     }
 
     private static void assertEncodesTo(JsonElement lineSpecJson, JsonObject expectedLineValue)

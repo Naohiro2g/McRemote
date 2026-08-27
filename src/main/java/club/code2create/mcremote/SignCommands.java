@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 
 /**
  * b6 sign three-op slice: world.setSign / world.getSign / world.updateSignLine. The exact wire
@@ -52,10 +51,17 @@ final class SignCommands {
     // Vanilla's rendered default for a sign line with no explicit color. Ratified by DECISIONS
     // 2026-08-26-05 ("無色をblackへ正規化する").
     private static final String DEFAULT_COLOR_TOKEN = "black";
-    private static final List<Object> ALLOWED_COLOR_TOKENS = List.copyOf(
-            Stream.concat(NamedTextColor.NAMES.keys().stream().sorted(), Stream.of("#RRGGBB")).toList());
-    private static final List<Object> ALLOWED_DECORATION_TOKENS = List.copyOf(
-            TextDecoration.NAMES.keys().stream().sorted().toList());
+    // Fixed to Minecraft's traditional 16-color order (not alphabetical) to byte-match the shared
+    // sign-v23.json fixture's invalid_property_value.data.allowed list (DECISIONS 2026-08-26-05
+    // fixes the token vocabulary; this repo and scratch-editor's fixture agree on this list order).
+    private static final List<Object> ALLOWED_COLOR_TOKENS = List.of(
+            "black", "dark_blue", "dark_green", "dark_aqua", "dark_red", "dark_purple", "gold",
+            "gray", "dark_gray", "blue", "green", "aqua", "red", "light_purple", "yellow", "white",
+            "#RRGGBB");
+    // Fixed order (not alphabetical) to byte-match the fixture's data.allowed list. Distinct from
+    // LineValue's canonical *output* decorations array, which stays alphabetically sorted.
+    private static final List<Object> ALLOWED_DECORATION_TOKENS = List.of(
+            "bold", "italic", "underlined", "strikethrough", "obfuscated");
 
     private final RemoteSession session;
     private final MiscCommands miscCommands;
