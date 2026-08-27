@@ -2,8 +2,8 @@
   "schema": "mcremote.plugin-b5-chunk-admission.v1",
   "knowledge_contract": "61dc1d9934621d4d762522de841e4e14fd11f403",
   "decision": "2026-08-21-01",
-  "protocol": "22.0.0",
-  "artifact": "2200.0.0b5",
+  "protocol": "23.0.0",
+  "artifact": "2300.0.0b6",
   "applies_to": [
     "world.getHeight",
     "world.spawnParticle",

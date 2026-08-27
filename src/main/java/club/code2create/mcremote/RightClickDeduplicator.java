@@ -6,7 +6,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/** Normalizes Bukkit main/off-hand duplicate right-click callbacks within one server tick. */
+/**
+ * Normalizes duplicate Bukkit right-click callbacks for the same player/block within one server
+ * tick. This originally only collapsed the known main/off-hand double-fire, but live-human
+ * testing (2026-08-26) showed Bukkit can also fire PlayerInteractEvent twice for a single real
+ * click on the *same* hand — so any second callback at the same position in the same tick is
+ * rejected regardless of hand, not just a same-tick opposite-hand one.
+ */
 final class RightClickDeduplicator {
     private final Map<Key, Seen> seen = new HashMap<>();
 
@@ -21,7 +27,7 @@ final class RightClickDeduplicator {
     ) {
         Key key = new Key(player, dimension, x, y, z);
         Seen previous = seen.get(key);
-        if (previous != null && previous.tick() == tick && previous.hand() != hand) {
+        if (previous != null && previous.tick() == tick) {
             return false;
         }
         seen.put(key, new Seen(tick, hand));

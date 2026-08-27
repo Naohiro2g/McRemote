@@ -13,7 +13,7 @@ import socket
 import sys
 import time
 
-PROTOCOL = "22.0.0"
+PROTOCOL = "23.0.0"
 
 
 class Rpc:

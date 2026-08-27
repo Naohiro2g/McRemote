@@ -23,12 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DimensionKeyContractTest {
-    private static final String FIXTURE = "/fixtures/dimension-key-v22.json";
+    private static final String FIXTURE = "/fixtures/dimension-key-v23.json";
 
     @Test
-    void fixtureDefinesProtocol22IdentityBoundary() {
+    void fixtureDefinesProtocol23IdentityBoundary() {
         JsonObject fixture = fixture();
-        assertEquals("22.0.0", fixture.get("protocol").getAsString());
+        assertEquals("23.0.0", fixture.get("protocol").getAsString());
         assertEquals(DimensionResolver.DEFAULT_DIMENSION,
                 fixture.get("default_dimension").getAsString());
 
@@ -84,12 +84,12 @@ class DimensionKeyContractTest {
         BuildStateCommands commands = new BuildStateCommands(null, resolver);
 
         Location defaults = commands.resolveHelloBuild(JsonParser.parseString(
-                "{\"protocol\":\"22.0.0\"}"));
+                "{\"protocol\":\"23.0.0\"}"));
         assertEquals("minecraft:overworld", DimensionResolver.canonical(defaults.getWorld()));
         assertEquals(List.of(200, 0, 200), coordinates(defaults));
 
         Location requested = commands.resolveHelloBuild(JsonParser.parseString(
-                "{\"protocol\":\"22.0.0\",\"build\":{" +
+                "{\"protocol\":\"23.0.0\",\"build\":{" +
                         "\"dimension\":\"myworld:world\",\"origin\":[1,-2,3]}}"));
         assertEquals("myworld:world", DimensionResolver.canonical(requested.getWorld()));
         assertEquals(List.of(1, -2, 3), coordinates(requested));
@@ -106,22 +106,22 @@ class DimensionKeyContractTest {
 
         assertThrows(BuildStateCommands.InvalidBuildException.class,
                 () -> commands.resolveHelloBuild(JsonParser.parseString(
-                        "{\"protocol\":\"22.0.0\",\"build\":{\"world\":\"world\"}}")));
+                        "{\"protocol\":\"23.0.0\",\"build\":{\"world\":\"world\"}}")));
         BuildStateCommands.UnknownDimensionException unknown = assertThrows(
                 BuildStateCommands.UnknownDimensionException.class,
                 () -> commands.resolveHelloBuild(JsonParser.parseString(
-                        "{\"protocol\":\"22.0.0\",\"build\":{\"dimension\":\"world\"}}")));
+                        "{\"protocol\":\"23.0.0\",\"build\":{\"dimension\":\"world\"}}")));
         assertEquals("minecraft:world", unknown.dimension());
         assertThrows(BuildStateCommands.InvalidBuildException.class,
                 () -> commands.resolveHelloBuild(JsonParser.parseString(
-                        "{\"protocol\":\"22.0.0\",\"build\":{\"dimension\":\"Overworld\"}}")));
+                        "{\"protocol\":\"23.0.0\",\"build\":{\"dimension\":\"Overworld\"}}")));
         assertThrows(BuildStateCommands.InvalidBuildException.class,
                 () -> commands.resolveHelloBuild(JsonParser.parseString(
-                        "{\"protocol\":\"22.0.0\",\"build\":{\"origin\":[1.5,2,3]}}")));
+                        "{\"protocol\":\"23.0.0\",\"build\":{\"origin\":[1.5,2,3]}}")));
     }
 
     @Test
-    void registryExposesOnlyProtocol22BuildMethods() {
+    void registryExposesOnlyProtocol23BuildMethods() {
         CommandRegistry registry = new CommandRegistry();
         RemoteCommandRegistrar.registerBuildCommands(
                 registry, new BuildStateCommands(null, new DimensionResolver(key -> null)));

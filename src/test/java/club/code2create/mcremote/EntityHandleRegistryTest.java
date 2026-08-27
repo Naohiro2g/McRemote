@@ -25,10 +25,20 @@ class EntityHandleRegistryTest {
         String second = registry.issue(entity);
 
         assertEquals(first, second);
-        assertTrue(first.matches("^mceh_[A-Za-z0-9_-]{22}$"));
+        assertTrue(first.matches("^mcr_eh_[A-Za-z0-9_-]{22}$"));
         assertEquals(1, registry.size());
         assertThrows(EntityHandleRegistry.CapacityException.class,
                 () -> registry.issue(entity(UUID.randomUUID(), "minecraft:overworld")));
+    }
+
+    @Test
+    void legacyProtocol22PrefixIsNotAValidHandle() {
+        EntityHandleRegistry registry = new EntityHandleRegistry(1);
+        Entity entity = entity(UUID.randomUUID(), "minecraft:overworld");
+        String issued = registry.issue(entity);
+        String legacyStyleHandle = "mceh_" + issued.substring(EntityHandleRegistry.PREFIX.length());
+
+        assertEquals(EntityHandleRegistry.ResolveStatus.NOT_FOUND, registry.resolve(legacyStyleHandle).status());
     }
 
     @Test

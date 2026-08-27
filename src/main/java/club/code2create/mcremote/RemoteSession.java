@@ -62,7 +62,6 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     private final PlayerCommands playerCommands;
     private final BlockCommands blockCommands;
     private final MiscCommands miscCommands;
-    private final EntityCommands entityCommands;
     private final BuildStateCommands buildStateCommands;
     private final CatalogCommands catalogCommands;
     private final CommandParser commandParser;
@@ -76,7 +75,6 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         DimensionResolver dimensions = new DimensionResolver();
         this.playerCommands = new PlayerCommands(this, dimensions);
         this.miscCommands = new MiscCommands(this);
-        this.entityCommands = new EntityCommands(this, miscCommands);
         this.blockCommands = new BlockCommands(this, miscCommands);
         this.buildStateCommands = new BuildStateCommands(this, dimensions);
         this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
@@ -94,12 +92,13 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                 b5Policy.eventPollDefault(),
                 b5Policy.eventPollLimit());
         WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, b5Policy);
+        SignCommands signCommands = new SignCommands(this, miscCommands);
         // build state は identity から分離。既定は minecraft:overworld / (200,0,200)。
         this.origin = buildStateCommands.defaultOrigin();
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
-                this, blockCommands, miscCommands, entityCommands, buildStateCommands, catalogCommands,
-                eventCommands, worldB5Commands));
+                this, blockCommands, miscCommands, buildStateCommands, catalogCommands,
+                eventCommands, worldB5Commands, signCommands));
         this.authCommands = new AuthCommands(
                 this, plugin.getPairingManager(), plugin.getCredentialService());
         init();

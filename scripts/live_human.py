@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""McRemote b5 live-human event/pose verification runner.
+"""McRemote live-human event/pose verification runner.
 
 This script intentionally pauses at the human boundary: a player must join the
 target Paper server, approve pairing, then perform three Minecraft actions.
@@ -13,9 +13,9 @@ import sys
 import time
 
 
-PROTOCOL = "22.0.0"
+PROTOCOL = "23.0.0"
 CHAT_MARKER = "MCR_B5_CHAT"
-EVENT_TYPES = {"block_right_click", "chat_posted", "projectile_hit"}
+EVENT_TYPES = {"pickaxe_poke", "chat_posted", "projectile_hit"}
 
 
 class Rpc:
@@ -58,7 +58,7 @@ def successful(response: dict):
 def pair(primary: Rpc, poll_interval: float) -> str:
     begun = successful(primary.call("auth.pairBegin", {
         "token_type": "session",
-        "client": {"name": "b5_live_human.py", "version": "0", "locale": "ja"},
+        "client": {"name": "live_human.py", "version": "0", "locale": "ja"},
     }))
     code = begun["pair_code"]
     grouped = f"{code[:3]}-{code[3:]}"
@@ -130,10 +130,12 @@ def validate_events(events: list[dict]) -> None:
     sequences = [event.get("sequence") for event in events]
     if sequences != sorted(sequences) or len(sequences) != len(set(sequences)):
         raise AssertionError(f"events are not FIFO with unique sequence: {sequences}")
-    clicks = [event for event in events if event.get("type") == "block_right_click"]
-    if len(clicks) != 1:
-        raise AssertionError(f"one click must become one event, got {len(clicks)}")
-    validate_block_value(clicks[0].get("block"), "block_right_click.block")
+    pokes = [event for event in events if event.get("type") == "pickaxe_poke"]
+    if len(pokes) != 1:
+        raise AssertionError(f"one poke must become one event, got {len(pokes)}")
+    validate_block_value(pokes[0].get("block"), "pickaxe_poke.block")
+    if not isinstance(pokes[0].get("item"), str) or ":" not in pokes[0]["item"]:
+        raise AssertionError(f"pickaxe_poke.item is not a fully qualified item id: {pokes[0]!r}")
     chats = [event for event in events if event.get("type") == "chat_posted"]
     if not any(event.get("message") == CHAT_MARKER for event in chats):
         raise AssertionError(f"original chat marker missing: {chats}")
@@ -161,7 +163,7 @@ def validate_block_value(value, label: str) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="McRemote b5 live-human runner")
+    parser = argparse.ArgumentParser(description="McRemote live-human runner")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
     parser.add_argument("--timeout", type=float, default=60)
@@ -186,7 +188,7 @@ def main() -> int:
 
         print()
         print("Minecraftで次を各1回、順番に実行してください:")
-        print("  1. ブロックを右クリック")
+        print("  1. ツルハシを持ってブロックを右クリック（poke）")
         print(f"  2. チャットへ {CHAT_MARKER} と投稿")
         print("  3. 矢などのprojectileをブロックへ当てる")
         input("完了したら Enter: ")
@@ -217,7 +219,7 @@ def main() -> int:
             raise AssertionError("captured DTO changed after build origin mutation")
         print("PASS event dimension/origin captured at listener time")
 
-        print("PASS: McRemote b5 live-human event/pose subset")
+        print("PASS: McRemote live-human event/pose subset")
         return 0
     except (AssertionError, OSError, RuntimeError, json.JSONDecodeError) as error:
         print(f"FAIL: {error}", file=sys.stderr)

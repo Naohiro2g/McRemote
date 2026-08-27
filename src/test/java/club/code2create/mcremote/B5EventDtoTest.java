@@ -16,16 +16,16 @@ class B5EventDtoTest {
     private static final Gson GSON = new Gson();
 
     @Test
-    void rightClickShapeIsStableAndImmutable() {
-        Map<String, Object> dto = B5EventDto.blockRightClick(
+    void pickaxePokeShapeIsStableAndImmutable() {
+        Map<String, Object> dto = B5EventDto.pickaxePoke(
                 "minecraft:overworld", List.of(200, 0, 200), List.of(1, 2, 3),
-                "up", blockValue("minecraft:stone", Map.of()), "main");
+                "up", blockValue("minecraft:stone", Map.of()), "main", "minecraft:diamond_pickaxe");
 
         assertEquals(
-                "{\"type\":\"block_right_click\",\"dimension\":\"minecraft:overworld\","
+                "{\"type\":\"pickaxe_poke\",\"dimension\":\"minecraft:overworld\","
                         + "\"origin\":[200,0,200],\"pos\":[1,2,3],\"face\":\"up\","
                         + "\"block\":{\"block_id\":\"minecraft:stone\",\"state\":{}},"
-                        + "\"hand\":\"main\"}",
+                        + "\"hand\":\"main\",\"item\":\"minecraft:diamond_pickaxe\"}",
                 GSON.toJson(dto));
         assertThrows(UnsupportedOperationException.class, () -> dto.put("x", 1));
     }

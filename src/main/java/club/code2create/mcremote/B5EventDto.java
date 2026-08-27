@@ -11,19 +11,21 @@ final class B5EventDto {
     private B5EventDto() {
     }
 
-    static Map<String, Object> blockRightClick(
+    static Map<String, Object> pickaxePoke(
             String dimension,
             List<Integer> origin,
             List<Integer> position,
             String face,
             Map<String, Object> block,
-            String hand
+            String hand,
+            String item
     ) {
-        Map<String, Object> dto = common("block_right_click", dimension, origin);
+        Map<String, Object> dto = common("pickaxe_poke", dimension, origin);
         dto.put("pos", List.copyOf(position));
         dto.put("face", face);
         dto.put("block", immutable(block));
         dto.put("hand", hand);
+        dto.put("item", item);
         return immutable(dto);
     }
 

@@ -17,7 +17,7 @@ import json
 import socket
 import sys
 
-PROTOCOL = "22.0.0"
+PROTOCOL = "23.0.0"
 BOGUS_TOKEN = "mcrs_bogus_token_that_does_not_resolve"
 OLD_PLAYER_TOKEN = "mcrp_legacy_token_is_not_migrated"
 MALFORMED_TOKEN = "not_a_mcremote_token"

@@ -13,7 +13,7 @@ import java.util.function.Function;
 
 /** Connection-epoch scoped opaque entity handles. */
 final class EntityHandleRegistry {
-    static final String PREFIX = "mceh_";
+    static final String PREFIX = "mcr_eh_";
     static final String DIMENSION_CHANGED_REASON = "entity_dimension_changed";
 
     private final int capacity;
