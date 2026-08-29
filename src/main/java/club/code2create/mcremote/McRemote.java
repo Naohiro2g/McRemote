@@ -30,6 +30,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
 public class McRemote extends JavaPlugin implements Listener {
+    static final boolean DEFAULT_AUTH_ENFORCEMENT = true;
+
     private static final Logger logger = Logger.getLogger("McRemote");
     private final RightClickDeduplicator rightClickDeduplicator = new RightClickDeduplicator();
 
@@ -62,8 +64,9 @@ public class McRemote extends JavaPlugin implements Listener {
         removeDeprecatedCredentialConfig(config);
 
         // 認証ストアを serverThread 起動前に用意する（接続到来時の RemoteSession ctor が参照するため）。
-        // enforcement 既定 OFF＝token 無し hello 通過（3リポ非同期着地・§6.5/§10.11.1 item5）。
-        this.authEnforcement = config.getBoolean("auth.enforcement", false);
+        // リリース既定は enforced。false は token 無し hello を許可する明示的な開発 override のみ。
+        this.authEnforcement = config.getBoolean(
+                "auth.enforcement", DEFAULT_AUTH_ENFORCEMENT);
         logger.info("Auth enforcement: " + this.authEnforcement);
         long pairCodeTtl = config.getLong("auth.pair_code_ttl_seconds", 120);
         long sessionTokenTtl = config.getLong("auth.session_token_ttl_seconds", 7200);
