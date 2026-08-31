@@ -2,6 +2,7 @@ package club.code2create.mcremote;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.destroystokyo.paper.ParticleBuilder;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
@@ -104,8 +105,8 @@ final class WorldB5Commands {
             if (!preflightLocation(location) || !admit(count) || !prepareChunk(location)) {
                 return;
             }
-            location.getWorld().spawnParticle(
-                    particle, location, count, offsetX, offsetY, offsetZ, speed, null, force);
+            particleBuilder(
+                    particle, location, count, offsetX, offsetY, offsetZ, speed, force).spawn();
             session.respondResult(count);
         } catch (IllegalArgumentException e) {
             session.respondError(-32602, "invalid_params", null);
@@ -199,6 +200,29 @@ final class WorldB5Commands {
     static boolean ensureChunkLoaded(World world, int chunkX, int chunkZ) {
         return world.isChunkLoaded(chunkX, chunkZ)
                 || world.loadChunk(chunkX, chunkZ, true);
+    }
+
+    /**
+     * b7 ParticleBuilder Stage 1 mapping. Receivers and source stay unset so delivery remains
+     * world-wide, and null data preserves the existing no-data particle contract.
+     */
+    static ParticleBuilder particleBuilder(
+            Particle particle,
+            Location location,
+            int count,
+            double offsetX,
+            double offsetY,
+            double offsetZ,
+            double speed,
+            boolean force
+    ) {
+        return particle.builder()
+                .location(location)
+                .count(count)
+                .offset(offsetX, offsetY, offsetZ)
+                .extra(speed)
+                .data(null)
+                .force(force);
     }
 
     private boolean admit(int units) {
