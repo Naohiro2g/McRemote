@@ -1,0 +1,5 @@
+name: McRemoteB7LiveProbe
+version: ${version}
+main: club.code2create.mcremote.liveprobe.B7LiveProbe
+api-version: '1.21.11'
+description: Non-production observation probe for the McRemote b7 live-auto gate

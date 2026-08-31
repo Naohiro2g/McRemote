@@ -1,0 +1,7 @@
+artifact=mc-remote-b7-live-probe-23.1.0-b7.jar
+bytes=13444
+sha256=641a7bf12190e7f73d008689918427f92a1cf7592cb9ee48367997fc0f486e70
+build_api=1.21.11-R0.1-SNAPSHOT
+build_java=21
+compatibility_pulse_api=26.2.build.121-stable
+compatibility_pulse_java=25
