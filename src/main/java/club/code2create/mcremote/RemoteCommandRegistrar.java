@@ -9,7 +9,9 @@ public class RemoteCommandRegistrar {
             CatalogCommands catalogCommands,
             EventCommands eventCommands,
             WorldB5Commands worldB5Commands,
-            SignCommands signCommands
+            SignCommands signCommands,
+            DirectionCommands directionCommands,
+            LightningCommands lightningCommands
     ) {
         CommandRegistry registry = new CommandRegistry();
         PlayerCommands playerCommands = session.getPlayerCommands();
@@ -30,6 +32,7 @@ public class RemoteCommandRegistrar {
         registry.registerStructured("world.setSign", signCommands::handleSetSign);
         registry.registerStructured("world.getSign", signCommands::handleGetSign);
         registry.registerStructured("world.updateSignLine", signCommands::handleUpdateSignLine);
+        registerB7Commands(registry, directionCommands, lightningCommands);
         registry.register("catalog.get", catalogCommands::handleGet, false);
 
         // Protocol 22 build context. build.setWorld is intentionally not registered.
@@ -46,5 +49,14 @@ public class RemoteCommandRegistrar {
     static void registerBuildCommands(CommandRegistry registry, BuildStateCommands buildStateCommands) {
         registry.registerStructured("build.setDimension", buildStateCommands::handleSetDimension, false);
         registry.registerStructured("build.setOrigin", buildStateCommands::handleSetOrigin, false);
+    }
+
+    static void registerB7Commands(
+            CommandRegistry registry,
+            DirectionCommands directionCommands,
+            LightningCommands lightningCommands
+    ) {
+        directionCommands.register(registry);
+        lightningCommands.register(registry);
     }
 }

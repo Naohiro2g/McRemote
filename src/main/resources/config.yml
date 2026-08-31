@@ -4,6 +4,7 @@ api_port: 25575
 luckperm_permissions:
   online: "mcr.online"  # permission node for online players
   offline: "mcr.offline"  # permission node for offline players
+  lightning: "mcr.lightning"  # dedicated permission for damage-capable lightning
   build.range: "mcr.build.range"  # meta key for group
 # if there is no LuckPerms, use this
 default_build_range: 1000
@@ -40,3 +41,12 @@ b5:
   global_work_per_tick: 32768
   connection_queue_capacity: 1024
   connection_response_queue_capacity: 64  # saturation fails the connection; frames are never dropped silently
+
+# b7 full-lightning admission. Rate gates are atomic and all values are measured in server ticks.
+b7:
+  lightning:
+    connection_cooldown_ticks: 20
+    player_cooldown_ticks: 20
+    global_per_tick: 2
+    rolling_window_ticks: 20
+    global_per_window: 8

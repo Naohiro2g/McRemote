@@ -22,6 +22,21 @@ player／entity 操作、event 観察を行うための共通 protocol endpoint 
 設計と wire contract の正本は
 [mc-remote-knowledge](https://github.com/Naohiro2g/mc-remote-knowledge) にあります。
 
+### b7 candidate inventory（未公開）
+
+現在の開発branchは artifact `2301.0.0b7`／protocol `23.1.0` candidateです。公開版の表と
+download linkはb7 artifactがreleaseされるまでb6を指し続けます。
+
+- `player.getDirection`／`player.setDirection`
+- `entity.getDirection`／`entity.setDirection`
+- damage-capableな`world.strikeLightning`（専用`mcr.lightning` permission、plugin default `op`）
+- wireを変えない`world.spawnParticle`のPaper `ParticleBuilder` Stage 1移行
+
+旧候補`world.strikeLightningEffect`は公開せず、full lightningはdamage、fire、entity変化などの
+world副作用を起こし得ます。exact contractはknowledge commit
+`f132a8e6c9f27e62c2762b6d07d2023988c55c97`の`10-protocol/wire-format-design_ja.md` §5.8.2です。
+shared fixture、Paper live確認、公開artifact、releaseはcandidate sourceとは別gateであり、未完了です。
+
 ## 導入
 
 1. Paper 1.21.11 サーバーを用意します。

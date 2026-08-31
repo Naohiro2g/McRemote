@@ -12,6 +12,10 @@ final class WireNumbers {
         return decimal(value, 3);
     }
 
+    static BigDecimal direction(double value) {
+        return decimal(value, 6);
+    }
+
     static BigDecimal pitch(double value) {
         return decimal(value, 2);
     }

@@ -20,7 +20,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Entity;
 import net.kyori.adventure.text.Component;
 
-public class RemoteSession implements CommandDispatchContext, BuildContextSession {
+public class RemoteSession implements CommandDispatchContext, BuildContextSession, B7CommandContext {
     private static final int MAX_COMMANDS_PER_TICK = 1000;
     private static final Logger logger = Logger.getLogger("McR_RemoteSession");
     // world_constants の nullable 値等を出すため serializeNulls（§6.2 フィールド常在）。
@@ -93,12 +93,19 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                 b5Policy.eventPollLimit());
         WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, b5Policy);
         SignCommands signCommands = new SignCommands(this, miscCommands);
+        DirectionCommands directionCommands = new DirectionCommands(
+                this, entityHandles, plugin.getPermissionManager());
+        LightningCommands lightningCommands = new LightningCommands(
+                this,
+                plugin.getPermissionManager(),
+                plugin.getLightningRateAdmission(),
+                plugin.getLightningRuntimePolicy());
         // build state は identity から分離。既定は minecraft:overworld / (200,0,200)。
         this.origin = buildStateCommands.defaultOrigin();
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
                 this, blockCommands, miscCommands, buildStateCommands, catalogCommands,
-                eventCommands, worldB5Commands, signCommands));
+                eventCommands, worldB5Commands, signCommands, directionCommands, lightningCommands));
         this.authCommands = new AuthCommands(
                 this, plugin.getPairingManager(), plugin.getCredentialService());
         init();
@@ -149,6 +156,11 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
 
     public UUID getBoundUuid() {
         return boundUuid;
+    }
+
+    @Override
+    public UUID getConnectionEpoch() {
+        return connectionEpoch;
     }
 
     public TokenStore.TokenType getBoundTokenType() {
@@ -462,7 +474,8 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         return entityHandles.issue(entity);
     }
 
-    WorkAdmission.Result admitWork(int units) {
+    @Override
+    public WorkAdmission.Result admitWork(int units) {
         return plugin.getWorkAdmission().admit(connectionEpoch, boundUuid, units);
     }
 
@@ -470,7 +483,8 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
      * Applies b5 work admission to a setter before world access. A temporarily pressured
      * notification stays at the FIFO head because it has no response channel for retry advice.
      */
-    boolean admitSetterWork(long units) {
+    @Override
+    public boolean admitSetterWork(long units) {
         WorkAdmission.Result result = units > Integer.MAX_VALUE
                 ? WorkAdmission.Result.WORK_LIMIT_EXCEEDED
                 : admitWork((int) units);
@@ -484,6 +498,15 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         return false;
     }
 
+    @Override
+    public boolean rejectTemporaryBackpressure() {
+        if (activeId == null) {
+            throw CommandDeferredException.INSTANCE;
+        }
+        respondError(-32000, "backpressure", null);
+        return false;
+    }
+
     private void sessionWorkError(WorkAdmission.Result result) {
         respondError(-32000,
                 result == WorkAdmission.Result.BACKPRESSURE
@@ -491,24 +514,38 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                 null);
     }
 
-    boolean hasConstructionPermission() {
+    @Override
+    public boolean hasConstructionPermission() {
         if (boundUuid == null) {
             return true;
         }
         OfflinePlayer player = Bukkit.getOfflinePlayer(boundUuid);
         Player online = Bukkit.getPlayer(boundUuid);
-        return online != null && online.isOnline()
-                ? plugin.getPermissionManager().canConstructOnline(player)
-                : plugin.getPermissionManager().canConstructOffline(player);
+        return selectConstructionPermission(plugin.getPermissionManager(), player, online);
     }
 
-    boolean isWithinBuildRange(Location target) {
+    static boolean selectConstructionPermission(
+            IPermissionManager permissions,
+            OfflinePlayer player,
+            Player online
+    ) {
+        return online != null && online.isOnline()
+                ? permissions.canConstructOnline(player)
+                : permissions.canConstructOffline(player);
+    }
+
+    @Override
+    public boolean isWithinBuildRange(Location target) {
         if (origin == null || target == null) {
             return false;
         }
         int range = boundUuid == null
                 ? plugin.getDefaultBuildRange()
                 : plugin.getPermissionManager().getPlayerRange(Bukkit.getOfflinePlayer(boundUuid));
+        return withinBuildRange(origin, target, range);
+    }
+
+    static boolean withinBuildRange(Location origin, Location target, int range) {
         return Math.abs(target.getX() - origin.getX()) <= range
                 && Math.abs(target.getZ() - origin.getZ()) <= range;
     }

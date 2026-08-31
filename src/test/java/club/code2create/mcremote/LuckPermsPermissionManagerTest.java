@@ -56,6 +56,7 @@ class LuckPermsPermissionManagerTest {
 
         assertTrue(fixture.manager().canConstructOnline(fixture.player()));
         assertFalse(fixture.manager().canConstructOffline(fixture.player()));
+        assertTrue(fixture.manager().canStrikeLightning(fixture.player()));
     }
 
     private static Fixture fixture(String effectiveMeta) {
@@ -70,7 +71,8 @@ class LuckPermsPermissionManagerTest {
         });
         CachedPermissionData permissionData = proxy(CachedPermissionData.class, (method, args) -> {
             if (method.getName().equals("checkPermission")) {
-                return args[0].equals("mcr.online") ? Tristate.TRUE : Tristate.FALSE;
+                return args[0].equals("mcr.online") || args[0].equals("mcr.lightning")
+                        ? Tristate.TRUE : Tristate.FALSE;
             }
             return null;
         });
@@ -112,7 +114,8 @@ class LuckPermsPermissionManagerTest {
             default -> null;
         });
         LuckPermsPermissionManager manager = new LuckPermsPermissionManager(
-                luckPerms, "mcr.online", "mcr.offline", META_KEY, () -> queryOptions);
+                luckPerms, "mcr.online", "mcr.offline", "mcr.lightning", META_KEY,
+                () -> queryOptions);
         return new Fixture(manager, player);
     }
 

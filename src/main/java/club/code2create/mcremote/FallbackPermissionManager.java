@@ -32,6 +32,11 @@ public class FallbackPermissionManager implements IPermissionManager {
     }
 
     @Override
+    public boolean canStrikeLightning(OfflinePlayer player) {
+        return player.isOp();
+    }
+
+    @Override
     public int getPlayerRange(OfflinePlayer player) {
 //        logger.info("Fallback: returning default build range " + defaultBuildRange + " for " + player.getName());
         return defaultBuildRange;

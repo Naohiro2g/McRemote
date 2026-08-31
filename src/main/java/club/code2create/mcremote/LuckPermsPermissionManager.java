@@ -21,6 +21,7 @@ public class LuckPermsPermissionManager implements IPermissionManager {
     private LuckPerms luckPerms;
     private final String onlinePermission;
     private final String offlinePermission;
+    private final String lightningPermission;
     private final String buildRangeMetaKey;
     private final Supplier<QueryOptions> queryOptionsSupplier;
 
@@ -35,8 +36,19 @@ public class LuckPermsPermissionManager implements IPermissionManager {
      * @param buildRangeMetaKey effective meta のキー（build.range）
      */
     public LuckPermsPermissionManager(JavaPlugin plugin, String onlinePermission, String offlinePermission, String buildRangeMetaKey) {
+        this(plugin, onlinePermission, offlinePermission, "mcr.lightning", buildRangeMetaKey);
+    }
+
+    public LuckPermsPermissionManager(
+            JavaPlugin plugin,
+            String onlinePermission,
+            String offlinePermission,
+            String lightningPermission,
+            String buildRangeMetaKey
+    ) {
         this.onlinePermission = onlinePermission;
         this.offlinePermission = offlinePermission;
+        this.lightningPermission = lightningPermission;
         this.buildRangeMetaKey = buildRangeMetaKey;
         this.queryOptionsSupplier = LuckPermsPermissionManager::serverGlobalQueryOptions;
         try {
@@ -58,9 +70,21 @@ public class LuckPermsPermissionManager implements IPermissionManager {
             String offlinePermission,
             String buildRangeMetaKey,
             Supplier<QueryOptions> queryOptionsSupplier) {
+        this(luckPerms, onlinePermission, offlinePermission, "mcr.lightning",
+                buildRangeMetaKey, queryOptionsSupplier);
+    }
+
+    LuckPermsPermissionManager(
+            LuckPerms luckPerms,
+            String onlinePermission,
+            String offlinePermission,
+            String lightningPermission,
+            String buildRangeMetaKey,
+            Supplier<QueryOptions> queryOptionsSupplier) {
         this.luckPerms = luckPerms;
         this.onlinePermission = onlinePermission;
         this.offlinePermission = offlinePermission;
+        this.lightningPermission = lightningPermission;
         this.buildRangeMetaKey = buildRangeMetaKey;
         this.queryOptionsSupplier = queryOptionsSupplier;
     }
@@ -73,6 +97,11 @@ public class LuckPermsPermissionManager implements IPermissionManager {
     @Override
     public boolean canConstructOffline(OfflinePlayer player) {
         return hasPermission(player, offlinePermission);
+    }
+
+    @Override
+    public boolean canStrikeLightning(OfflinePlayer player) {
+        return hasPermission(player, lightningPermission);
     }
 
     private boolean hasPermission(OfflinePlayer player, String permission) {

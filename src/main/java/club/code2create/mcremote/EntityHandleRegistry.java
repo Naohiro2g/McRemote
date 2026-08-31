@@ -66,10 +66,12 @@ final class EntityHandleRegistry {
             return new ResolveResult(ResolveStatus.NOT_FOUND, null);
         }
         Entity entity = entityLookup.apply(entry.entityId());
-        if (entity == null || entity.isDead() || !entity.isValid()) {
+        if (entity == null || entity.isDead() || !entity.isValid() || !entity.isInWorld()) {
+            invalidate(handle, entry);
             return new ResolveResult(ResolveStatus.REMOVED_OR_UNLOADED, null);
         }
         if (!entry.dimension().equals(DimensionResolver.canonical(entity.getWorld()))) {
+            invalidate(handle, entry);
             return new ResolveResult(ResolveStatus.DIMENSION_CHANGED, null);
         }
         return new ResolveResult(ResolveStatus.ACTIVE, entity);
@@ -83,6 +85,11 @@ final class EntityHandleRegistry {
 
     synchronized int size() {
         return byHandle.size();
+    }
+
+    private void invalidate(String handle, Entry entry) {
+        byHandle.remove(handle, entry);
+        byEntity.remove(entry.entityId(), handle);
     }
 
     final class Reservation implements AutoCloseable {

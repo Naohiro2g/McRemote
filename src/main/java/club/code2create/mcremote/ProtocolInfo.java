@@ -6,9 +6,9 @@ import java.util.regex.Pattern;
 /**
  * protocol 版の正本と hello ネゴシエーションの版判定（versioning-design §8 / wire-format-design §1）。
  *
- * hello で名乗る版は **clean な protocol semver `23.0.0`**（DECISIONS 2026-08-26-06。
- * `block_right_click`の削除・`pickaxe_poke`への置換という破壊的変更のため、b5の`22.0.0`から
- * b6で上げた）。配布パッケージ版 `2300.0.0b6`（fold 形・`b6` 接尾辞）は jar/PyPI 名のレイヤであって
+ * hello で名乗る版は **clean な protocol semver `23.1.0`**（DECISIONS 2026-09-01-01）。
+ * b7 は direction 四methodとdamage-capableなfull lightningを後方互換追加する。
+ * 配布パッケージ版 `2301.0.0b7`（fold 形・`b7` 接尾辞）は jar/PyPI 名のレイヤであって
  * **wire には載せない**（`b1` は配布チャンネル表記で互換に無関係）。plugin / api は同一の protocol
  * 文字列を名乗る（§2 番号対称性）。
  *
@@ -19,9 +19,9 @@ public final class ProtocolInfo {
 
     /**
      * 本プラグインが hello で名乗る protocol semver（wire-format-design §6.2）。
-     * パッケージ版は gradle.properties の pluginVersion（`2300.0.0b6`）＝こことは別レイヤ。
+     * パッケージ版は gradle.properties の pluginVersion（`2301.0.0b7`）＝こことは別レイヤ。
      */
-    public static final String PROTOCOL = "23.0.0";
+    public static final String PROTOCOL = "23.1.0";
 
     // leading な major.minor.patch（万一接尾辞が付いても捨てる）
     private static final Pattern SEMVER = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)");

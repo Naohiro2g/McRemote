@@ -80,6 +80,28 @@ class RemoteCommandRegistrarTest {
         }
     }
 
+    @Test
+    void b7RegistersDirectionQuartetAndOnlyDamageCapableLightningName() {
+        CommandRegistry registry = new CommandRegistry();
+        LightningRuntimePolicy policy = new LightningRuntimePolicy(20, 20, 2, 20, 8);
+        DirectionCommands direction = new DirectionCommands(
+                null, new EntityHandleRegistry(1), null);
+        LightningCommands lightning = new LightningCommands(
+                null, null, new LightningRateAdmission(policy), policy);
+
+        RemoteCommandRegistrar.registerB7Commands(registry, direction, lightning);
+
+        for (String method : List.of(
+                "player.getDirection", "player.setDirection",
+                "entity.getDirection", "entity.setDirection")) {
+            assertNotNull(registry.get(method));
+            assertTrue(!registry.get(method).requiresOrigin());
+        }
+        assertNotNull(registry.get("world.strikeLightning"));
+        assertTrue(registry.get("world.strikeLightning").requiresOrigin());
+        assertNull(registry.get("world.strikeLightningEffect"));
+    }
+
     private static final class CapturingContext implements CommandDispatchContext {
         private int code;
         private String reason;

@@ -64,10 +64,52 @@ class EntityHandleRegistryTest {
         entities.put(uuid, entity(uuid, "myworld:world"));
         assertEquals(EntityHandleRegistry.ResolveStatus.DIMENSION_CHANGED,
                 registry.resolve(handle).status());
+        assertEquals(EntityHandleRegistry.ResolveStatus.NOT_FOUND,
+                registry.resolve(handle).status());
+        assertEquals(0, registry.size());
+        registry.reserve().close();
         assertEquals("entity_dimension_changed", EntityHandleRegistry.DIMENSION_CHANGED_REASON);
     }
 
+    @Test
+    void removedEntityReportsUnavailableOnceThenNotFoundAndReleasesCapacity() {
+        UUID uuid = UUID.randomUUID();
+        Map<UUID, Entity> entities = new HashMap<>();
+        Entity original = entity(uuid, "minecraft:overworld");
+        entities.put(uuid, original);
+        EntityHandleRegistry registry = new EntityHandleRegistry(
+                1, new SecureRandom(), entities::get);
+        String handle = registry.issue(original);
+        entities.remove(uuid);
+
+        assertEquals(EntityHandleRegistry.ResolveStatus.REMOVED_OR_UNLOADED,
+                registry.resolve(handle).status());
+        assertEquals(EntityHandleRegistry.ResolveStatus.NOT_FOUND,
+                registry.resolve(handle).status());
+        assertEquals(0, registry.size());
+        registry.reserve().close();
+    }
+
+    @Test
+    void entityOutsideWorldIsUnavailableAndImmediatelyInvalidated() {
+        UUID uuid = UUID.randomUUID();
+        Entity original = entity(uuid, "minecraft:overworld");
+        Entity unavailable = entity(uuid, "minecraft:overworld", false);
+        EntityHandleRegistry registry = new EntityHandleRegistry(
+                1, new SecureRandom(), ignored -> unavailable);
+        String handle = registry.issue(original);
+
+        assertEquals(EntityHandleRegistry.ResolveStatus.REMOVED_OR_UNLOADED,
+                registry.resolve(handle).status());
+        assertEquals(EntityHandleRegistry.ResolveStatus.NOT_FOUND,
+                registry.resolve(handle).status());
+    }
+
     private static Entity entity(UUID uuid, String dimension) {
+        return entity(uuid, dimension, true);
+    }
+
+    private static Entity entity(UUID uuid, String dimension, boolean inWorld) {
         NamespacedKey key = NamespacedKey.fromString(dimension);
         World world = (World) Proxy.newProxyInstance(
                 World.class.getClassLoader(),
@@ -84,7 +126,8 @@ class EntityHandleRegistryTest {
                     case "getUniqueId" -> uuid;
                     case "getWorld" -> world;
                     case "isDead" -> false;
-                    case "isValid", "isInWorld" -> true;
+                    case "isValid" -> true;
+                    case "isInWorld" -> inWorld;
                     case "toString" -> "EntityTestProxy";
                     case "hashCode" -> System.identityHashCode(proxy);
                     case "equals" -> proxy == args[0];

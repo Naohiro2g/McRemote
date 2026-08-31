@@ -52,6 +52,8 @@ public class McRemote extends JavaPlugin implements Listener {
     private CatalogService catalogService;
     private B5RuntimePolicy b5RuntimePolicy;
     private WorkAdmission workAdmission;
+    private LightningRuntimePolicy lightningRuntimePolicy;
+    private LightningRateAdmission lightningRateAdmission;
 
     @Override
     public void onEnable(){
@@ -84,6 +86,8 @@ public class McRemote extends JavaPlugin implements Listener {
         this.catalogService = new CatalogService();
         this.b5RuntimePolicy = B5RuntimePolicy.from(config);
         this.workAdmission = new WorkAdmission(b5RuntimePolicy);
+        this.lightningRuntimePolicy = LightningRuntimePolicy.from(config);
+        this.lightningRateAdmission = new LightningRateAdmission(lightningRuntimePolicy);
         logger.info("b5 connection command queue capacity: "
                 + b5RuntimePolicy.connectionQueueCapacity());
         logger.info("Resource catalog ready: blocks=" + catalogService.getBlockCount()
@@ -103,6 +107,7 @@ public class McRemote extends JavaPlugin implements Listener {
         // config.yml から権限・meta 関連の設定を読み込む
         String onlinePermission = config.getString("luckperm_permissions.online", "mcr.online");
         String offlinePermission = config.getString("luckperm_permissions.offline", "mcr.offline");
+        String lightningPermission = config.getString("luckperm_permissions.lightning", "mcr.lightning");
         String buildRangeMetaKey = config.getString("luckperm_permissions.build.range", "mcr.build.range");
         int defaultBuildRange = config.getInt("default_build_range", 32);
         this.defaultBuildRange = defaultBuildRange;
@@ -111,7 +116,8 @@ public class McRemote extends JavaPlugin implements Listener {
         luckPermsEnabled = (Bukkit.getPluginManager().getPlugin("LuckPerms") != null);
         if (luckPermsEnabled) {
             logger.info("initializing PermissionManager (LuckPermsPermissionManager)");
-            this.permissionManager = new LuckPermsPermissionManager(this, onlinePermission, offlinePermission, buildRangeMetaKey);
+            this.permissionManager = new LuckPermsPermissionManager(
+                    this, onlinePermission, offlinePermission, lightningPermission, buildRangeMetaKey);
         } else {
             logger.info("initializing FallbackPermissionManager");
             this.permissionManager = new FallbackPermissionManager(onlinePermission, offlinePermission, defaultBuildRange);
@@ -245,6 +251,14 @@ public class McRemote extends JavaPlugin implements Listener {
         return workAdmission;
     }
 
+    LightningRuntimePolicy getLightningRuntimePolicy() {
+        return lightningRuntimePolicy;
+    }
+
+    LightningRateAdmission getLightningRateAdmission() {
+        return lightningRateAdmission;
+    }
+
     /** enforcement トグル（§10.11.1 item5）。ON で hello が token 必須になる（次ステップで参照）。 */
     public boolean isAuthEnforcement() {
         return this.authEnforcement;
@@ -289,6 +303,7 @@ public class McRemote extends JavaPlugin implements Listener {
         @Override
         public void run() {
             workAdmission.beginTick();
+            lightningRateAdmission.beginTick();
             // CopyOnWriteArrayList の反復は snapshot。要素除去はリスト側 remove(Object) で行う
             // （snapshot iterator は remove() 非対応）。RemoteSession は equals 未override＝同一性判定。
             for (RemoteSession s : sessions) {
