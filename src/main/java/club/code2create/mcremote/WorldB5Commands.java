@@ -13,21 +13,33 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 import java.util.OptionalInt;
+import java.util.function.Function;
 
 /** b5 world query/spawn commands with validation before any world mutation. */
 final class WorldB5Commands {
-    private final RemoteSession session;
+    private final WorldCommandContext session;
     private final EntityHandleRegistry handles;
     private final B5RuntimePolicy policy;
+    private final Function<String, Particle> particleResolver;
 
     WorldB5Commands(
-            RemoteSession session,
+            WorldCommandContext session,
             EntityHandleRegistry handles,
             B5RuntimePolicy policy
+    ) {
+        this(session, handles, policy, WorldB5Commands::particle);
+    }
+
+    WorldB5Commands(
+            WorldCommandContext session,
+            EntityHandleRegistry handles,
+            B5RuntimePolicy policy,
+            Function<String, Particle> particleResolver
     ) {
         this.session = session;
         this.handles = handles;
         this.policy = policy;
+        this.particleResolver = particleResolver;
     }
 
     void handleGetHeight(JsonElement params) {
@@ -93,7 +105,7 @@ final class WorldB5Commands {
                 session.respondError(-32000, "work_limit_exceeded", null);
                 return;
             }
-            Particle particle = particle(id);
+            Particle particle = particleResolver.apply(id);
             if (particle == null) {
                 session.respondError(-32602, "unknown_particle", null);
                 return;
