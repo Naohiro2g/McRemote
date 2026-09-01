@@ -31,6 +31,9 @@ public class BlockQueryCommands {
             int z = WireParams.integer(args, 2);
             World world = session.getOrigin().getWorld();
             Location loc = miscCommands.parseRelativeBlockLocation(x, y, z);
+            if (!preflight(loc)) {
+                return;
+            }
             // 未ロード/未生成 chunk は getBlockAt が同期でロード・生成する（旧リリース挙動）。拒否はしない。
             Block block = world.getBlockAt(loc);
             session.respondResult(BlockCodec.encode(block.getBlockData()));
@@ -49,6 +52,11 @@ public class BlockQueryCommands {
             Location origin = session.getOrigin();
             BlockQueryRegion absolute = relative.translate(
                     origin.getBlockX(), origin.getBlockY(), origin.getBlockZ());
+            Location min = new Location(origin.getWorld(), absolute.minX(), origin.getY(), absolute.minZ());
+            Location max = new Location(origin.getWorld(), absolute.maxX(), origin.getY(), absolute.maxZ());
+            if (!preflight(min) || !preflight(max)) {
+                return;
+            }
             World world = origin.getWorld();
             List<Map<String, Object>> values = new ArrayList<>(absolute.size());
             for (BlockQueryRegion.Position position : absolute.positions()) {
@@ -63,6 +71,18 @@ public class BlockQueryCommands {
             session.respondError(-32602, "invalid_params", pathData("params"));
             logger.warning("Invalid parameters for world.getBlocks: " + e.getMessage());
         }
+    }
+
+    private boolean preflight(Location target) {
+        if (!session.hasConstructionPermission()) {
+            session.respondError(-32000, "permission_denied", null);
+            return false;
+        }
+        if (!session.isWithinBuildRange(target)) {
+            session.respondError(-32000, "build_denied", null);
+            return false;
+        }
+        return true;
     }
 
     private static Map<String, Object> pathData(String path) {

@@ -36,6 +36,10 @@ public class BlockEditCommands {
             BlockData data = blockCodec.decode(args.get(3), "params[3]");
             World world = session.getOrigin().getWorld();
             Location loc = miscCommands.parseRelativeBlockLocation(x, y, z);
+            if (!session.hasConstructionPermission()) {
+                session.respondError(-32000, "permission_denied", null);
+                return;
+            }
             if (!checkRange(loc)) {
                 session.respondError(-32000, "build_denied", null);
                 return;
@@ -68,6 +72,10 @@ public class BlockEditCommands {
             World world = session.getOrigin().getWorld();
             Location loc1 = miscCommands.parseRelativeBlockLocation(x1, y1, z1);
             Location loc2 = miscCommands.parseRelativeBlockLocation(x2, y2, z2);
+            if (!session.hasConstructionPermission()) {
+                session.respondError(-32000, "permission_denied", null);
+                return;
+            }
             if (!checkRange(loc1) || !checkRange(loc2)) {
                 session.respondError(-32000, "build_denied", null);
                 return;
@@ -97,23 +105,7 @@ public class BlockEditCommands {
     }
 
     private boolean checkRange(Location targetLoc) {
-        Location origin = session.getOrigin();
-        if (origin == null) {
-            return false;
-        }
-        int allowedRange = resolveBuildRange();
-        double dx = Math.abs(targetLoc.getX() - origin.getX());
-        double dz = Math.abs(targetLoc.getZ() - origin.getZ());
-        return dx <= allowedRange && dz <= allowedRange;
-    }
-
-    private int resolveBuildRange() {
-        PlayerCommands playerCommands = session.getPlayerCommands();
-        org.bukkit.OfflinePlayer player = playerCommands != null ? playerCommands.getAttachedPlayer() : null;
-        if (player != null) {
-            return McRemote.instance.getPermissionManager().getPlayerRange(player);
-        }
-        return McRemote.getInstance().getDefaultBuildRange();
+        return session.isWithinBuildRange(targetLoc);
     }
 
     private void setCuboid(World world, Location loc1, Location loc2, BlockData data) {

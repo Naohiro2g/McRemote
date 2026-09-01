@@ -4,7 +4,6 @@ api_port: 25575
 luckperm_permissions:
   online: "mcr.online"  # permission node for online players
   offline: "mcr.offline"  # permission node for offline players
-  lightning: "mcr.lightning"  # dedicated permission for damage-capable lightning
   build.range: "mcr.build.range"  # meta key for group
 # if there is no LuckPerms, use this
 default_build_range: 1000

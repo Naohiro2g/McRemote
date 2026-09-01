@@ -29,7 +29,7 @@ download linkはb7 artifactがreleaseされるまでb6を指し続けます。
 
 - `player.getDirection`／`player.setDirection`
 - `entity.getDirection`／`entity.setDirection`
-- damage-capableな`world.strikeLightning`（専用`mcr.lightning` permission、plugin default `op`）
+- damage-capableな`world.strikeLightning`（hello時に固定したconstruction permission snapshotを使用）
 - wireを変えない`world.spawnParticle`のPaper `ParticleBuilder` Stage 1移行
 
 旧候補`world.strikeLightningEffect`は公開せず、full lightningはdamage、fire、entity変化などの

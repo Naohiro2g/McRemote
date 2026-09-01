@@ -3,7 +3,6 @@ package club.code2create.mcremote;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
@@ -14,30 +13,20 @@ import java.util.function.Function;
 final class DirectionCommands {
     private final B7CommandContext session;
     private final EntityHandleRegistry handles;
-    private final IPermissionManager permissions;
     private final Function<UUID, Player> onlinePlayers;
-    private final Function<UUID, OfflinePlayer> offlinePlayers;
 
-    DirectionCommands(
-            B7CommandContext session,
-            EntityHandleRegistry handles,
-            IPermissionManager permissions
-    ) {
-        this(session, handles, permissions, Bukkit::getPlayer, Bukkit::getOfflinePlayer);
+    DirectionCommands(B7CommandContext session, EntityHandleRegistry handles) {
+        this(session, handles, Bukkit::getPlayer);
     }
 
     DirectionCommands(
             B7CommandContext session,
             EntityHandleRegistry handles,
-            IPermissionManager permissions,
-            Function<UUID, Player> onlinePlayers,
-            Function<UUID, OfflinePlayer> offlinePlayers
+            Function<UUID, Player> onlinePlayers
     ) {
         this.session = session;
         this.handles = handles;
-        this.permissions = permissions;
         this.onlinePlayers = onlinePlayers;
-        this.offlinePlayers = offlinePlayers;
     }
 
     void register(CommandRegistry registry) {
@@ -132,7 +121,7 @@ final class DirectionCommands {
             session.respondError(-32000, "player_offline", null);
             return null;
         }
-        if (!permissions.canConstructOnline(offlinePlayers.apply(playerId))) {
+        if (!session.hasConstructionPermission()) {
             session.respondError(-32000, "permission_denied", null);
             return null;
         }

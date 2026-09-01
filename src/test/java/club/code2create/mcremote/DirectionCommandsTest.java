@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -56,7 +55,7 @@ class DirectionCommandsTest {
 
         fixture.commands.handlePlayerSet(JsonParser.parseString("[-0.0,0,0]"));
         assertEquals("zero_direction", fixture.context.reason);
-        assertEquals(0, fixture.permissions.onlineChecks.get());
+        assertEquals(0, fixture.context.constructionChecks);
         assertEquals(0, fixture.context.setterWorkCalls);
 
         fixture.context.reason = null;
@@ -66,7 +65,7 @@ class DirectionCommandsTest {
         invalid.add(1);
         fixture.commands.handlePlayerSet(invalid);
         assertEquals("invalid_params", fixture.context.reason);
-        assertEquals(0, fixture.permissions.onlineChecks.get());
+        assertEquals(0, fixture.context.constructionChecks);
         assertEquals(0, fixture.context.setterWorkCalls);
 
         fixture.context.reason = null;
@@ -80,12 +79,12 @@ class DirectionCommandsTest {
     @Test
     void playerPermissionAndOnlineStatePrecedeSetterAdmission() {
         Fixture fixture = fixture(0.0f, 0.0f);
-        fixture.permissions.onlineAllowed = false;
+        fixture.context.constructionAllowed = false;
 
         fixture.commands.handlePlayerSet(JsonParser.parseString("[0,0,1]"));
 
         assertEquals("permission_denied", fixture.context.reason);
-        assertEquals(1, fixture.permissions.onlineChecks.get());
+        assertEquals(1, fixture.context.constructionChecks);
         assertEquals(0, fixture.context.setterWorkCalls);
         assertEquals(0, fixture.rotationCalls.get());
     }
@@ -98,7 +97,7 @@ class DirectionCommandsTest {
         fixture.commands.handlePlayerGet(JsonParser.parseString("[]"));
 
         assertEquals("player_offline", fixture.context.reason);
-        assertEquals(0, fixture.permissions.onlineChecks.get());
+        assertEquals(0, fixture.context.constructionChecks);
         assertEquals(0, fixture.context.setterWorkCalls);
     }
 
@@ -217,12 +216,9 @@ class DirectionCommandsTest {
                     return lookupEntity.get();
                 });
         TestContext context = new TestContext(playerId, location);
-        TestPermissions permissions = new TestPermissions();
-        OfflinePlayer offline = offlinePlayer(playerId);
-        DirectionCommands commands = new DirectionCommands(
-                context, handles, permissions, ignored -> player, ignored -> offline);
+        DirectionCommands commands = new DirectionCommands(context, handles, ignored -> player);
         return new Fixture(
-                commands, context, permissions, handles, location, rotations, lookups, entity,
+                commands, context, handles, location, rotations, lookups, entity,
                 online, failRotation, failReadAfterRotation, lookupEntity);
     }
 
@@ -298,14 +294,6 @@ class DirectionCommandsTest {
         });
     }
 
-    private static OfflinePlayer offlinePlayer(UUID uuid) {
-        return proxy(OfflinePlayer.class, (proxy, method, args) -> switch (method.getName()) {
-            case "getUniqueId" -> uuid;
-            case "getName" -> "DirectionTester";
-            default -> defaultValue(method.getReturnType());
-        });
-    }
-
     @SuppressWarnings("unchecked")
     private static <T> T proxy(Class<T> type, Invocation invocation) {
         return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type},
@@ -345,6 +333,7 @@ class DirectionCommandsTest {
         private final UUID connectionEpoch = UUID.randomUUID();
         private final Location origin;
         private boolean constructionAllowed = true;
+        private int constructionChecks;
         private boolean setterAllowed = true;
         private int setterWorkCalls;
         private long lastSetterUnits;
@@ -360,7 +349,10 @@ class DirectionCommandsTest {
         @Override public UUID getBoundUuid() { return boundUuid; }
         @Override public UUID getConnectionEpoch() { return connectionEpoch; }
         @Override public Location getOrigin() { return origin; }
-        @Override public boolean hasConstructionPermission() { return constructionAllowed; }
+        @Override public boolean hasConstructionPermission() {
+            constructionChecks++;
+            return constructionAllowed;
+        }
         @Override public boolean isWithinBuildRange(Location target) { return true; }
         @Override public WorkAdmission.Result admitWork(int units) { return WorkAdmission.Result.ACCEPTED; }
 
@@ -381,22 +373,9 @@ class DirectionCommandsTest {
         }
     }
 
-    private static final class TestPermissions implements IPermissionManager {
-        private final AtomicInteger onlineChecks = new AtomicInteger();
-        private boolean onlineAllowed = true;
-
-        @Override public boolean canConstructOnline(OfflinePlayer player) {
-            onlineChecks.incrementAndGet();
-            return onlineAllowed;
-        }
-        @Override public boolean canConstructOffline(OfflinePlayer player) { return true; }
-        @Override public int getPlayerRange(OfflinePlayer player) { return 100; }
-    }
-
     private record Fixture(
             DirectionCommands commands,
             TestContext context,
-            TestPermissions permissions,
             EntityHandleRegistry handles,
             Location location,
             AtomicInteger rotationCalls,

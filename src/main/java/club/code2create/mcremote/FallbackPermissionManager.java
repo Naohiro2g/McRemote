@@ -20,25 +20,9 @@ public class FallbackPermissionManager implements IPermissionManager {
     }
 
     @Override
-    public boolean canConstructOnline(OfflinePlayer player) {
+    public ConstructionPermissions resolveConstructionPermissions(OfflinePlayer player) {
         logger.info("Fallback: always allowing permission '" + onlinePermission + "' for " + player.getName());
-        return true;
-    }
-
-    @Override
-    public boolean canConstructOffline(OfflinePlayer player) {
         logger.info("Fallback: always allowing permission '" + offlinePermission + "' for " + player.getName());
-        return true;
-    }
-
-    @Override
-    public boolean canStrikeLightning(OfflinePlayer player) {
-        return player.isOp();
-    }
-
-    @Override
-    public int getPlayerRange(OfflinePlayer player) {
-//        logger.info("Fallback: returning default build range " + defaultBuildRange + " for " + player.getName());
-        return defaultBuildRange;
+        return new ConstructionPermissions(true, true, defaultBuildRange);
     }
 }

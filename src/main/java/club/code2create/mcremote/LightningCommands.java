@@ -2,45 +2,27 @@ package club.code2create.mcremote;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 
 import java.util.UUID;
-import java.util.function.Function;
 
 /** Protocol 23.1 full, damage-capable lightning command. */
 final class LightningCommands {
     static final int WORK_UNITS = 256;
 
     private final B7CommandContext session;
-    private final IPermissionManager permissions;
     private final LightningRateAdmission rateAdmission;
     private final LightningRuntimePolicy policy;
-    private final Function<UUID, OfflinePlayer> offlinePlayers;
 
     LightningCommands(
             B7CommandContext session,
-            IPermissionManager permissions,
             LightningRateAdmission rateAdmission,
             LightningRuntimePolicy policy
     ) {
-        this(session, permissions, rateAdmission, policy, Bukkit::getOfflinePlayer);
-    }
-
-    LightningCommands(
-            B7CommandContext session,
-            IPermissionManager permissions,
-            LightningRateAdmission rateAdmission,
-            LightningRuntimePolicy policy,
-            Function<UUID, OfflinePlayer> offlinePlayers
-    ) {
         this.session = session;
-        this.permissions = permissions;
         this.rateAdmission = rateAdmission;
         this.policy = policy;
-        this.offlinePlayers = offlinePlayers;
     }
 
     void register(CommandRegistry registry) {
@@ -73,10 +55,6 @@ final class LightningCommands {
             return;
         }
         if (!session.hasConstructionPermission()) {
-            session.respondError(-32000, "permission_denied", null);
-            return;
-        }
-        if (!permissions.canStrikeLightning(offlinePlayers.apply(playerId))) {
             session.respondError(-32000, "permission_denied", null);
             return;
         }

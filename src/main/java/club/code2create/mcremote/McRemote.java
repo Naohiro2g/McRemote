@@ -12,6 +12,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.block.Block;
@@ -62,6 +63,7 @@ public class McRemote extends JavaPlugin implements Listener {
         FileConfiguration config = this.getConfig();
         migrateMissingConfigDefaults(config);
         removeDeprecatedCredentialConfig(config);
+        removeDeprecatedLightningPermissionConfig(config);
 
         // 認証ストアを serverThread 起動前に用意する（接続到来時の RemoteSession ctor が参照するため）。
         // enforcement 既定 OFF＝token 無し hello 通過（3リポ非同期着地・§6.5/§10.11.1 item5）。
@@ -107,7 +109,6 @@ public class McRemote extends JavaPlugin implements Listener {
         // config.yml から権限・meta 関連の設定を読み込む
         String onlinePermission = config.getString("luckperm_permissions.online", "mcr.online");
         String offlinePermission = config.getString("luckperm_permissions.offline", "mcr.offline");
-        String lightningPermission = config.getString("luckperm_permissions.lightning", "mcr.lightning");
         String buildRangeMetaKey = config.getString("luckperm_permissions.build.range", "mcr.build.range");
         int defaultBuildRange = config.getInt("default_build_range", 32);
         this.defaultBuildRange = defaultBuildRange;
@@ -117,7 +118,7 @@ public class McRemote extends JavaPlugin implements Listener {
         if (luckPermsEnabled) {
             logger.info("initializing PermissionManager (LuckPermsPermissionManager)");
             this.permissionManager = new LuckPermsPermissionManager(
-                    this, onlinePermission, offlinePermission, lightningPermission, buildRangeMetaKey);
+                    this, onlinePermission, offlinePermission, buildRangeMetaKey);
         } else {
             logger.info("initializing FallbackPermissionManager");
             this.permissionManager = new FallbackPermissionManager(onlinePermission, offlinePermission, defaultBuildRange);
@@ -180,6 +181,14 @@ public class McRemote extends JavaPlugin implements Listener {
             saveConfig();
             logger.info("Removed deprecated auth.player_token_ttl_seconds; "
                     + "long-lived credentials use expires_at=null until explicit revoke");
+        }
+    }
+
+    private void removeDeprecatedLightningPermissionConfig(FileConfiguration config) {
+        if (config.contains("luckperm_permissions.lightning")) {
+            config.set("luckperm_permissions.lightning", null);
+            saveConfig();
+            logger.info("Removed deprecated lightning-specific permission configuration");
         }
     }
 
@@ -459,7 +468,14 @@ public class McRemote extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event){
         for (RemoteSession session: sessions) {
-            session.handlePlayerQuitEvent();
+            session.handlePlayerQuitEvent(event.getPlayer().getUniqueId());
+        }
+    }
+
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event){
+        for (RemoteSession session: sessions) {
+            session.handlePlayerJoinEvent(event.getPlayer().getUniqueId());
         }
     }
 

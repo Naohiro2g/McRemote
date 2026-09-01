@@ -35,6 +35,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     private Player attachedPlayer = null;
     // hello の auth 検証で束縛した UUID（§6.1/§6.2）。enforcement ON では必須、OFF でも token 提示・解決時に束縛。
     private UUID boundUuid = null;
+    private ConstructionPermissions constructionPermissions = null;
     private TokenStore.TokenType boundTokenType = null;
     private UUID boundCredentialId = null;
     private final Socket socket;
@@ -93,11 +94,9 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                 b5Policy.eventPollLimit());
         WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, b5Policy);
         SignCommands signCommands = new SignCommands(this, miscCommands);
-        DirectionCommands directionCommands = new DirectionCommands(
-                this, entityHandles, plugin.getPermissionManager());
+        DirectionCommands directionCommands = new DirectionCommands(this, entityHandles);
         LightningCommands lightningCommands = new LightningCommands(
                 this,
-                plugin.getPermissionManager(),
                 plugin.getLightningRateAdmission(),
                 plugin.getLightningRuntimePolicy());
         // build state は identity から分離。既定は minecraft:overworld / (200,0,200)。
@@ -279,17 +278,18 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
             } else {
                 TokenStore.TokenRecord tokenRecord = resolution.record();
                 UUID uuid = tokenRecord.uuid();
-                // 認可は常に UUID→LuckPerms（item4・不在時は FallbackPermissionManager が許可）。
-                // ON のときのみ hello を gate：online/offline いずれの建築権も無ければ拒否。
-                if (enforce) {
-                    OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
-                    IPermissionManager perms = plugin.getPermissionManager();
-                    if (!perms.canConstructOnline(op) && !perms.canConstructOffline(op)) {
-                        respondError(-32000, "permission_denied", null);
-                        logger.warning("Hello rejected: permission_denied uuid=" + uuid);
-                        close(); // token は温存（resolve のみ・revoke しない）
-                        return;
-                    }
+                // Both independent construction nodes and build range are resolved exactly once.
+                // Every handler reads this immutable session snapshot until reconnect.
+                ConstructionPermissions resolvedPermissions = plugin.getPermissionManager()
+                        .resolveConstructionPermissions(Bukkit.getOfflinePlayer(uuid));
+                Player currentPlayer = Bukkit.getPlayer(uuid);
+                boolean currentlyOnline = currentPlayer != null && currentPlayer.isOnline();
+                if (!helloConstructionAllowed(enforce, resolvedPermissions, currentlyOnline)) {
+                    respondError(-32000, "permission_denied", null);
+                    logger.warning("Hello rejected: permission_denied uuid=" + uuid
+                            + " state=" + (currentlyOnline ? "online" : "offline"));
+                    close(); // token は温存（resolve のみ・revoke しない）
+                    return;
                 }
                 int maxSessions = plugin.getMaxSessionsPerUuid();
                 int currentSessions = plugin.countBoundSessions(uuid);
@@ -304,6 +304,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                     return;
                 }
                 boundUuid = uuid;
+                constructionPermissions = resolvedPermissions;
                 boundTokenType = tokenRecord.tokenType();
                 boundCredentialId = tokenRecord.credentialId();
                 playerCommands.bind(uuid);
@@ -385,19 +386,25 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         }
         // permissions bucket（§6.2）＝UUID→LuckPerms の scopes。auth 済みのときのみ。
         if (boundUuid != null) {
-            OfflinePlayer op = Bukkit.getOfflinePlayer(boundUuid);
-            IPermissionManager perms = plugin.getPermissionManager();
-            result.put("permissions", buildPermissions(perms, op));
+            result.put("permissions", buildPermissions(constructionPermissions));
         }
         return result;
     }
 
-    static Map<String, Object> buildPermissions(IPermissionManager permissions, OfflinePlayer player) {
+    static Map<String, Object> buildPermissions(ConstructionPermissions permissions) {
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("online", permissions.canConstructOnline(player));
-        result.put("offline", permissions.canConstructOffline(player));
-        result.put("buildRange", permissions.getPlayerRange(player));
+        result.put("online", permissions.onlineAllowed());
+        result.put("offline", permissions.offlineAllowed());
+        result.put("buildRange", permissions.buildRange());
         return result;
+    }
+
+    static boolean helloConstructionAllowed(
+            boolean enforcement,
+            ConstructionPermissions permissions,
+            boolean currentlyOnline
+    ) {
+        return !enforcement || permissions.allows(currentlyOnline);
     }
 
     public void close() {
@@ -447,10 +454,22 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         }
     }
 
-    public void handlePlayerQuitEvent() {
+    public void handlePlayerQuitEvent(UUID playerId) {
+        if (playerId.equals(boundUuid) && constructionPermissions != null
+                && constructionPermissions.closesOnQuit()) {
+            close();
+            return;
+        }
         if (attachedPlayer != null) {
             logger.info("Player " + attachedPlayer.getName() + " has quit.");
             attachedPlayer = null;
+        }
+    }
+
+    public void handlePlayerJoinEvent(UUID playerId) {
+        if (playerId.equals(boundUuid) && constructionPermissions != null
+                && constructionPermissions.closesOnJoin()) {
+            close();
         }
     }
 
@@ -519,19 +538,11 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         if (boundUuid == null) {
             return true;
         }
-        OfflinePlayer player = Bukkit.getOfflinePlayer(boundUuid);
+        if (constructionPermissions == null) {
+            return false;
+        }
         Player online = Bukkit.getPlayer(boundUuid);
-        return selectConstructionPermission(plugin.getPermissionManager(), player, online);
-    }
-
-    static boolean selectConstructionPermission(
-            IPermissionManager permissions,
-            OfflinePlayer player,
-            Player online
-    ) {
-        return online != null && online.isOnline()
-                ? permissions.canConstructOnline(player)
-                : permissions.canConstructOffline(player);
+        return constructionPermissions.allows(online != null && online.isOnline());
     }
 
     @Override
@@ -539,9 +550,8 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         if (origin == null || target == null) {
             return false;
         }
-        int range = boundUuid == null
-                ? plugin.getDefaultBuildRange()
-                : plugin.getPermissionManager().getPlayerRange(Bukkit.getOfflinePlayer(boundUuid));
+        int range = boundUuid == null ? plugin.getDefaultBuildRange()
+                : constructionPermissions == null ? 0 : constructionPermissions.buildRange();
         return withinBuildRange(origin, target, range);
     }
 

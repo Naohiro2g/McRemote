@@ -17,9 +17,6 @@ permissions:
   mcr.offline:
     description: Allows paired McRemote clients to act for offline/background building.
     default: false
-  mcr.lightning:
-    description: Allows the damage-capable world.strikeLightning command.
-    default: op
   mcremote.admin:
     description: Allows explicit credential domain status/bootstrap/reset operations.
     default: op

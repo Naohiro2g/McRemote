@@ -42,12 +42,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DirectionLightningFixtureContractTest {
     private static final String FIXTURE = "/fixtures/direction-lightning-v23.1.json";
     private static final String FIXTURE_SHA256 =
-            "faad66c93d2c8ee8eb541f6b7297163cb681054b3de05ba3d130ac4288c1046a";
+            "586d24bf40136eec31f1827f23ef5b317f15100a17a635d7fe9f165e0af40dce";
 
     @Test
-    void exactOwnerBytesAndAll81CasesMapToProductionSurfaces() throws Exception {
+    void exactSuccessorOwnerBytesAndAll93CasesMapToProductionSurfaces() throws Exception {
         byte[] bytes = fixtureBytes();
-        assertEquals(14_179, bytes.length);
+        assertEquals(20_367, bytes.length);
         assertEquals(FIXTURE_SHA256,
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));
 
@@ -64,16 +64,63 @@ class DirectionLightningFixtureContractTest {
             surfaces.merge(productionSurface(fixtureCase.path()), 1, Integer::sum);
         }
 
-        assertEquals(81, cases.size());
-        assertEquals(81, ids.size());
+        assertEquals(93, cases.size());
+        assertEquals(93, ids.size());
         assertEquals(Map.of(
                 "DirectionValue/WireParams", 22,
                 "DirectionCommands", 9,
                 "EntityHandleRegistry/DirectionCommands", 8,
-                "LightningCommands", 23,
+                "SessionAdmission", 16,
+                "LightningCommands", 19,
                 "LightningRateAdmission", 8,
                 "WorkAdmission", 5,
                 "WorldB5Commands/ParticleBuilder", 6), surfaces);
+    }
+
+    @Test
+    void sessionAdmissionCasesDriveHelloSnapshotAndLifecycleRules() throws IOException {
+        JsonObject admission = fixture().getAsJsonObject("session_admission");
+        JsonObject snapshotCase = admission.getAsJsonArray("hello_snapshot_cases")
+                .get(0).getAsJsonObject();
+        ConstructionPermissions snapshot = permissions(
+                snapshotCase.getAsJsonObject("session_snapshot"));
+        assertEquals(snapshotCase.getAsJsonObject("hello_permissions").get("online").getAsBoolean(),
+                RemoteSession.buildPermissions(snapshot).get("online"));
+        assertEquals(snapshotCase.getAsJsonObject("hello_permissions").get("offline").getAsBoolean(),
+                RemoteSession.buildPermissions(snapshot).get("offline"));
+        assertEquals(snapshotCase.getAsJsonObject("hello_permissions").get("buildRange").getAsInt(),
+                RemoteSession.buildPermissions(snapshot).get("buildRange"));
+
+        for (JsonElement element : admission.getAsJsonArray("admission_matrix")) {
+            JsonObject item = element.getAsJsonObject();
+            JsonObject values = item.getAsJsonObject("permissions");
+            ConstructionPermissions candidate = new ConstructionPermissions(
+                    values.get("online").getAsBoolean(), values.get("offline").getAsBoolean(), 100);
+            boolean online = item.get("player_state").getAsString().equals("online");
+            assertEquals(item.get("accepted").getAsBoolean(),
+                    RemoteSession.helloConstructionAllowed(true, candidate, online),
+                    item.get("id").getAsString());
+        }
+
+        for (JsonElement element : admission.getAsJsonArray("transition_cases")) {
+            JsonObject item = element.getAsJsonObject();
+            JsonObject values = item.getAsJsonObject("permissions");
+            ConstructionPermissions candidate = new ConstructionPermissions(
+                    values.get("online").getAsBoolean(), values.get("offline").getAsBoolean(), 100);
+            boolean closed = item.get("event").getAsString().equals("PlayerQuitEvent")
+                    ? candidate.closesOnQuit() : candidate.closesOnJoin();
+            assertEquals(item.get("session_closed").getAsBoolean(), closed,
+                    item.get("id").getAsString());
+        }
+
+        JsonArray changes = admission.getAsJsonArray("snapshot_change_cases");
+        ConstructionPermissions existing = permissions(
+                changes.get(0).getAsJsonObject().getAsJsonObject("session_snapshot"));
+        assertEquals(new ConstructionPermissions(true, false, 100), existing, "B7-A30");
+        assertEquals(100, existing.buildRange(), "B7-A31");
+        ConstructionPermissions refreshed = permissions(
+                changes.get(2).getAsJsonObject().getAsJsonObject("next_snapshot"));
+        assertEquals(new ConstructionPermissions(true, true, 200), refreshed, "B7-A32");
     }
 
     @Test
@@ -157,7 +204,7 @@ class DirectionLightningFixtureContractTest {
                     assertEquals(item.get("reason").getAsString(), harness.context.reason);
                 }
                 case "B7-D34" -> {
-                    harness.onlinePermission = false;
+                    harness.context.construction = false;
                     harness.invoke(item.get("method").getAsString(), setParams);
                     assertEquals(item.get("reason").getAsString(), harness.context.reason);
                 }
@@ -378,22 +425,28 @@ class DirectionLightningFixtureContractTest {
             }
         }
 
-        for (JsonElement element : lightning.getAsJsonArray("permission_cases")) {
+        for (JsonElement element : lightning.getAsJsonArray("admission_cases")) {
             JsonObject item = element.getAsJsonObject();
             LightningHarness harness = new LightningHarness();
             String id = item.get("id").getAsString();
             JsonArray permissionParams = baseline;
             switch (id) {
                 case "B7-L10" -> harness.boundUuid = null;
-                case "B7-L11" -> harness.online = true;
-                case "B7-L12" -> harness.online = false;
-                case "B7-L13" -> harness.constructionAllowed = false;
-                case "B7-L14" -> harness.lightningAllowed = false;
-                case "B7-L15", "B7-L16", "B7-L17", "B7-L18" ->
-                        permissionParams = rangeParams(item.getAsJsonArray("target"));
                 default -> throw new AssertionError("unmapped permission case " + id);
             }
             harness.invoke(permissionParams);
+            if (item.has("reason")) {
+                assertEquals(item.get("reason").getAsString(), harness.reason, id);
+            } else {
+                assertEquals(item.get("accepted").getAsBoolean(), harness.strikeCalls.get() == 1, id);
+            }
+        }
+
+        for (JsonElement element : lightning.getAsJsonArray("range_cases")) {
+            JsonObject item = element.getAsJsonObject();
+            LightningHarness harness = new LightningHarness();
+            String id = item.get("id").getAsString();
+            harness.invoke(rangeParams(item.getAsJsonArray("target")));
             if (item.has("reason")) {
                 assertEquals(item.get("reason").getAsString(), harness.reason, id);
             } else {
@@ -512,6 +565,7 @@ class DirectionLightningFixtureContractTest {
     }
 
     private static String productionSurface(String path) {
+        if (path.startsWith("session_admission.")) return "SessionAdmission";
         if (path.startsWith("direction.valid_vectors") || path.startsWith("direction.invalid_vectors")) {
             return "DirectionValue/WireParams";
         }
@@ -524,6 +578,13 @@ class DirectionLightningFixtureContractTest {
             return "WorldB5Commands/ParticleBuilder";
         }
         throw new AssertionError("unmapped fixture path " + path);
+    }
+
+    private static ConstructionPermissions permissions(JsonObject object) {
+        return new ConstructionPermissions(
+                object.get("onlineAllowed").getAsBoolean(),
+                object.get("offlineAllowed").getAsBoolean(),
+                object.get("buildRange").getAsInt());
     }
 
     private static JsonArray directionParams(JsonObject item) {
@@ -746,7 +807,6 @@ class DirectionLightningFixtureContractTest {
         private final EntityHandleRegistry handles = new EntityHandleRegistry(
                 4, new SecureRandom(), ignored -> lookup.get());
         private boolean online = true;
-        private boolean onlinePermission = true;
         private boolean failEntityRotation;
         private boolean failPlayerPostRead;
         private final Player player;
@@ -777,15 +837,7 @@ class DirectionLightningFixtureContractTest {
             });
             entity = entityProxy(entityId, entityLocation, entityRotationCalls, false, false);
             lookup.set(entity);
-            OfflinePlayer offline = proxy(OfflinePlayer.class, (proxy, method, args) ->
-                    method.getName().equals("getUniqueId") ? playerId : defaultValue(method.getReturnType()));
-            IPermissionManager permissions = new IPermissionManager() {
-                @Override public boolean canConstructOnline(OfflinePlayer ignored) { return onlinePermission; }
-                @Override public boolean canConstructOffline(OfflinePlayer ignored) { return true; }
-                @Override public int getPlayerRange(OfflinePlayer ignored) { return 100; }
-            };
-            commands = new DirectionCommands(
-                    context, handles, permissions, ignored -> player, ignored -> offline);
+            commands = new DirectionCommands(context, handles, ignored -> player);
         }
 
         private String issueEntity() {
@@ -814,7 +866,6 @@ class DirectionLightningFixtureContractTest {
         private Location origin;
         private boolean online = true;
         private boolean constructionAllowed = true;
-        private boolean lightningAllowed = true;
         private boolean notification;
         private boolean chunkLoaded = true;
         private boolean chunkLoadResult = true;
@@ -845,25 +896,12 @@ class DirectionLightningFixtureContractTest {
                 default -> defaultValue(method.getReturnType());
             });
             origin = new Location(world, 0, 0, 0);
-            OfflinePlayer offline = proxy(OfflinePlayer.class, (proxy, method, args) -> switch (method.getName()) {
-                case "getUniqueId" -> boundUuid;
-                default -> defaultValue(method.getReturnType());
-            });
-            Player onlinePlayer = proxy(Player.class, (proxy, method, args) ->
-                    method.getName().equals("isOnline") ? online : defaultValue(method.getReturnType()));
-            IPermissionManager permissions = new IPermissionManager() {
-                @Override public boolean canConstructOnline(OfflinePlayer ignored) { return constructionAllowed; }
-                @Override public boolean canConstructOffline(OfflinePlayer ignored) { return constructionAllowed; }
-                @Override public boolean canStrikeLightning(OfflinePlayer ignored) { return lightningAllowed; }
-                @Override public int getPlayerRange(OfflinePlayer ignored) { return 100; }
-            };
             B7CommandContext context = new B7CommandContext() {
                 @Override public UUID getBoundUuid() { return boundUuid; }
                 @Override public UUID getConnectionEpoch() { return connection; }
                 @Override public Location getOrigin() { return origin; }
                 @Override public boolean hasConstructionPermission() {
-                    return RemoteSession.selectConstructionPermission(
-                            permissions, offline, online ? onlinePlayer : null);
+                    return constructionAllowed;
                 }
                 @Override public boolean isWithinBuildRange(Location target) {
                     return RemoteSession.withinBuildRange(origin, target, 100);
@@ -891,7 +929,7 @@ class DirectionLightningFixtureContractTest {
             LightningRuntimePolicy policy = new LightningRuntimePolicy(20, 20, 2, 20, 8);
             LightningRateAdmission rate = new LightningRateAdmission(policy);
             rate.beginTick();
-            commands = new LightningCommands(context, permissions, rate, policy, ignored -> offline);
+            commands = new LightningCommands(context, rate, policy);
         }
 
         private void setOrigin(JsonArray values) {

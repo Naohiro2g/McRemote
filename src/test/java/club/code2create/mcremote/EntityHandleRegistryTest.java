@@ -10,6 +10,7 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -72,6 +73,31 @@ class EntityHandleRegistryTest {
     }
 
     @Test
+    void issuedReferencePreservesDimensionReasonWhenGlobalLookupReturnsNull() {
+        UUID uuid = UUID.randomUUID();
+        AtomicReference<World> currentWorld = new AtomicReference<>(world("minecraft:overworld"));
+        Entity entity = (Entity) Proxy.newProxyInstance(
+                Entity.class.getClassLoader(), new Class<?>[]{Entity.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getUniqueId" -> uuid;
+                    case "getWorld" -> currentWorld.get();
+                    case "isDead" -> false;
+                    case "isValid", "isInWorld" -> true;
+                    default -> defaultValue(method.getReturnType());
+                });
+        EntityHandleRegistry registry = new EntityHandleRegistry(
+                1, new SecureRandom(), ignored -> null);
+        String handle = registry.issue(entity);
+
+        currentWorld.set(world("minecraft:the_nether"));
+
+        assertEquals(EntityHandleRegistry.ResolveStatus.DIMENSION_CHANGED,
+                registry.resolve(handle).status());
+        assertEquals(EntityHandleRegistry.ResolveStatus.NOT_FOUND,
+                registry.resolve(handle).status());
+    }
+
+    @Test
     void removedEntityReportsUnavailableOnceThenNotFoundAndReleasesCapacity() {
         UUID uuid = UUID.randomUUID();
         Map<UUID, Entity> entities = new HashMap<>();
@@ -105,28 +131,52 @@ class EntityHandleRegistryTest {
                 registry.resolve(handle).status());
     }
 
+    @Test
+    void deadAndInvalidEntitiesStayUnavailableInTheirIssuedDimension() {
+        for (Entity unavailable : new Entity[]{
+                entity(UUID.randomUUID(), "minecraft:overworld", true, true, true),
+                entity(UUID.randomUUID(), "minecraft:overworld", true, false, false)
+        }) {
+            EntityHandleRegistry registry = new EntityHandleRegistry(
+                    1, new SecureRandom(), ignored -> unavailable);
+            String handle = registry.issue(unavailable);
+            assertEquals(EntityHandleRegistry.ResolveStatus.REMOVED_OR_UNLOADED,
+                    registry.resolve(handle).status());
+            assertEquals(EntityHandleRegistry.ResolveStatus.NOT_FOUND,
+                    registry.resolve(handle).status());
+        }
+    }
+
     private static Entity entity(UUID uuid, String dimension) {
         return entity(uuid, dimension, true);
     }
 
-    private static Entity entity(UUID uuid, String dimension, boolean inWorld) {
+    private static World world(String dimension) {
         NamespacedKey key = NamespacedKey.fromString(dimension);
-        World world = (World) Proxy.newProxyInstance(
-                World.class.getClassLoader(),
-                new Class<?>[]{World.class},
+        return (World) Proxy.newProxyInstance(
+                World.class.getClassLoader(), new Class<?>[]{World.class},
                 (proxy, method, args) -> switch (method.getName()) {
                     case "getKey" -> key;
                     case "toString" -> "WorldTestProxy";
                     default -> defaultValue(method.getReturnType());
                 });
+    }
+
+    private static Entity entity(UUID uuid, String dimension, boolean inWorld) {
+        return entity(uuid, dimension, inWorld, false, true);
+    }
+
+    private static Entity entity(
+            UUID uuid, String dimension, boolean inWorld, boolean dead, boolean valid) {
+        World world = world(dimension);
         return (Entity) Proxy.newProxyInstance(
                 Entity.class.getClassLoader(),
                 new Class<?>[]{Entity.class},
                 (proxy, method, args) -> switch (method.getName()) {
                     case "getUniqueId" -> uuid;
                     case "getWorld" -> world;
-                    case "isDead" -> false;
-                    case "isValid" -> true;
+                    case "isDead" -> dead;
+                    case "isValid" -> valid;
                     case "isInWorld" -> inWorld;
                     case "toString" -> "EntityTestProxy";
                     case "hashCode" -> System.identityHashCode(proxy);

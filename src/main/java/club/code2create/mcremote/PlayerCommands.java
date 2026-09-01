@@ -235,8 +235,7 @@ public class PlayerCommands {
             session.respondError(-32000, "player_offline", null);
             return null;
         }
-        OfflinePlayer offline = Bukkit.getOfflinePlayer(playerUUID);
-        if (!session.getPlugin().getPermissionManager().canConstructOnline(offline)) {
+        if (!session.hasConstructionPermission()) {
             session.respondError(-32000, "permission_denied", null);
             return null;
         }

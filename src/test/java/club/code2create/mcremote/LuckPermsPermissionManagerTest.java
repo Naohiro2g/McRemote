@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Proxy;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -27,21 +28,21 @@ class LuckPermsPermissionManagerTest {
     void returnsEffectiveUserMetaWithoutReadingPrimaryGroup() {
         Fixture fixture = fixture("500");
 
-        assertEquals(500, fixture.manager().getPlayerRange(fixture.player()));
+        assertEquals(500, fixture.manager().resolveConstructionPermissions(fixture.player()).buildRange());
     }
 
     @Test
     void returnsZeroWhenEffectiveMetaIsMissing() {
         Fixture fixture = fixture(null);
 
-        assertEquals(0, fixture.manager().getPlayerRange(fixture.player()));
+        assertEquals(0, fixture.manager().resolveConstructionPermissions(fixture.player()).buildRange());
     }
 
     @Test
     void returnsZeroWhenEffectiveMetaIsNotAnInteger() {
         Fixture fixture = fixture("not-an-integer");
 
-        assertEquals(0, fixture.manager().getPlayerRange(fixture.player()));
+        assertEquals(0, fixture.manager().resolveConstructionPermissions(fixture.player()).buildRange());
     }
 
     @Test
@@ -51,12 +52,14 @@ class LuckPermsPermissionManagerTest {
     }
 
     @Test
-    void keepsOnlineAndOfflinePermissionChecksOnTheLoadedUser() {
+    void resolvesBothNodesAndRangeFromOneLoadedUser() {
         Fixture fixture = fixture("500");
 
-        assertTrue(fixture.manager().canConstructOnline(fixture.player()));
-        assertFalse(fixture.manager().canConstructOffline(fixture.player()));
-        assertTrue(fixture.manager().canStrikeLightning(fixture.player()));
+        ConstructionPermissions snapshot = fixture.manager()
+                .resolveConstructionPermissions(fixture.player());
+
+        assertEquals(new ConstructionPermissions(true, false, 500), snapshot);
+        assertEquals(1, fixture.loadCalls().get());
     }
 
     private static Fixture fixture(String effectiveMeta) {
@@ -71,7 +74,7 @@ class LuckPermsPermissionManagerTest {
         });
         CachedPermissionData permissionData = proxy(CachedPermissionData.class, (method, args) -> {
             if (method.getName().equals("checkPermission")) {
-                return args[0].equals("mcr.online") || args[0].equals("mcr.lightning")
+                return args[0].equals("mcr.online")
                         ? Tristate.TRUE : Tristate.FALSE;
             }
             return null;
@@ -92,15 +95,14 @@ class LuckPermsPermissionManagerTest {
             case "getPrimaryGroup" -> throw new AssertionError("primary group must not be read");
             default -> null;
         });
+        AtomicInteger loadCalls = new AtomicInteger();
         UserManager userManager = proxy(UserManager.class, (method, args) -> switch (method.getName()) {
             case "loadUser" -> {
                 assertEquals(uuid, args[0]);
+                loadCalls.incrementAndGet();
                 yield CompletableFuture.completedFuture(user);
             }
-            case "getUser" -> {
-                assertEquals(uuid, args[0]);
-                yield user;
-            }
+            case "getUser" -> throw new AssertionError("resolved snapshot must use the loaded user");
             default -> null;
         });
         LuckPerms luckPerms = proxy(LuckPerms.class, (method, args) -> switch (method.getName()) {
@@ -114,9 +116,9 @@ class LuckPermsPermissionManagerTest {
             default -> null;
         });
         LuckPermsPermissionManager manager = new LuckPermsPermissionManager(
-                luckPerms, "mcr.online", "mcr.offline", "mcr.lightning", META_KEY,
+                luckPerms, "mcr.online", "mcr.offline", META_KEY,
                 () -> queryOptions);
-        return new Fixture(manager, player);
+        return new Fixture(manager, player, loadCalls);
     }
 
     @SuppressWarnings("unchecked")
@@ -142,6 +144,10 @@ class LuckPermsPermissionManagerTest {
         Object invoke(java.lang.reflect.Method method, Object[] args) throws Throwable;
     }
 
-    private record Fixture(LuckPermsPermissionManager manager, OfflinePlayer player) {
+    private record Fixture(
+            LuckPermsPermissionManager manager,
+            OfflinePlayer player,
+            AtomicInteger loadCalls
+    ) {
     }
 }

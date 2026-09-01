@@ -65,16 +65,30 @@ final class EntityHandleRegistry {
         if (entry == null) {
             return new ResolveResult(ResolveStatus.NOT_FOUND, null);
         }
-        Entity entity = entityLookup.apply(entry.entityId());
-        if (entity == null || entity.isDead() || !entity.isValid() || !entity.isInWorld()) {
-            invalidate(handle, entry);
-            return new ResolveResult(ResolveStatus.REMOVED_OR_UNLOADED, null);
-        }
-        if (!entry.dimension().equals(DimensionResolver.canonical(entity.getWorld()))) {
+        Entity lookedUp = entityLookup.apply(entry.entityId());
+        Entity entity = lookedUp != null ? lookedUp : entry.issuedEntity();
+        String currentDimension = identifiableDimension(entity);
+        if (currentDimension != null && !entry.dimension().equals(currentDimension)) {
             invalidate(handle, entry);
             return new ResolveResult(ResolveStatus.DIMENSION_CHANGED, null);
         }
+        if (lookedUp == null || currentDimension == null
+                || entity.isDead() || !entity.isValid() || !entity.isInWorld()) {
+            invalidate(handle, entry);
+            return new ResolveResult(ResolveStatus.REMOVED_OR_UNLOADED, null);
+        }
         return new ResolveResult(ResolveStatus.ACTIVE, entity);
+    }
+
+    private static String identifiableDimension(Entity entity) {
+        if (entity == null) {
+            return null;
+        }
+        try {
+            return entity.getWorld() == null ? null : DimensionResolver.canonical(entity.getWorld());
+        } catch (RuntimeException unavailable) {
+            return null;
+        }
     }
 
     synchronized void clear() {
@@ -113,7 +127,8 @@ final class EntityHandleRegistry {
                     close();
                     return existing;
                 }
-                byHandle.put(handle, new Entry(entity.getUniqueId(), DimensionResolver.canonical(entity.getWorld())));
+                byHandle.put(handle, new Entry(
+                        entity.getUniqueId(), DimensionResolver.canonical(entity.getWorld()), entity));
                 byEntity.put(entity.getUniqueId(), handle);
                 reservations--;
                 open = false;
@@ -150,6 +165,6 @@ final class EntityHandleRegistry {
         return handle;
     }
 
-    private record Entry(UUID entityId, String dimension) {
+    private record Entry(UUID entityId, String dimension, Entity issuedEntity) {
     }
 }

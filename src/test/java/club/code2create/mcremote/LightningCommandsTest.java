@@ -3,7 +3,6 @@ package club.code2create.mcremote;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import org.bukkit.Location;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +26,7 @@ class LightningCommandsTest {
 
         fixture.commands.handleStrikeLightning(JsonParser.parseString("[0.125,-0.25,2.75]"));
 
-        assertEquals(List.of("construction", "lightning", "range", "work", "chunk", "strike"),
+        assertEquals(List.of("construction", "range", "work", "chunk", "strike"),
                 fixture.order);
         assertEquals(1, fixture.world.strikeCalls.get());
         assertEquals(0, fixture.world.loadCalls.get());
@@ -61,7 +60,7 @@ class LightningCommandsTest {
     }
 
     @Test
-    void requiresBoundIdentityThenConstructionAndDedicatedPermissionBeforeRange() {
+    void requiresBoundIdentityThenSessionConstructionPermissionBeforeRange() {
         Fixture unbound = fixture();
         unbound.context.boundUuid = null;
         unbound.commands.handleStrikeLightning(JsonParser.parseString("[0,0,0]"));
@@ -74,17 +73,11 @@ class LightningCommandsTest {
         assertEquals("permission_denied", constructionDenied.context.reason);
         assertEquals(List.of("construction"), constructionDenied.order);
 
-        Fixture lightningDenied = fixture();
-        lightningDenied.permissions.lightningAllowed = false;
-        lightningDenied.commands.handleStrikeLightning(JsonParser.parseString("[0,0,0]"));
-        assertEquals("permission_denied", lightningDenied.context.reason);
-        assertEquals(List.of("construction", "lightning"), lightningDenied.order);
-
         Fixture rangeDenied = fixture();
         rangeDenied.context.rangeAllowed = false;
         rangeDenied.commands.handleStrikeLightning(JsonParser.parseString("[0,999999,0]"));
         assertEquals("build_denied", rangeDenied.context.reason);
-        assertEquals(List.of("construction", "lightning", "range"), rangeDenied.order);
+        assertEquals(List.of("construction", "range"), rangeDenied.order);
     }
 
     @Test
@@ -99,7 +92,7 @@ class LightningCommandsTest {
         assertEquals(1, fixture.context.temporaryRejects);
         assertEquals(0, fixture.context.workCalls);
         assertEquals(0, fixture.world.strikeCalls.get());
-        assertEquals(List.of("construction", "lightning", "range"), fixture.order);
+        assertEquals(List.of("construction", "range"), fixture.order);
     }
 
     @Test
@@ -183,27 +176,16 @@ class LightningCommandsTest {
         UUID playerId = UUID.randomUUID();
         TestContext context = new TestContext(
                 playerId, new Location(world, 10.25, 63.5, -3.5), order);
-        TestPermissions permissions = new TestPermissions(order);
         LightningRateAdmission rate = new LightningRateAdmission(POLICY);
         rate.beginTick();
-        OfflinePlayer offline = offlinePlayer(playerId);
-        LightningCommands commands = new LightningCommands(
-                context, permissions, rate, POLICY, ignored -> offline);
-        return new Fixture(commands, context, permissions, worldState, order);
+        LightningCommands commands = new LightningCommands(context, rate, POLICY);
+        return new Fixture(commands, context, worldState, order);
     }
 
     private static B5RuntimePolicy workPolicy(int maxWorkPerRequest) {
         return new B5RuntimePolicy(
                 8, 8_000, 8, 8, 8, 1_000,
                 maxWorkPerRequest, 4_096, 8_192, 32_768, 16, 16);
-    }
-
-    private static OfflinePlayer offlinePlayer(UUID uuid) {
-        return proxy(OfflinePlayer.class, (proxy, method, args) -> switch (method.getName()) {
-            case "getUniqueId" -> uuid;
-            case "getName" -> "LightningTester";
-            default -> defaultValue(method.getReturnType());
-        });
     }
 
     @SuppressWarnings("unchecked")
@@ -338,27 +320,9 @@ class LightningCommandsTest {
         }
     }
 
-    private static final class TestPermissions implements IPermissionManager {
-        private final List<String> order;
-        private boolean lightningAllowed = true;
-
-        private TestPermissions(List<String> order) {
-            this.order = order;
-        }
-
-        @Override public boolean canConstructOnline(OfflinePlayer player) { return true; }
-        @Override public boolean canConstructOffline(OfflinePlayer player) { return true; }
-        @Override public boolean canStrikeLightning(OfflinePlayer player) {
-            order.add("lightning");
-            return lightningAllowed;
-        }
-        @Override public int getPlayerRange(OfflinePlayer player) { return 100; }
-    }
-
     private record Fixture(
             LightningCommands commands,
             TestContext context,
-            TestPermissions permissions,
             WorldState world,
             List<String> order
     ) {

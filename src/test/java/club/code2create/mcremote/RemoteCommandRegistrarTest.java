@@ -84,10 +84,9 @@ class RemoteCommandRegistrarTest {
     void b7RegistersDirectionQuartetAndOnlyDamageCapableLightningName() {
         CommandRegistry registry = new CommandRegistry();
         LightningRuntimePolicy policy = new LightningRuntimePolicy(20, 20, 2, 20, 8);
-        DirectionCommands direction = new DirectionCommands(
-                null, new EntityHandleRegistry(1), null);
+        DirectionCommands direction = new DirectionCommands(null, new EntityHandleRegistry(1));
         LightningCommands lightning = new LightningCommands(
-                null, null, new LightningRateAdmission(policy), policy);
+                null, new LightningRateAdmission(policy), policy);
 
         RemoteCommandRegistrar.registerB7Commands(registry, direction, lightning);
 
