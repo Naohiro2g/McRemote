@@ -49,8 +49,8 @@ control／observation／plugin logへ書きません。
 - defaultまたは明示したlightning rate/work policy（work request上限は256以上）
 - loadedなtest dimensionと、dimension-change確認用のloadedな別dimension
 - integer build origin、空の専用test region、別dimension側の安全なteleport座標
-- server filesystem上のprobe data directoryとrollback manifest path
-- 実行直前のdisposable world snapshot identity
+- server filesystem上のprobe data directory
+- 試験対象として指定したworld identity
 
 ## 実行例
 
@@ -64,26 +64,23 @@ python3 scripts/b7_live_auto.py \
   --origin 200 64 200 \
   --alternate-destination 0 80 0 \
   --probe-dir /exact/server/plugins/McRemoteB7LiveProbe \
-  --state-file /private/test-state/b7-rollback.json \
   --token-file /private/runtime/mcremote.token
 ```
 
-段階実行は`--phase setup`、`--phase run`、`--phase cleanup`です。`all`はその順に実行します。
+段階実行は`--phase setup`、`--phase run`です。`all`はその順に実行します。
 各non-cancel/cancel lightning requestの間は20 server tickを越える待機を一度だけ行い、拒否時にも再送しません。
 
-## setup、cleanup、rollback
+## setup／終了時の扱い
 
-1. coordinatorが指定したdisposable world snapshotを作成し、そのidentityを記録する。
-2. `setup`が変更対象blockの`BlockValue`を`--state-file`へatomic保存する。
-3. runnerは専用region内だけにentity、netherrack、lightning rod、copperを配置する。
-4. `cleanup`はmanifestのblockを復元し、明示したregion box内のnon-player entityをprobeで削除する。
-5. lightningの副作用が明示blockやregion外へ及ぶ可能性、chunk保存、後続tick収束をcleanupで完全に戻せるとは
-   主張しない。正式rollbackはserver停止後に手順1のworld snapshotを復元し、candidate/probe JARと設定を
-   pre-test identityへ戻して再起動する。
-6. probeの`control.properties`、`observation.properties`とprivate token fileはevidenceのsanitization／移管後に削除する。
+1. coordinatorが指定した試験用world identityを記録する。既存worldのsnapshotやblock単位のrollback manifestは
+   作らない。
+2. `setup`はprobeが対象dimensionを解決でき、online test playerがちょうど1人いることだけを確認する。
+3. `run`は専用regionへentity、netherrack、lightning rod、copperを配置して観測する。
+4. 成功時も失敗時もrunnerはblock、entity、worldをcleanup／rollback／廃棄せず、観測終了時の状態をそのまま残す。
+5. probeの`control.properties`、`observation.properties`とprivate token fileだけを、evidenceの
+   sanitization／移管後にoperatorが削除する。
 
-失敗時はまず`--phase cleanup`を一度実行し、続いてworld snapshot rollbackを行います。cleanup自体をretry可能な
-product operationとはみなしません。
+worldは永続保全対象ではないためrollback機能を持ちませんが、このrunnerがworldを廃棄することもありません。
 
 ## PASSと観測
 
@@ -117,7 +114,7 @@ damage、transformation、fire、rod、copperはbaseline／tick0／laterの値�
 | `L-LIVE-05` | configurable `later_ticks`後のsnapshot完了 |
 | `P-LIVE-01` | 既存9-param `world.spawnParticle`、既定receiver経路、accepted count `1` |
 | `R-LIVE-01` | side-effecting lightning callを各run exactly once送信しauto retryしない |
-| `R-LIVE-02` | setup manifest、region cleanup、snapshot rollback停止線 |
+| `R-LIVE-02` | world identityのsetup確認、終了時にworld stateを変更せず残す停止線 |
 
 ## non-claim
 
@@ -126,5 +123,6 @@ damage、transformation、fire、rod、copperはbaseline／tick0／laterの値�
 - visual/audio、可視・可聴距離、client設定差
 - particleのclient描画（live-human対象）
 - event観測件数を、Paper内部実装全体の副作用exact countと同一視すること
-- cleanupによるworld effectの完全rollback
+- world effectのcleanup／rollback
+- runnerによるtest worldの廃棄
 - Paper 1.21.11での結果を26.2へ、または逆方向へ代用すること

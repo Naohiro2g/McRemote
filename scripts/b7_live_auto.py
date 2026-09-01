@@ -14,7 +14,6 @@ import os
 from pathlib import Path
 import sys
 import time
-import uuid
 
 from live_auto import Rpc, acquire_interactive_token, reason, result
 
@@ -330,36 +329,11 @@ def verify_particle(rpc, args):
     print("PASS world.spawnParticle regression: existing wire/default receiver path accepted count=1")
 
 
-def block_positions(args):
-    x, y, z = args.lightning_point
-    return [(x, y - 1, z), (x, y, z), (x + 8, y - 1, z), (x + 8, y, z),
-            (x + 10, y - 1, z), (x + 16, y - 1, z)]
-
-
-def capture_rollback(rpc, args):
-    blocks = []
-    for position in block_positions(args):
-        blocks.append({"position": list(position), "value": result(rpc.call("world.getBlock", position))})
-    args.state_file.parent.mkdir(parents=True, exist_ok=True)
-    temporary = args.state_file.with_suffix(".tmp")
-    temporary.write_text(json.dumps({"schema": 1, "blocks": blocks}, indent=2) + "\n", encoding="utf-8")
-    os.replace(temporary, args.state_file)
-    print(f"PASS setup: rollback manifest captured at {args.state_file}")
-
-
-def cleanup(rpc, probe, args):
-    if args.state_file.is_file():
-        manifest = json.loads(args.state_file.read_text(encoding="utf-8"))
-        for block in manifest["blocks"]:
-            require_null(f"restore {block['position']}",
-                         rpc.call("world.setBlock", [*block["position"], block["value"]]))
-    x, y, z = args.lightning_point
-    minimum = (args.origin[0] + x - 4, args.origin[1] + y - 4, args.origin[2] + z - 4)
-    maximum = (args.origin[0] + x + 28, args.origin[1] + y + 8, args.origin[2] + z + 4)
-    observed = probe.issue("cleanup", run_id="cleanup", world=args.dimension,
-                           min_x=minimum[0], min_y=minimum[1], min_z=minimum[2],
-                           max_x=maximum[0], max_y=maximum[1], max_z=maximum[2])
-    print(f"PASS cleanup: entities_removed={observed.get('cleanup.entities_removed')}")
+def setup(probe, args):
+    observed = snapshot(probe, args, "setup-ready")
+    if observed.get("snapshot.online_players_in_world") != "1":
+        raise AssertionError("setup requires exactly one online test player in target world")
+    print("PASS setup: probe ready and disposable test world identity resolved")
 
 
 def load_token(args):
@@ -386,12 +360,11 @@ def parse_args(argv=None):
     parser.add_argument("--entity-point", nargs=3, type=float, default=(0.5, 2.0, 0.5))
     parser.add_argument("--lightning-point", nargs=3, type=int, default=(32, 2, 0))
     parser.add_argument("--probe-dir", type=Path, required=True)
-    parser.add_argument("--state-file", type=Path, required=True)
     parser.add_argument("--token-file", type=Path)
     parser.add_argument("--interactive-pair", action="store_true")
     parser.add_argument("--later-ticks", type=int, default=40)
     parser.add_argument("--rate-wait", type=float, default=1.25)
-    parser.add_argument("--phase", choices=("all", "setup", "run", "cleanup"), default="all")
+    parser.add_argument("--phase", choices=("all", "setup", "run"), default="all")
     args = parser.parse_args(argv)
     args.protocol = PROTOCOL
     if args.token_file and args.interactive_pair:
@@ -409,20 +382,18 @@ def main(argv=None):
         token = load_token(args)
         rpc = rpc_connect(args, token)
         if args.phase in ("all", "setup"):
-            capture_rollback(rpc, args)
+            setup(probe, args)
         if args.phase in ("all", "run"):
             verify_directions(rpc, probe, args)
             mutate_handle(rpc, probe, args, "entity-unavailable", False)
             mutate_handle(rpc, probe, args, "entity-dimension-changed", True)
             verify_lightning(rpc, probe, args)
             verify_particle(rpc, args)
-        if args.phase in ("all", "cleanup"):
-            cleanup(rpc, probe, args)
         print("PASS McRemote b7 live-auto runner")
         return 0
     except (AssertionError, OSError, RuntimeError, TimeoutError, ValueError, json.JSONDecodeError) as error:
         print(f"FAIL {error}", file=sys.stderr)
-        print("ROLLBACK REQUIRED: run --phase cleanup, then restore the disposable world snapshot", file=sys.stderr)
+        print("WORLD STATE LEFT AS-IS: this runner performs no cleanup or rollback", file=sys.stderr)
         return 1
     finally:
         if rpc is not None:

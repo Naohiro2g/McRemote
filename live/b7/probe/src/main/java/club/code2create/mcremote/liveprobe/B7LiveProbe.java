@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 /** Non-production, filesystem-controlled live observation probe. */
 public final class B7LiveProbe extends JavaPlugin implements Listener {
     private static final Pattern RUN_ID = Pattern.compile("[A-Za-z0-9._-]{1,80}");
-    private static final Set<String> ACTIONS = Set.of("arm", "snapshot", "remove", "teleport", "cleanup");
+    private static final Set<String> ACTIONS = Set.of("arm", "snapshot", "remove", "teleport");
 
     private Path controlPath;
     private Path observationPath;
@@ -81,7 +81,6 @@ public final class B7LiveProbe extends JavaPlugin implements Listener {
             case "snapshot" -> snapshot(control, world, next);
             case "remove" -> mutateNearest(control, world, next, false);
             case "teleport" -> mutateNearest(control, world, next, true);
-            case "cleanup" -> cleanup(control, world, next);
             default -> throw new IllegalArgumentException("unsupported action");
         }
     }
@@ -125,22 +124,6 @@ public final class B7LiveProbe extends JavaPlugin implements Listener {
             entity.remove();
             next.setProperty("mutation.success", "true");
         }
-        next.setProperty("status", "complete");
-        write(next);
-    }
-
-    private void cleanup(Properties control, World world, Properties next) throws IOException {
-        Location min = location(control, world, "min");
-        Location max = location(control, world, "max");
-        int removed = 0;
-        for (Entity entity : new ArrayList<>(world.getEntities())) {
-            Location location = entity.getLocation();
-            if (!(entity instanceof Player) && inside(location, min, max)) {
-                entity.remove();
-                removed++;
-            }
-        }
-        next.setProperty("cleanup.entities_removed", Integer.toString(removed));
         next.setProperty("status", "complete");
         write(next);
     }
@@ -281,12 +264,6 @@ public final class B7LiveProbe extends JavaPlugin implements Listener {
         return Double.doubleToLongBits(left.getX()) == Double.doubleToLongBits(right.getX())
                 && Double.doubleToLongBits(left.getY()) == Double.doubleToLongBits(right.getY())
                 && Double.doubleToLongBits(left.getZ()) == Double.doubleToLongBits(right.getZ());
-    }
-
-    private static boolean inside(Location value, Location a, Location b) {
-        return value.getX() >= Math.min(a.getX(), b.getX()) && value.getX() <= Math.max(a.getX(), b.getX())
-                && value.getY() >= Math.min(a.getY(), b.getY()) && value.getY() <= Math.max(a.getY(), b.getY())
-                && value.getZ() >= Math.min(a.getZ(), b.getZ()) && value.getZ() <= Math.max(a.getZ(), b.getZ());
     }
 
     private static int integer(Properties properties, String key, int min, int max) {
