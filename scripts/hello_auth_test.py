@@ -10,7 +10,7 @@ hello 単体で閉じるため（正の経路＝有効 token の束縛は pair_t
 
 使い方（サーバ側 config.yml の auth.enforcement に合わせて --expect を渡す）:
   python3 scripts/hello_auth_test.py --expect on     # enforcement: true のサーバ
-  python3 scripts/hello_auth_test.py --expect off    # enforcement: false（既定）
+  python3 scripts/hello_auth_test.py --expect off    # enforcement: false（明示的な開発 override）
 """
 import argparse
 import json
