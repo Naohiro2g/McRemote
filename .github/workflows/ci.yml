@@ -28,9 +28,18 @@ jobs:
           MC_VERSION=$(./gradlew -q printMcVersion)
           PLUGIN_VERSION=$(./gradlew -q printPluginVersion)
           FULL_VERSION="${MC_VERSION}-${PLUGIN_VERSION}"
-          echo "MC_VERSION=${MC_VERSION}" >> $GITHUB_ENV
-          echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
-          echo "FULL_VERSION=${FULL_VERSION}" >> $GITHUB_ENV
+          echo "MC_VERSION=${MC_VERSION}" >> "${GITHUB_ENV}"
+          echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> "${GITHUB_ENV}"
+          echo "FULL_VERSION=${FULL_VERSION}" >> "${GITHUB_ENV}"
+
+      - name: Validate release tag
+        if: github.ref_type == 'tag'
+        run: |
+          EXPECTED_TAG="v${FULL_VERSION}"
+          if [ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]; then
+            echo "release tag mismatch: expected ${EXPECTED_TAG}, got ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
 
       - name: Build plugin
         run: ./gradlew build

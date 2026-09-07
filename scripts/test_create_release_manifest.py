@@ -19,12 +19,12 @@ SPEC.loader.exec_module(CREATE_RELEASE_MANIFEST)
 class CreateReleaseManifestTest(unittest.TestCase):
     def test_manifest_has_settled_schema_and_jar_identity(self):
         with tempfile.TemporaryDirectory() as directory:
-            jar_path = Path(directory) / "mc-remote-1.21.11-2301.0.0b7.jar"
+            jar_path = Path(directory) / "mc-remote-1.21.11-2301.0.0b7.post2.jar"
             jar_bytes = b"candidate jar bytes\n"
             jar_path.write_bytes(jar_bytes)
 
             manifest = CREATE_RELEASE_MANIFEST.create_manifest(
-                release_tag="v1.21.11-2301.0.0b7",
+                release_tag="v1.21.11-2301.0.0b7.post2",
                 source_commit="A" * 40,
                 jar_path=jar_path,
             )
@@ -33,13 +33,13 @@ class CreateReleaseManifestTest(unittest.TestCase):
             {
                 "schema": "mc-remote.release-manifest",
                 "schema_version": 1,
-                "release_tag": "v1.21.11-2301.0.0b7",
+                "release_tag": "v1.21.11-2301.0.0b7.post2",
                 "source_commit": "a" * 40,
                 "artifacts": [
                     {
                         "role": "jar",
                         "kind": "https-file",
-                        "file": "mc-remote-1.21.11-2301.0.0b7.jar",
+                        "file": "mc-remote-1.21.11-2301.0.0b7.post2.jar",
                         "sha256": hashlib.sha256(jar_bytes).hexdigest(),
                     }
                 ],
