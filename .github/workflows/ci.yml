@@ -38,4 +38,25 @@ jobs:
       - name: List build artifacts
         run: ls -la build/libs
 
+      - name: Prepare candidate artifact
+        run: |
+          JAR_NAME="mc-remote-${FULL_VERSION}.jar"
+          CANDIDATE_DIR="build/candidate"
+          test -f "build/libs/${JAR_NAME}"
+          install -d "${CANDIDATE_DIR}"
+          cp "build/libs/${JAR_NAME}" "${CANDIDATE_DIR}/${JAR_NAME}"
+          printf '%s\n' "${GITHUB_SHA}" > "${CANDIDATE_DIR}/source-commit.txt"
+          (
+            cd "${CANDIDATE_DIR}"
+            sha256sum "${JAR_NAME}" > SHA256SUMS
+          )
+
+      - name: Upload candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # Formal-release candidate selection is intentionally not defined here.
+          name: mc-remote-candidate
+          path: build/candidate/
+          if-no-files-found: error
+
       # Server deployment and GitHub release publication are separate operator tasks.
