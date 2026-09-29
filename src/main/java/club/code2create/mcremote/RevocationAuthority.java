@@ -123,8 +123,8 @@ class RevocationAuthority {
     }
 
     /**
-     * 明示 bootstrap。manifest を先に作り、snapshot 作成前の crash は marker により同一 transaction
-     * と判定して再試行できる。通常起動からは呼ばない。
+     * 新 domain の bootstrap。通常起動時の欠落初期化と明示 bootstrap から呼ぶ。manifest を先に作り、
+     * snapshot 作成前の crash は marker により同一 transaction と判定して再試行できる。
      */
     UUID beginBootstrap() throws IOException {
         if (!directoryExists()) {
@@ -152,7 +152,7 @@ class RevocationAuthority {
         if (Files.exists(marker, LinkOption.NOFOLLOW_LINKS)) {
             throw new IOException("Bootstrap marker exists without authority manifest");
         }
-        if (hasUnexpectedBootstrapContent()) {
+        if (!isEmptyDirectory()) {
             throw new IOException("Authority directory is not empty before bootstrap");
         }
 
@@ -226,13 +226,27 @@ class RevocationAuthority {
         return committed;
     }
 
+    /**
+     * authority directory を sibling へ退避する。空の directory は退避しないため、volume の
+     * mount point そのものでも新規構築できる。中身がある場合の rename は、mount point や
+     * 書き込めない親の下では失敗する。
+     */
     Path archive(String suffix) throws IOException {
         if (!directoryExists()) {
             return null;
         }
         requireDirectory();
+        if (isEmptyDirectory()) {
+            return null;
+        }
         Path archived = directory.resolveSibling(directory.getFileName() + ".retired-" + suffix);
-        Files.move(directory, archived, StandardCopyOption.ATOMIC_MOVE);
+        try {
+            Files.move(directory, archived, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            throw new IOException("Could not retire revocation authority directory " + directory
+                    + " by renaming it (not possible when it is a mount point or its parent is not"
+                    + " writable); move its contents aside manually and restart", e);
+        }
         CredentialStore.forceDirectory(directory.getParent());
         return archived;
     }
@@ -286,9 +300,9 @@ class RevocationAuthority {
         return doc;
     }
 
-    private boolean hasUnexpectedBootstrapContent() throws IOException {
+    private boolean isEmptyDirectory() throws IOException {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
-            return stream.iterator().hasNext();
+            return !stream.iterator().hasNext();
         }
     }
 

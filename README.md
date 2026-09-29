@@ -50,6 +50,10 @@ shared fixture、Paper live確認、公開artifact、releaseはcandidate source�
 開発用接続は、loopback または隔離した検証環境だけで使用します。認証時は client が表示する
 pair code を Minecraft 内の `/mcremote pair NNN-NNN` で承認します。
 
+credential の保存先が起動時に欠けている場合、プラグインは新しい保存領域を自動生成して
+サーバーログに通知します。以前の token は使えなくなるため、client で再ペアリングしてください。
+保存済みデータの破損や ID 不一致では認証を停止し、原因をログに出します。
+
 ## 最初の成功
 
 この repository の `scripts/smoke_test.py` は Python 標準ライブラリだけで接続し、hello、

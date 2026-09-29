@@ -33,8 +33,7 @@ class CredentialServiceTest {
     void longLivedCredentialSurvivesRestartAndNeverStoresRawToken() throws Exception {
         Paths paths = paths();
         CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 16);
-        assertEquals(CredentialService.Health.UNINITIALIZED, service.health());
-        service.bootstrap();
+        assertEquals(CredentialService.Health.HEALTHY, service.health());
 
         UUID player = UUID.randomUUID();
         CredentialService.IssueResult issued = service.issue(player, "教室PC-3");
@@ -98,7 +97,6 @@ class CredentialServiceTest {
     void sessionRecordsStayOutsideLongLivedManagementAndLimit() throws Exception {
         Paths paths = paths("session-management");
         CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 1);
-        service.bootstrap();
         UUID player = UUID.randomUUID();
         CredentialService.IssueResult firstSession = service.issueSession(player, null, 7200);
         service.issueSession(player, null, 7200);
@@ -229,13 +227,29 @@ class CredentialServiceTest {
     }
 
     @Test
-    void missingAuthorityAndDomainMismatchNeverBecomeEmptyStore() throws Exception {
+    void missingAuthorityStartsNewDomainAndMismatchFailsClosed() throws Exception {
         Paths missing = paths("missing");
         CredentialService service = initialized(missing);
+        CredentialService.IssueResult old = service.issue(UUID.randomUUID(), "old");
+        UUID oldDomain = service.credentialDomainId();
         Files.delete(missing.authority().resolve("manifest.json"));
         CredentialService withoutAuthority = new CredentialService(
                 missing.snapshot(), missing.authority(), 16);
-        assertEquals(CredentialService.Health.UNHEALTHY, withoutAuthority.health());
+        assertEquals(CredentialService.Health.HEALTHY, withoutAuthority.health());
+        assertFalse(oldDomain.equals(withoutAuthority.credentialDomainId()));
+        assertEquals(CredentialService.ResolveStatus.NOT_FOUND,
+                withoutAuthority.resolveAndTouch(old.token()).status());
+        assertTrue(Files.exists(missing.snapshot()));
+        assertTrue(Files.exists(missing.authority().resolve("manifest.json")));
+        try (var files = Files.list(missing.snapshot().getParent())) {
+            assertTrue(files.anyMatch(path -> path.getFileName().toString()
+                    .startsWith("snapshot.json.retired-")));
+        }
+        // manifest 削除後の authority directory は空なので、その場で初期化し退避しない。
+        try (var files = Files.list(missing.authority().getParent())) {
+            assertFalse(files.anyMatch(path -> path.getFileName().toString()
+                    .startsWith("authority.retired-")));
+        }
 
         Paths mismatch = paths("mismatch");
         initialized(mismatch);
@@ -246,6 +260,66 @@ class CredentialServiceTest {
         CredentialService mismatched = new CredentialService(
                 mismatch.snapshot(), mismatch.authority(), 16);
         assertEquals(CredentialService.Health.UNHEALTHY, mismatched.health());
+    }
+
+    @Test
+    void missingSnapshotStartsNewDomainAndRetiresAuthority() throws Exception {
+        Paths paths = paths("missing-snapshot");
+        CredentialService original = initialized(paths);
+        UUID oldDomain = original.credentialDomainId();
+        String oldToken = original.issueSession(UUID.randomUUID(), null, 7200).token();
+        Files.delete(paths.snapshot());
+
+        CredentialService restarted = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        assertEquals(CredentialService.Health.HEALTHY, restarted.health());
+        assertFalse(oldDomain.equals(restarted.credentialDomainId()));
+        assertEquals(CredentialService.ResolveStatus.NOT_FOUND,
+                restarted.resolveAndTouch(oldToken).status());
+        try (var files = Files.list(paths.authority().getParent())) {
+            assertTrue(files.anyMatch(path -> path.getFileName().toString()
+                    .startsWith("authority.retired-")));
+        }
+    }
+
+    @Test
+    void emptyExistingAuthorityDirectoryIsInitializedInPlace() throws Exception {
+        // volume の mount point そのものは rename できないため、空なら退避しない。
+        Paths paths = paths("empty-authority-dir");
+        Files.createDirectories(paths.authority());
+
+        CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        assertEquals(CredentialService.Health.HEALTHY, service.health());
+        assertTrue(Files.exists(paths.authority().resolve("manifest.json")));
+        assertTrue(Files.exists(paths.snapshot()));
+        try (var files = Files.list(paths.authority().getParent())) {
+            assertFalse(files.anyMatch(path -> path.getFileName().toString()
+                    .startsWith("authority.retired-")));
+        }
+    }
+
+    @Test
+    void corruptedSurvivingBackendDoesNotStartNewDomain() throws Exception {
+        Paths paths = paths("corrupted-survivor");
+        initialized(paths);
+        Files.writeString(paths.snapshot(), "broken JSON", StandardCharsets.UTF_8);
+        Files.delete(paths.authority().resolve("manifest.json"));
+
+        CredentialService restarted = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        assertEquals(CredentialService.Health.UNHEALTHY, restarted.health());
+        assertFalse(Files.exists(paths.authority().resolve("manifest.json")));
+        assertEquals("broken JSON", Files.readString(paths.snapshot()));
+    }
+
+    @Test
+    void inaccessibleManifestPathIsNotTreatedAsMissing() throws Exception {
+        Path blockedParent = temp.resolve("blocked-parent");
+        Files.writeString(blockedParent, "not a directory");
+        Path snapshot = temp.resolve("blocked-path-store/snapshot.json");
+        CredentialService service = new CredentialService(
+                snapshot, blockedParent.resolve("manifest-parent"), 16);
+
+        assertEquals(CredentialService.Health.UNHEALTHY, service.health());
+        assertFalse(Files.exists(snapshot));
     }
 
     @Test
@@ -337,7 +411,6 @@ class CredentialServiceTest {
     void activeCredentialLimitDoesNotAutoRevokeOldCredential() throws Exception {
         Paths paths = paths("limit");
         CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 1);
-        service.bootstrap();
         UUID player = UUID.randomUUID();
         CredentialService.IssueResult first = service.issue(player, "first");
         CredentialLimitReachedException error = assertThrows(
@@ -393,14 +466,12 @@ class CredentialServiceTest {
                 tokens.resolve("mcrp_legacy-client-value").status());
         assertEquals(TokenStore.ResolveStatus.INVALID,
                 tokens.resolve("unknown_value").status());
-        assertEquals(TokenStore.ResolveStatus.STORE_UNAVAILABLE,
+        assertEquals(TokenStore.ResolveStatus.NOT_FOUND,
                 tokens.resolve("mcrl_unbootstrapped").status());
-        assertEquals(CredentialStoreUnavailableException.Operation.RESOLVE,
-                tokens.resolve("mcrl_unbootstrapped").operation());
-        assertEquals(TokenStore.ResolveStatus.STORE_UNAVAILABLE,
+        assertEquals(TokenStore.ResolveStatus.NOT_FOUND,
                 tokens.resolve("mcrs_unbootstrapped").status());
-        assertThrows(CredentialStoreUnavailableException.class,
-                () -> tokens.issue(UUID.randomUUID(), TokenStore.TokenType.SESSION, null, 7200));
+        assertTrue(tokens.issue(UUID.randomUUID(), TokenStore.TokenType.SESSION, null, 7200)
+                .startsWith("mcrs_"));
         assertThrows(IllegalArgumentException.class,
                 () -> TokenStore.TokenType.fromWire("player"));
         assertEquals(TokenStore.TokenType.SESSION, TokenStore.TokenType.fromWire(null));
@@ -426,9 +497,7 @@ class CredentialServiceTest {
     }
 
     private CredentialService initialized(Paths paths) throws Exception {
-        CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 16);
-        service.bootstrap();
-        return service;
+        return new CredentialService(paths.snapshot(), paths.authority(), 16);
     }
 
     private Paths paths() {

@@ -72,9 +72,51 @@ public class CredentialService {
         this.activeLimit = Math.max(1, activeLimit);
         try {
             validatePaths();
-            loadCurrentState();
+            boolean snapshotPresent = existsOrThrows(store.path());
+            boolean manifestPresent = existsOrThrows(authority.manifestPath());
+            if (!snapshotPresent || !manifestPresent) {
+                String missing = "snapshot=" + (snapshotPresent ? "present" : "missing")
+                        + ", authority_manifest=" + (manifestPresent ? "present" : "missing");
+                LOGGER.warning("Credential backend missing at startup: " + missing
+                        + "; initializing a new domain. Previous tokens will be invalid.");
+                // A surviving backend is retained as a retired sibling, never reused in the new domain.
+                // An unreadable surviving backend is a failure, not an absence.
+                if (snapshotPresent) {
+                    store.load();
+                }
+                if (manifestPresent) {
+                    UUID oldDomain = authority.loadManifest();
+                    authority.loadTombstones(oldDomain);
+                }
+                ResetResult initialized = retireAndBootstrap(
+                        "Startup initialization after missing credential backend");
+                LOGGER.warning("Credential domain initialized after missing backend: " + missing
+                        + ", new_domain=" + initialized.credentialDomainId()
+                        + ", retired_snapshot=" + describe(initialized.archivedSnapshot())
+                        + ", retired_authority=" + describe(initialized.archivedAuthority())
+                        + "; previous tokens are invalid and clients must pair again.");
+            } else {
+                loadCurrentState();
+            }
         } catch (IOException | RuntimeException e) {
-            markUnhealthy("Credential domain could not be trusted", e);
+            // retireAndBootstrap が記録した失敗の文脈を上書きしない。
+            if (health != Health.UNHEALTHY) {
+                markUnhealthy("Credential domain could not be trusted", e);
+            }
+        }
+    }
+
+    private static String describe(java.nio.file.Path path) {
+        return path == null ? "none" : path.toString();
+    }
+
+    private static boolean existsOrThrows(java.nio.file.Path path) throws IOException {
+        try {
+            java.nio.file.Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes.class,
+                    java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            return true;
+        } catch (java.nio.file.NoSuchFileException missing) {
+            return false;
         }
     }
 
@@ -94,7 +136,7 @@ public class CredentialService {
         return activeLimit;
     }
 
-    /** 明示 bootstrap。通常起動からは呼ばない。 */
+    /** 空の domain を作る。通常起動時の欠落初期化と明示管理操作で使う。 */
     public synchronized UUID bootstrap() throws IOException {
         validatePaths();
         if (health == Health.HEALTHY || health == Health.DEGRADED) {
@@ -125,6 +167,11 @@ public class CredentialService {
 
     /** 全 credential を失効させる明示 reset。旧 state は削除せず sibling archive へ退避する。 */
     public synchronized ResetResult reset() throws IOException {
+        return retireAndBootstrap("Explicit credential reset");
+    }
+
+    /** 旧 state を sibling archive へ退避して新 domain を作る。明示 reset と起動時の欠落初期化が共有する。 */
+    private ResetResult retireAndBootstrap(String operation) throws IOException {
         String suffix = Instant.now().toString().replace(':', '-') + "-" + UUID.randomUUID();
         java.nio.file.Path archivedAuthority = null;
         java.nio.file.Path archivedSnapshot = null;
@@ -133,11 +180,11 @@ public class CredentialService {
             archivedSnapshot = store.archive(suffix);
             clearMemory();
             health = Health.UNINITIALIZED;
-            healthDetail = "Explicit reset is creating a new credential domain";
+            healthDetail = operation + " is creating a new credential domain";
             UUID newDomain = bootstrap();
             return new ResetResult(newDomain, archivedSnapshot, archivedAuthority);
         } catch (IOException e) {
-            markUnhealthy("Explicit credential reset stopped in a fail-closed intermediate state", e);
+            markUnhealthy(operation + " stopped in a fail-closed intermediate state", e);
             throw e;
         }
     }
@@ -345,11 +392,6 @@ public class CredentialService {
         clearMemory();
         boolean snapshotExists = store.exists();
         boolean manifestExists = authority.manifestExists();
-        if (!snapshotExists && !manifestExists && !authority.directoryExists()) {
-            health = Health.UNINITIALIZED;
-            healthDetail = "Explicit credential bootstrap is required";
-            return;
-        }
         if (!snapshotExists || !manifestExists) {
             throw new IOException("Credential snapshot and revocation authority must both exist");
         }
