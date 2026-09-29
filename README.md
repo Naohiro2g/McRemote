@@ -1,82 +1,76 @@
 # McRemote
 
-McRemote は、Minecraft の外部クライアントから受け取ったコマンドを Paper サーバー上の
-world へ反映するサーバー側プラグインです。Python、Scratch などから、ブロック建築、
-player／entity 操作、event 観察を行うための共通 protocol endpoint を提供します。
+[マイクラリモコン](https://mc-remote.com/)（Minecraft Remote / mc-remote）のサーバー側プラグインです。
+Paper サーバーで動き、Scratch や Python などのクライアントから届いた命令を、マインクラフトの世界へ反映します。
 
-## 現在の提供状態
+🏠 **公式サイト**: [mc-remote.com](https://mc-remote.com/)
 
-現在の公開版は beta です。
+> [!NOTE]
+> **🌐 言語方針について / Language Policy**\
+> 本リポジトリは、一次情報（SSOT）の鮮度と正確性を保つため、日本語を正本として記述しています。多言語参加やIssue/PRの利用方針については [主要言語についての方針転換 / Language Policy](https://github.com/Naohiro2g/mc-remote-knowledge/blob/main/LANGUAGE_POLICY.md) をご覧ください。\
+> *This repository is maintained in Japanese as its primary Single Source of Truth (SSOT). Multi-language contributions are welcome. Please see our [Language Policy](https://github.com/Naohiro2g/mc-remote-knowledge/blob/main/LANGUAGE_POLICY.md).*
 
-| 項目 | 公開済みの値 |
-| --- | --- |
-| Minecraft / Paper | `1.21.11` |
-| McRemote artifact | `2300.0.0b6` |
-| wire protocol | `23.0.0` |
-| Java | `21` |
+---
 
-[b6 prerelease と JAR を取得する](https://github.com/Naohiro2g/McRemote/releases/tag/v1.21.11-2300.0.0b6)
+## マイクラリモコンとは
 
-公開 JAR の SHA-256 は
-`0ec8d4c0b105f3034361b260fc39fcb78013e932e684d34d5ca95c9a6c6a87a6` です。
-設計と wire contract の正本は
-[mc-remote-knowledge](https://github.com/Naohiro2g/mc-remote-knowledge) にあります。
+マイクラリモコンは、コーディングでマイクラの世界を動かしながら「学び方を学ぶ」ためのオープンソースのツール群です。
+Scratch や Python などで書いたプログラムから、マインクラフトのサーバーへブロックを置いたり、プレイヤーを動かしたりできます。
+マイクラのアプリは Java 版でも統合版でも接続できます。
 
-### b7 candidate inventory（未公開）
+- サーバーのプラグイン（McRemote、このリポジトリ）
+- 各言語のクライアント（Scratch、Python、Java など）
+- 通信の中身を観察する WireScope
+- サーバーの構築・運用パッケージ（mc-remote-stack）
 
-現在の開発branchは artifact `2301.0.0b7`／protocol `23.1.0` candidateです。公開版の表と
-download linkはb7 artifactがreleaseされるまでb6を指し続けます。
+はじめかた、考え方、ロードマップは公式ホームページへ：<https://mc-remote.com/>
 
-- `player.getDirection`／`player.setDirection`
-- `entity.getDirection`／`entity.setDirection`
-- damage-capableな`world.strikeLightning`（hello時に固定したconstruction permission snapshotを使用）
-- wireを変えない`world.spawnParticle`のPaper `ParticleBuilder` Stage 1移行
+### McRemote の役割
 
-旧候補`world.strikeLightningEffect`は公開せず、full lightningはdamage、fire、entity変化などの
-world副作用を起こし得ます。exact contractはknowledge commit
-`f132a8e6c9f27e62c2762b6d07d2023988c55c97`の`10-protocol/wire-format-design_ja.md` §5.8.2です。
-shared fixture、Paper live確認、公開artifact、releaseはcandidate sourceとは別gateであり、未完了です。
+McRemote は Paper サーバーで動くプラグインで、各言語のクライアントからの接続を受ける側です。
+クライアントのプログラムは、ゲームとは別の接続（既定の port `25575`）で McRemote に命令を送ります。
+McRemote はその命令をサーバーの世界へ反映し、結果を返します。
 
-## 導入
+まずは、公式ホームページで紹介している箱庭サーバー（マインクラフト - Scratch）で試してから、自分のサーバーへのプラグイン導入を検討できます。<https://mc-remote.com/#quickstart>
 
-1. Paper 1.21.11 サーバーを用意します。
-2. 公開 JAR をサーバーの `plugins/` へ置き、サーバーを起動します。
-3. 生成された `plugins/McRemote/config.yml` で TCP port、認証、build range を確認します。
-4. LuckPerms を使う場合は、接続する player に `mcr.online` または `mcr.offline` と
-   `mcr.build.range` meta を付与します。
-5. TCP port の既定値 `25575` は信頼できる client からだけ到達できるよう制限します。
+---
 
-公開ネットワークで使う場合は `auth.enforcement: true` を設定してください。token なしの
-開発用接続は、loopback または隔離した検証環境だけで使用します。認証時は client が表示する
-pair code を Minecraft 内の `/mcremote pair NNN-NNN` で承認します。
+## 自分のサーバーに入れる（最短手順）
 
-credential の保存先が起動時に欠けている場合、プラグインは新しい保存領域を自動生成して
-サーバーログに通知します。以前の token は使えなくなるため、client で再ペアリングしてください。
-保存済みデータの破損や ID 不一致では認証を停止し、原因をログに出します。
+前提: Paper `1.21.11` のサーバーと Java 21。
 
-## 最初の成功
+### Step 1: プラグインを置いて起動する
 
-この repository の `scripts/smoke_test.py` は Python 標準ライブラリだけで接続し、hello、
-build context、block set/get、catalog error を一往復確認します。token なし hello を許す
-隔離した開発設定で、サーバー起動後に実行します。
+[最新のリリース](https://github.com/Naohiro2g/McRemote/releases/tag/v1.21.11-2301.0.0b7.post2)から
+`mc-remote-1.21.11-2301.0.0b7.post2.jar` を取得し、サーバーの `plugins/` に置いてサーバーを起動します。
+`plugins/McRemote/config.yml` が作られます。
 
-```sh
-python3 scripts/smoke_test.py \
-  --host 127.0.0.1 --port 25575 \
-  --protocol 23.0.0 \
-  --dimension overworld --ox 200 --oy 0 --oz 200
+### Step 2: 認証を有効にする
+
+`plugins/McRemote/config.yml` の `auth.enforcement` を `true` にして、サーバーを再起動します。
+続けて、サーバーのコンソールで一度だけ次を実行し、認証情報の保存領域を作ります。
+
+```text
+mcremote credential bootstrap
 ```
 
-成功時は最後に `PASS` が表示されます。この smoke は実 world を変更し、既定では
-`minecraft:overworld` の絶対座標 `(200,0,200)` から上へ4ブロックを置きます。使い捨ての
-開発 world で実行するか、確認後にその4ブロックを削除してください。
+### Step 3: クライアントから接続する
 
-pairing と player position／pose の代表往復は、サーバー内で pair code を承認できる状態で
-次を使えます。
+クライアントの接続先を自分のサーバー（port `25575`）にして、プログラムを実行します。
+クライアントが表示する `/mcremote pair NNN-NNN` をゲーム内のチャットで実行すると、接続が認証されます。
 
-```sh
-python3 scripts/player_test.py --host 127.0.0.1 --port 25575 --protocol 23.0.0
-```
+Python なら、[minecraft-remote-api の最短クイックスタート](https://github.com/Naohiro2g/minecraft-remote-api#3分で動かす最短クイックスタート)の
+`address` を自分のサーバーに変えて試せます。
+
+---
+
+## 設定
+
+- `plugins/McRemote/config.yml` で、TCP port（`api_port`）、認証、build range を確認します。
+- port `25575` は、信頼できる client からだけ到達できるよう制限します。
+- LuckPerms を使う場合は、接続する player に `mcr.online` または `mcr.offline` と
+  `mcr.build.range` meta を付与します。
+- `auth.enforcement: false` は token なしで接続できる開発用の設定です。loopback または隔離した検証環境だけで使用します。
 
 ## 主な capability
 
@@ -104,7 +98,8 @@ method の exact params、result、error、成熟状態は README ではなく
 
 ## 開発
 
-version と toolchain は `gradle.properties` が所有します。
+version と toolchain は `gradle.properties` が所有します。設計と wire contract の正本は
+[mc-remote-knowledge](https://github.com/Naohiro2g/mc-remote-knowledge) にあります。
 
 ```sh
 ./gradlew build
@@ -127,6 +122,32 @@ local server task は環境固有の server directory を使用します。
 ./gradlew stopServer
 ./gradlew restartServer
 ```
+
+### smoke test
+
+`scripts/smoke_test.py` は Python 標準ライブラリだけで接続し、hello、build context、
+block set/get、catalog error を一往復確認します。token なし hello を許す隔離した開発設定で、
+サーバー起動後に実行します。
+
+```sh
+python3 scripts/smoke_test.py \
+  --host 127.0.0.1 --port 25575 \
+  --protocol 23.1.0 \
+  --dimension overworld --ox 200 --oy 0 --oz 200
+```
+
+成功時は最後に `PASS` が表示されます。この smoke は実 world を変更し、既定では
+`minecraft:overworld` の絶対座標 `(200,0,200)` から上へ4ブロックを置きます。使い捨ての
+開発 world で実行するか、確認後にその4ブロックを削除してください。
+
+pairing と player position／pose の代表往復は、サーバー内で pair code を承認できる状態で
+次を使えます。
+
+```sh
+python3 scripts/player_test.py --host 127.0.0.1 --port 25575 --protocol 23.1.0
+```
+
+## ライセンス
 
 issue と contribution は [GitHub repository](https://github.com/Naohiro2g/McRemote) で受け付けます。
 ライセンスは [LICENSE](LICENSE) を参照してください。本 project は
