@@ -18,7 +18,6 @@ class PairingManagerTest {
     void sessionPairingAndTokenResolutionRemainUnchanged() throws Exception {
         CredentialService credentials = new CredentialService(
                 temp.resolve("snapshot.json"), temp.resolve("authority"), 16);
-        credentials.bootstrap();
         TokenStore tokenStore = new TokenStore(credentials);
         PairingManager pairing = new PairingManager(tokenStore, 120, 7200);
         UUID player = UUID.randomUUID();
