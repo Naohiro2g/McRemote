@@ -205,6 +205,71 @@ def connect(args, token: str | None = None, rpc_factory=Rpc) -> Rpc:
         raise
 
 
+def verify_b8(args, token: str | None, height: int) -> None:
+    """Protocol 23.2 entity lifecycle and particle Stage 2 on a fresh connection epoch."""
+    rpc = connect(args, token)
+    try:
+        y = height + 1
+        handle = result(rpc.call("world.spawnEntity", [0.5, y, 5.5, "minecraft:cow"]))
+        if not HANDLE.fullmatch(handle):
+            raise AssertionError(f"invalid handle: {handle!r}")
+        pose = result(rpc.call("entity.getPose", [handle]))
+        if set(pose) != {"dimension", "pos", "yaw", "pitch"} or pose["dimension"] != "minecraft:overworld":
+            raise AssertionError(f"entity.getPose shape: {pose}")
+        print("PASS entity.getPose: dimension/pos/yaw/pitch")
+
+        nearby = result(rpc.call("world.getNearbyEntities", [0.5, y, 5.5, 2, 4]))
+        if not isinstance(nearby, list) or not any(
+                item.get("handle") == handle and item.get("type") == "minecraft:cow"
+                and set(item) == {"handle", "type", "pos"} for item in nearby):
+            raise AssertionError(f"nearby did not reuse the spawned handle: {nearby}")
+        print("PASS world.getNearbyEntities: reuses same-dimension handle, {handle,type,pos}")
+        require_reason("nearby radius over cap",
+                       rpc.call("world.getNearbyEntities", [0, y, 0, 65, 1]), "invalid_params")
+        require_reason("nearby zero max_entities",
+                       rpc.call("world.getNearbyEntities", [0, y, 0, 1, 0]), "invalid_params")
+
+        moved = result(rpc.call("entity.setPose", [handle, "overworld", 2.5, y, 5.5, 90, 0]))
+        if abs(moved["pos"][0] - 2.5) > 1e-3 or abs(moved["yaw"] - 90) > 1e-3:
+            raise AssertionError(f"entity.setPose did not return the re-read pose: {moved}")
+        print("PASS entity.setPose: teleport and re-read pose")
+
+        require_null_result("entity.remove", rpc.call("entity.remove", [handle]))
+        print("PASS entity.remove: result null")
+        require_reason("removed handle", rpc.call("entity.getPose", [handle]), "entity_not_found")
+
+        base = [0.5, y, 0.5, 0, 0, 0]
+        for label, particle in (
+                ("object default receiver", {"particle_id": "minecraft:flame"}),
+                ("dust typed data", {"particle_id": "minecraft:dust",
+                                     "data": {"color": [255, 80, 0], "size": 1.5}}),
+                ("block typed data", {"particle_id": "minecraft:block",
+                                      "data": {"block_id": "minecraft:stone", "state": {}}})):
+            accepted = result(rpc.call("world.spawnParticle", base + [particle, 0, 3]))
+            if accepted != 3:
+                raise AssertionError(f"particle {label}: accepted {accepted!r}")
+            print(f"PASS world.spawnParticle: {label}")
+        require_reason("particle data on data-free particle",
+                       rpc.call("world.spawnParticle", base + [
+                           {"particle_id": "minecraft:flame",
+                            "data": {"color": [1, 2, 3], "size": 1}}, 0, 1]),
+                       "invalid_params")
+        require_reason("particle unsupported typed data",
+                       rpc.call("world.spawnParticle", base + [
+                           {"particle_id": "minecraft:dust_color_transition",
+                            "data": {"color": [1, 2, 3], "size": 1}}, 0, 1]),
+                       "particle_data_unsupported")
+        self_spec = {"particle_id": "minecraft:flame", "receiver": "self"}
+        if token is None:
+            require_reason("particle self without a bound player",
+                           rpc.call("world.spawnParticle", base + [self_spec, 0, 1]), "auth_required")
+        else:
+            result(rpc.call("world.spawnParticle", base + [self_spec, 0, 1]))
+            print("PASS world.spawnParticle: self receiver accepted")
+    finally:
+        rpc.close()
+
+
 def verify_protocol_boundary(args) -> None:
     rpc = Rpc(args.host, args.port, args.timeout)
     try:
@@ -566,6 +631,7 @@ def main() -> int:
         if not HANDLE.fullmatch(secondary_handle):
             raise AssertionError(f"second epoch handle invalid: {secondary_handle!r}")
         print("PASS world.spawnEntity: opaque handles, capacity, epoch independence")
+        verify_b8(args, token, height)
 
         require_reason(
             "block coordinate fraction rejection",
