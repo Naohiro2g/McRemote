@@ -658,12 +658,12 @@ class DirectionLightningFixtureContractTest {
 
     private static RuntimePolicy workPolicy(int max, int tickBudget) {
         return new RuntimePolicy(8, 8_000, 8, 8, 8, 1_000,
-                max, tickBudget, tickBudget, tickBudget, 16, 16);
+                max, tickBudget, tickBudget, tickBudget, 16, 16, 64, 64);
     }
 
     private static RuntimePolicy particlePolicy(int maxParticleCount) {
         return new RuntimePolicy(8, 8_000, 8, 8, 8, maxParticleCount,
-                4_096, 4_096, 8_192, 32_768, 16, 16);
+                4_096, 4_096, 8_192, 32_768, 16, 16, 64, 64);
     }
 
     private static JsonArray rangeParams(JsonArray target) {

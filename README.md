@@ -104,6 +104,8 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 | `events.poll_default` | `64` | `events.poll` が件数を指定しないときに返す件数 |
 | `events.poll_limit` | `64` | `events.poll` が一度に返す件数の上限。client の指定がこれより大きければ、この値に縮めます |
 | `entities.handle_capacity` | `256` | 接続ごとに発行できる entity handle の数 |
+| `entities.nearby_max_radius` | `64` | `world.getNearbyEntities` で指定できる半径の上限（ブロック）。下げられますが、64 より上には上げられません |
+| `entities.nearby_max_entities` | `64` | `world.getNearbyEntities` で一度に返せる entity の数の上限。下げられますが、64 より上には上げられません |
 | `particles.max_count` | `1000` | 1 回の `spawnParticle` で出せる数の上限 |
 | `work.per_request` | `4096` | 1 つの命令の作業量の上限 |
 | `work.per_session_tick` | `4096` | 1 tick あたり、接続ごとの作業量の上限 |

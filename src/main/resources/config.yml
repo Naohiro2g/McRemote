@@ -44,6 +44,8 @@ events:
 # Entity handles issued to clients.
 entities:
   handle_capacity: 256
+  nearby_max_radius: 64     # world.getNearbyEntities radius cap; can be lowered, never above 64
+  nearby_max_entities: 64   # world.getNearbyEntities max_entities cap; can be lowered, never above 64
 
 # Particle spawning.
 particles:

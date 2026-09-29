@@ -15,8 +15,14 @@ record RuntimePolicy(
         int playerWorkPerTick,
         int globalWorkPerTick,
         int connectionQueueCapacity,
-        int connectionResponseQueueCapacity
+        int connectionResponseQueueCapacity,
+        int nearbyMaxRadius,
+        int nearbyMaxEntities
 ) {
+    /** protocol 23.2.0 の上限。runtime policy はこれより下げられるが上げられない（DECISIONS 2026-09-30-01）。 */
+    static final int PROTOCOL_MAX_NEARBY_RADIUS = 64;
+    static final int PROTOCOL_MAX_NEARBY_ENTITIES = 64;
+
     static final int DEFAULT_EVENT_RING_CAPACITY = 256;
     static final int DEFAULT_EVENT_RING_BYTES = 262_144;
     static final int DEFAULT_EVENT_POLL_DEFAULT = 64;
@@ -57,7 +63,11 @@ record RuntimePolicy(
                         DEFAULT_CONNECTION_QUEUE_CAPACITY),
                 read(config, "connection.response_queue_capacity",
                         "b5.connection_response_queue_capacity",
-                        DEFAULT_CONNECTION_RESPONSE_QUEUE_CAPACITY));
+                        DEFAULT_CONNECTION_RESPONSE_QUEUE_CAPACITY),
+                Math.min(PROTOCOL_MAX_NEARBY_RADIUS, Math.max(1, config.getInt(
+                        "entities.nearby_max_radius", PROTOCOL_MAX_NEARBY_RADIUS))),
+                Math.min(PROTOCOL_MAX_NEARBY_ENTITIES, Math.max(1, config.getInt(
+                        "entities.nearby_max_entities", PROTOCOL_MAX_NEARBY_ENTITIES))));
     }
 
     private static int read(ConfigurationSection config, String path, String legacyPath, int fallback) {

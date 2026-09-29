@@ -95,6 +95,8 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, runtimePolicy);
         SignCommands signCommands = new SignCommands(this, miscCommands);
         DirectionCommands directionCommands = new DirectionCommands(this, entityHandles);
+        EntityLifecycleCommands entityLifecycleCommands = new EntityLifecycleCommands(
+                this, entityHandles, dimensions, runtimePolicy);
         LightningCommands lightningCommands = new LightningCommands(
                 this,
                 plugin.getLightningRateAdmission(),
@@ -104,7 +106,8 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
                 this, blockCommands, miscCommands, buildStateCommands, catalogCommands,
-                eventCommands, worldB5Commands, signCommands, directionCommands, lightningCommands));
+                eventCommands, worldB5Commands, signCommands, directionCommands, lightningCommands,
+                entityLifecycleCommands));
         this.authCommands = new AuthCommands(
                 this, plugin.getPairingManager(), plugin.getCredentialService());
         init();

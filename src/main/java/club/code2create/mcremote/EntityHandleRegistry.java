@@ -5,8 +5,10 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -78,6 +80,82 @@ final class EntityHandleRegistry {
             return new ResolveResult(ResolveStatus.REMOVED_OR_UNLOADED, null);
         }
         return new ResolveResult(ResolveStatus.ACTIVE, entity);
+    }
+
+    /**
+     * B8 nearby の issueAll transaction（wire §5.8.3）。候補を順に処理し、同じdimensionの既存handleは
+     * 再利用、dimensionが異なる既存handleは失効と新規発行をstageし、removed／unloaded／invalidの候補は
+     * 除外して既存handleの失効をstageする。capacityはprojected stateで判定し、失敗時は何も変更しない。
+     */
+    synchronized List<Issued> issueAll(List<? extends Entity> candidates) {
+        List<Issued> issued = new ArrayList<>();
+        List<String> stagedInvalidations = new ArrayList<>();
+        List<Entity> stagedNew = new ArrayList<>();
+        for (Entity entity : candidates) {
+            if (entity instanceof Player) {
+                throw new IllegalArgumentException("players do not receive entity handles");
+            }
+            String existing = byEntity.get(entity.getUniqueId());
+            String dimension = identifiableDimension(entity);
+            boolean usable = dimension != null
+                    && !entity.isDead() && entity.isValid() && entity.isInWorld();
+            if (!usable) {
+                if (existing != null) {
+                    stagedInvalidations.add(existing);
+                }
+                continue;
+            }
+            if (existing != null && byHandle.get(existing).dimension().equals(dimension)) {
+                issued.add(new Issued(existing, entity));
+                continue;
+            }
+            if (existing != null) {
+                stagedInvalidations.add(existing);
+            }
+            stagedNew.add(entity);
+            issued.add(new Issued(null, entity));
+        }
+        int projected = byHandle.size() - stagedInvalidations.size() + stagedNew.size() + reservations;
+        if (projected > capacity) {
+            throw new CapacityException();
+        }
+        for (String handle : stagedInvalidations) {
+            invalidate(handle, byHandle.get(handle));
+        }
+        List<Issued> committed = new ArrayList<>(issued.size());
+        for (Issued entry : issued) {
+            if (entry.handle() != null) {
+                committed.add(entry);
+                continue;
+            }
+            Entity entity = entry.entity();
+            String handle = newHandle();
+            byHandle.put(handle, new Entry(
+                    entity.getUniqueId(), DimensionResolver.canonical(entity.getWorld()), entity));
+            byEntity.put(entity.getUniqueId(), handle);
+            committed.add(new Issued(handle, entity));
+        }
+        return committed;
+    }
+
+    /** 成功した entity.setPose による dimension 移動を、同じ handle の issued dimension へ反映する。 */
+    synchronized void updateDimension(String handle, Entity entity) {
+        Entry entry = byHandle.get(handle);
+        if (entry != null && entry.entityId().equals(entity.getUniqueId())) {
+            byHandle.put(handle, new Entry(
+                    entry.entityId(), DimensionResolver.canonical(entity.getWorld()), entity));
+        }
+    }
+
+    /** entity.remove 成功時に handle を即時失効させる。 */
+    synchronized void invalidate(String handle) {
+        Entry entry = byHandle.get(handle);
+        if (entry != null) {
+            invalidate(handle, entry);
+        }
+    }
+
+    record Issued(String handle, Entity entity) {
     }
 
     private static String identifiableDimension(Entity entity) {

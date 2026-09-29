@@ -185,7 +185,7 @@ class LightningCommandsTest {
     private static RuntimePolicy workPolicy(int maxWorkPerRequest) {
         return new RuntimePolicy(
                 8, 8_000, 8, 8, 8, 1_000,
-                maxWorkPerRequest, 4_096, 8_192, 32_768, 16, 16);
+                maxWorkPerRequest, 4_096, 8_192, 32_768, 16, 16, 64, 64);
     }
 
     @SuppressWarnings("unchecked")
