@@ -53,7 +53,7 @@ public class McRemote extends JavaPlugin implements Listener {
     private int maxSessionsPerUuid;
     // b3 resource catalog は registry が確立した plugin enable 時に一度だけ生成し、全 session で共有する。
     private CatalogService catalogService;
-    private B5RuntimePolicy b5RuntimePolicy;
+    private RuntimePolicy runtimePolicy;
     private WorkAdmission workAdmission;
     private LightningRuntimePolicy lightningRuntimePolicy;
     private LightningRateAdmission lightningRateAdmission;
@@ -89,12 +89,12 @@ public class McRemote extends JavaPlugin implements Listener {
         this.tokenStore = new TokenStore(credentialService);
         this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl);
         this.catalogService = new CatalogService();
-        this.b5RuntimePolicy = B5RuntimePolicy.from(config);
-        this.workAdmission = new WorkAdmission(b5RuntimePolicy);
+        this.runtimePolicy = RuntimePolicy.from(config);
+        this.workAdmission = new WorkAdmission(runtimePolicy);
         this.lightningRuntimePolicy = LightningRuntimePolicy.from(config);
         this.lightningRateAdmission = new LightningRateAdmission(lightningRuntimePolicy);
-        logger.info("b5 connection command queue capacity: "
-                + b5RuntimePolicy.connectionQueueCapacity());
+        logger.info("Connection command queue capacity: "
+                + runtimePolicy.connectionQueueCapacity());
         logger.info("Resource catalog ready: blocks=" + catalogService.getBlockCount()
                 + " entities=" + catalogService.getEntityCount()
                 + " particles=" + catalogService.getParticleCount()
@@ -255,8 +255,8 @@ public class McRemote extends JavaPlugin implements Listener {
         return this.catalogService;
     }
 
-    B5RuntimePolicy getB5RuntimePolicy() {
-        return b5RuntimePolicy;
+    RuntimePolicy getRuntimePolicy() {
+        return runtimePolicy;
     }
 
     WorkAdmission getWorkAdmission() {

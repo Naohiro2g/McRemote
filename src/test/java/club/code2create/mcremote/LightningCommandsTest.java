@@ -125,7 +125,7 @@ class LightningCommandsTest {
 
     @Test
     void fixedCostFitsDistributionDefaultButExceedsPolicyBelow256() {
-        B5RuntimePolicy distribution = workPolicy(4_096);
+        RuntimePolicy distribution = workPolicy(4_096);
         WorkAdmission defaultAdmission = new WorkAdmission(distribution);
         defaultAdmission.beginTick();
         assertEquals(WorkAdmission.Result.ACCEPTED, defaultAdmission.admit(
@@ -182,8 +182,8 @@ class LightningCommandsTest {
         return new Fixture(commands, context, worldState, order);
     }
 
-    private static B5RuntimePolicy workPolicy(int maxWorkPerRequest) {
-        return new B5RuntimePolicy(
+    private static RuntimePolicy workPolicy(int maxWorkPerRequest) {
+        return new RuntimePolicy(
                 8, 8_000, 8, 8, 8, 1_000,
                 maxWorkPerRequest, 4_096, 8_192, 32_768, 16, 16);
     }

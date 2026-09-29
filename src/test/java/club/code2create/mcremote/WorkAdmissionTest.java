@@ -7,7 +7,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class WorkAdmissionTest {
-    private static final B5RuntimePolicy POLICY = new B5RuntimePolicy(
+    private static final RuntimePolicy POLICY = new RuntimePolicy(
             8, 8_000, 8, 8, 8, 10, 10, 6, 8, 12, 4, 4);
 
     @Test

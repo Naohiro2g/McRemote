@@ -22,7 +22,7 @@ class ConnectionFrameQueueTest {
 
     @Test
     void saturationIsTerminalAndCannotExposeFalseFlushSuccess() {
-        int capacity = B5RuntimePolicy.DEFAULT_CONNECTION_RESPONSE_QUEUE_CAPACITY;
+        int capacity = RuntimePolicy.DEFAULT_CONNECTION_RESPONSE_QUEUE_CAPACITY;
         ConnectionFrameQueue queue = new ConnectionFrameQueue(capacity);
         for (int i = 0; i < capacity; i++) {
             assertTrue(queue.offer("prior-" + i));

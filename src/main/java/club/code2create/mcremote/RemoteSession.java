@@ -79,20 +79,20 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         this.blockCommands = new BlockCommands(this, miscCommands);
         this.buildStateCommands = new BuildStateCommands(this, dimensions);
         this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
-        B5RuntimePolicy b5Policy = plugin.getB5RuntimePolicy();
-        this.inQueue = new ConnectionCommandQueue(b5Policy.connectionQueueCapacity());
-        this.outQueue = new ConnectionFrameQueue(b5Policy.connectionResponseQueueCapacity());
+        RuntimePolicy runtimePolicy = plugin.getRuntimePolicy();
+        this.inQueue = new ConnectionCommandQueue(runtimePolicy.connectionQueueCapacity());
+        this.outQueue = new ConnectionFrameQueue(runtimePolicy.connectionResponseQueueCapacity());
         this.eventRing = new EventRing(
-                b5Policy.eventRingCapacity(),
-                b5Policy.eventRingBytes(),
+                runtimePolicy.eventRingCapacity(),
+                runtimePolicy.eventRingBytes(),
                 resultPayloadBudget(Integer.MAX_VALUE, MAX_EVENT_POLL_RESPONSE_BYTES));
-        this.entityHandles = new EntityHandleRegistry(b5Policy.entityHandleCapacity());
+        this.entityHandles = new EntityHandleRegistry(runtimePolicy.entityHandleCapacity());
         EventCommands eventCommands = new EventCommands(
                 this,
                 eventRing,
-                b5Policy.eventPollDefault(),
-                b5Policy.eventPollLimit());
-        WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, b5Policy);
+                runtimePolicy.eventPollDefault(),
+                runtimePolicy.eventPollLimit());
+        WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, runtimePolicy);
         SignCommands signCommands = new SignCommands(this, miscCommands);
         DirectionCommands directionCommands = new DirectionCommands(this, entityHandles);
         LightningCommands lightningCommands = new LightningCommands(

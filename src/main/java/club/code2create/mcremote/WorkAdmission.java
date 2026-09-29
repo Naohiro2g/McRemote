@@ -8,12 +8,12 @@ import java.util.UUID;
 final class WorkAdmission {
     enum Result { ACCEPTED, BACKPRESSURE, WORK_LIMIT_EXCEEDED }
 
-    private final B5RuntimePolicy policy;
+    private final RuntimePolicy policy;
     private final Map<UUID, Integer> sessionWork = new HashMap<>();
     private final Map<UUID, Integer> playerWork = new HashMap<>();
     private int globalWork;
 
-    WorkAdmission(B5RuntimePolicy policy) {
+    WorkAdmission(RuntimePolicy policy) {
         this.policy = policy;
     }
 
