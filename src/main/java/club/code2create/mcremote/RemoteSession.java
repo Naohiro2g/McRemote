@@ -92,7 +92,9 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                 eventRing,
                 runtimePolicy.eventPollDefault(),
                 runtimePolicy.eventPollLimit());
-        WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, runtimePolicy);
+        WorldB5Commands worldB5Commands = new WorldB5Commands(
+                this, entityHandles, runtimePolicy, WorldB5Commands::particle,
+                new BlockCodec(plugin.getCatalogService()), this::getBoundUuid, org.bukkit.Bukkit::getPlayer);
         SignCommands signCommands = new SignCommands(this, miscCommands);
         DirectionCommands directionCommands = new DirectionCommands(this, entityHandles);
         EntityLifecycleCommands entityLifecycleCommands = new EntityLifecycleCommands(

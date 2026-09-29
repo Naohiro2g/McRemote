@@ -2,7 +2,11 @@ package club.code2create.mcremote;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.destroystokyo.paper.ParticleBuilder;
+import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
@@ -12,8 +16,12 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
+import java.math.BigDecimal;
 import java.util.OptionalInt;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /** b5 world query/spawn commands with validation before any world mutation. */
 final class WorldB5Commands {
@@ -21,6 +29,16 @@ final class WorldB5Commands {
     private final EntityHandleRegistry handles;
     private final RuntimePolicy policy;
     private final Function<String, Particle> particleResolver;
+    private final BlockCodec blockCodec;
+    private final Supplier<UUID> boundUuid;
+    private final Function<UUID, Player> onlinePlayers;
+
+    static final String DUST_ID = "minecraft:dust";
+    static final String BLOCK_ID = "minecraft:block";
+    private static final Set<String> SPEC_FIELDS = Set.of("particle_id", "receiver", "data");
+    private static final Set<String> DUST_FIELDS = Set.of("color", "size");
+    private static final BigDecimal MIN_DUST_SIZE = new BigDecimal("0.01");
+    private static final BigDecimal MAX_DUST_SIZE = new BigDecimal("4.0");
 
     WorldB5Commands(
             WorldCommandContext session,
@@ -36,10 +54,25 @@ final class WorldB5Commands {
             RuntimePolicy policy,
             Function<String, Particle> particleResolver
     ) {
+        this(session, handles, policy, particleResolver, null, () -> null, Bukkit::getPlayer);
+    }
+
+    WorldB5Commands(
+            WorldCommandContext session,
+            EntityHandleRegistry handles,
+            RuntimePolicy policy,
+            Function<String, Particle> particleResolver,
+            BlockCodec blockCodec,
+            Supplier<UUID> boundUuid,
+            Function<UUID, Player> onlinePlayers
+    ) {
         this.session = session;
         this.handles = handles;
         this.policy = policy;
         this.particleResolver = particleResolver;
+        this.blockCodec = blockCodec;
+        this.boundUuid = boundUuid;
+        this.onlinePlayers = onlinePlayers;
     }
 
     void handleGetHeight(JsonElement params) {
@@ -86,44 +119,181 @@ final class WorldB5Commands {
         }
     }
 
-    /** Params: [x,y,z,offset_x,offset_y,offset_z,particle_id,speed,count,(force)]. */
+    /**
+     * Params: [x,y,z,offset_x,offset_y,offset_z,particle,speed,count,(force)]. {@code particle} is a
+     * data-less particle ID string or a protocol 23.2 {@code ParticleSpec} object
+     * （wire §5.8.3、DECISIONS 2026-09-23-01／2026-09-30-01）。Validation and side effects run in the
+     * contract order: params → count policy → particle shape → spec → ID → data → receiver →
+     * permission／build range → work → chunk → spawn.
+     */
     void handleSpawnParticle(JsonElement params) {
         try {
+            // (1) 9／10 params and scalars
             JsonArray args = WireParams.positional(params, 9, 10);
             Location location = relativeLocation(args, 0);
             double offsetX = nonNegative(WireParams.finiteDouble(args, 3));
             double offsetY = nonNegative(WireParams.finiteDouble(args, 4));
             double offsetZ = nonNegative(WireParams.finiteDouble(args, 5));
-            String id = WireParams.string(args, 6);
             double speed = nonNegative(WireParams.finiteDouble(args, 7));
             int count = WireParams.integer(args, 8);
             boolean force = args.size() == 10 ? WireParams.bool(args, 9) : true;
             if (count < 0) {
                 throw new IllegalArgumentException("particle count must be non-negative");
             }
+            // (2) count runtime policy
             if (count > policy.maxParticleCount()) {
                 session.respondError(-32000, "work_limit_exceeded", null);
                 return;
             }
+            // (3)(4) particle string／object shape, ParticleSpec top-level and particle_id
+            JsonElement particleArg = args.get(6);
+            JsonObject spec = null;
+            String id;
+            if (particleArg != null && particleArg.isJsonObject()) {
+                spec = particleArg.getAsJsonObject();
+                for (String key : spec.keySet()) {
+                    if (!SPEC_FIELDS.contains(key)) {
+                        throw new IllegalArgumentException("unknown ParticleSpec field");
+                    }
+                }
+                id = stringField(spec, "particle_id");
+                if (spec.has("data") && spec.get("data").isJsonNull()) {
+                    throw new IllegalArgumentException("data must not be null");
+                }
+            } else {
+                id = WireParams.string(args, 6);
+            }
+            // (5) particle ID
             Particle particle = particleResolver.apply(id);
             if (particle == null) {
                 session.respondError(-32602, "unknown_particle", null);
                 return;
             }
-            if (particle.getDataType() != Void.class) {
-                session.respondError(-32602, "particle_data_required", null);
+            // (6) data presence, type and schema
+            Object data;
+            try {
+                data = particleData(particle, spec == null ? null : spec.get("data"));
+            } catch (ParticleDataException e) {
+                session.respondError(-32602, e.reason, e.data);
                 return;
             }
+            // (7) receiver syntax and self player
+            Player receiver = null;
+            if (spec != null && spec.has("receiver")) {
+                String mode = stringField(spec, "receiver");
+                if ("self".equals(mode)) {
+                    UUID player = boundUuid.get();
+                    if (player == null) {
+                        session.respondError(-32000, "auth_required", null);
+                        return;
+                    }
+                    receiver = onlinePlayers.apply(player);
+                    if (receiver == null || !receiver.isOnline()) {
+                        session.respondError(-32000, "player_offline", null);
+                        return;
+                    }
+                } else if (!"world".equals(mode)) {
+                    throw new IllegalArgumentException("receiver must be world or self");
+                }
+            }
+            // (8) permission／build range, (9) work, (10) chunk
             if (!preflightLocation(location) || !admit(count) || !prepareChunk(location)) {
                 return;
             }
-            particleBuilder(
-                    particle, location, count, offsetX, offsetY, offsetZ, speed, force).spawn();
+            // (11) spawn
+            ParticleBuilder builder = particleBuilder(
+                    particle, location, count, offsetX, offsetY, offsetZ, speed, force).data(data);
+            if (receiver != null) {
+                builder.receivers(receiver);
+            }
+            builder.spawn();
             session.respondResult(count);
         } catch (IllegalArgumentException e) {
             session.respondError(-32602, "invalid_params", null);
         } catch (Exception e) {
             session.respondError(-32000, "internal_error", null);
+        }
+    }
+
+    /**
+     * Resolves typed data. Only minecraft:dust and minecraft:block accept object data in B8; object
+     * data for any other particle is particle_data_unsupported. Missing required data is
+     * particle_data_required.
+     */
+    private Object particleData(Particle particle, JsonElement data) throws ParticleDataException {
+        String key = particle.getKey().toString();
+        boolean needsData = particle.getDataType() != Void.class;
+        if (data == null) {
+            if (needsData) {
+                throw new ParticleDataException("particle_data_required", null);
+            }
+            return null;
+        }
+        if (!DUST_ID.equals(key) && !BLOCK_ID.equals(key)) {
+            if (data.isJsonObject()) {
+                throw new ParticleDataException("particle_data_unsupported", null);
+            }
+            throw new IllegalArgumentException("particle data must be an object");
+        }
+        if (!data.isJsonObject()) {
+            throw new IllegalArgumentException("particle data must be an object");
+        }
+        if (DUST_ID.equals(key)) {
+            return dustOptions(data.getAsJsonObject());
+        }
+        if (blockCodec == null) {
+            throw new IllegalStateException("block particle data is not available");
+        }
+        try {
+            return blockCodec.decode(data, "params[6].data");
+        } catch (BlockCodec.ValidationException e) {
+            throw new ParticleDataException(e.reason, e.data);
+        }
+    }
+
+    /** Dust data is exactly {"color":[R,G,B],"size":number}; RGB 0..255 integers, size 0.01..4.0. */
+    static Particle.DustOptions dustOptions(JsonObject data) {
+        if (!data.keySet().equals(DUST_FIELDS)) {
+            throw new IllegalArgumentException("dust data must have exactly color and size");
+        }
+        JsonElement color = data.get("color");
+        if (color == null || !color.isJsonArray() || color.getAsJsonArray().size() != 3) {
+            throw new IllegalArgumentException("color must be [R,G,B]");
+        }
+        int[] rgb = new int[3];
+        for (int i = 0; i < 3; i++) {
+            rgb[i] = WireParams.integer(color.getAsJsonArray(), i);
+            if (rgb[i] < 0 || rgb[i] > 255) {
+                throw new IllegalArgumentException("color channel must be 0..255");
+            }
+        }
+        JsonElement size = data.get("size");
+        if (size == null || !size.isJsonPrimitive() || !size.getAsJsonPrimitive().isNumber()) {
+            throw new IllegalArgumentException("size must be a number");
+        }
+        BigDecimal exactSize = new BigDecimal(size.getAsJsonPrimitive().getAsString());
+        if (exactSize.compareTo(MIN_DUST_SIZE) < 0 || exactSize.compareTo(MAX_DUST_SIZE) > 0) {
+            throw new IllegalArgumentException("size must be within 0.01..4.0");
+        }
+        return new Particle.DustOptions(Color.fromRGB(rgb[0], rgb[1], rgb[2]), exactSize.floatValue());
+    }
+
+    private static String stringField(JsonObject object, String field) {
+        JsonElement value = object.get(field);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+            throw new IllegalArgumentException(field + " must be a string");
+        }
+        return value.getAsString();
+    }
+
+    private static final class ParticleDataException extends Exception {
+        final String reason;
+        final java.util.Map<String, Object> data;
+
+        ParticleDataException(String reason, java.util.Map<String, Object> data) {
+            super(reason, null, false, false);
+            this.reason = reason;
+            this.data = data;
         }
     }
 
@@ -215,8 +385,8 @@ final class WorldB5Commands {
     }
 
     /**
-     * b7 ParticleBuilder Stage 1 mapping. Receivers and source stay unset so delivery remains
-     * world-wide, and null data preserves the existing no-data particle contract.
+     * ParticleBuilder mapping. Receivers and source stay unset so delivery is world-wide unless the
+     * caller narrows receivers; data starts null and is set only for typed data.
      */
     static ParticleBuilder particleBuilder(
             Particle particle,
@@ -257,7 +427,7 @@ final class WorldB5Commands {
         return origin;
     }
 
-    private static Particle particle(String raw) {
+    static Particle particle(String raw) {
         NamespacedKey key = canonicalKey(raw);
         return key == null ? null : Registry.PARTICLE_TYPE.get(key);
     }
