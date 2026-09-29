@@ -155,26 +155,24 @@ public class McRemote extends JavaPlugin implements Listener {
                 : getDataFolder().toPath().resolve(value).toAbsolutePath().normalize();
     }
 
+    /**
+     * Adds missing packaged defaults and moves legacy b5:／b7: values to their meaning categories so
+     * an operator's changed value never falls back to the default (DECISIONS 2026-09-03-02).
+     */
     private void migrateMissingConfigDefaults(FileConfiguration config) {
-        Configuration defaults = config.getDefaults();
-        if (defaults == null) {
+        LegacyConfigKeys.Migration migration = LegacyConfigKeys.migrate(config, config.getDefaults());
+        if (!migration.changed()) {
             return;
         }
-
-        List<String> added = new ArrayList<>();
-        for (String path : defaults.getKeys(true)) {
-            if (defaults.isConfigurationSection(path)) {
-                continue;
-            }
-            if (!config.contains(path, true)) {
-                config.set(path, defaults.get(path));
-                added.add(path);
-            }
+        saveConfig();
+        if (!migration.added().isEmpty()) {
+            logger.info("Added missing config defaults: " + String.join(", ", migration.added()));
         }
-
-        if (!added.isEmpty()) {
-            saveConfig();
-            logger.info("Added missing config defaults: " + String.join(", ", added));
+        if (!migration.moved().isEmpty()) {
+            logger.warning("Moved legacy config values: " + String.join(", ", migration.moved()));
+        }
+        if (!migration.removed().isEmpty()) {
+            logger.warning("Removed legacy config keys: " + String.join(", ", migration.removed()));
         }
     }
 

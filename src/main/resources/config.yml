@@ -26,8 +26,8 @@ auth:
   max_long_lived_credentials_per_uuid: 16  # distinct from concurrent session limit
 
 # Runtime limits below are implementation limits, not protocol constants.
-# Older configs grouped them under "b5:" / "b7:". Those keys are still read when the
-# new key is absent (with a warning) and will be ignored from the stable release.
+# Older configs grouped them under "b5:" / "b7:". On startup those values are moved to the
+# keys below (an existing new key wins) and the old keys are removed; the server log lists both.
 
 # Per-connection queues.
 connection:
