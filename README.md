@@ -57,7 +57,8 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 
 ## 設定
 
-- `plugins/McRemote/config.yml` で、TCP port（`api_port`）、認証、build range を確認します。
+設定ファイルは `plugins/McRemote/config.yml` です。初回起動時に既定値で作られます。変更したらサーバーを再起動します。
+
 - port `25575` は、信頼できる client からだけ到達できるよう制限します。
 - LuckPerms を使う場合は、接続する player に `mcr.online` または `mcr.offline` と
   `mcr.build.range` meta を付与します。
@@ -66,6 +67,56 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 - 認証情報の保存先が起動時に欠けている場合、プラグインは新しい保存領域を自動で作り、サーバーログに通知します。
   以前の token は使えなくなるため、client で再ペアリングしてください。保存済みデータの破損や ID 不一致では
   認証を停止し、原因をログに出します。
+
+### 設定項目
+
+接続と権限:
+
+| 項目 | 既定値 | 意味 |
+| --- | --- | --- |
+| `api_port` | `25575` | client が接続する TCP port。ゲームの port とは別です |
+| `luckperm_permissions.online` | `mcr.online` | player がゲームに入っている（online）間、client からの建築などを許す LuckPerms の permission node |
+| `luckperm_permissions.offline` | `mcr.offline` | player がゲームに入っていない（offline）間も、client からの建築などを許す permission node |
+| `luckperm_permissions.build.range` | `mcr.build.range` | player ごとの build range を読む LuckPerms の meta key |
+| `default_build_range` | `1000` | LuckPerms が無いときなどに使う build range（ブロック）。建築原点から X 方向と Z 方向それぞれにこの距離まで建築できます |
+| `supported_mc_versions` | `["1.21.11"]` | hello で client に伝える対応 Minecraft の版。空にすると、動いているサーバーの版を伝えます |
+
+認証（`auth`）:
+
+| 項目 | 既定値 | 意味 |
+| --- | --- | --- |
+| `auth.enforcement` | `true` | 接続に token を求めるか。`false` は一時的な bypass に限ります（上記） |
+| `auth.pair_code_ttl_seconds` | `120` | ペアリングコードの有効期間（秒） |
+| `auth.session_token_ttl_seconds` | `7200` | ペアリングで発行する session token の有効期間（秒） |
+| `auth.max_sessions_per_uuid` | `16` | 同じ player が同時に持てる接続の数 |
+| `auth.credential_store_path` | `credential-store/snapshot.json` | 認証情報の保存先。相対パスは `plugins/McRemote` から |
+| `auth.revocation_authority_path` | `credential-revocations` | 失効記録の保存先。上と入れ子にしないでください |
+| `auth.max_long_lived_credentials_per_uuid` | `16` | player ごとの長期 credential の上限。同時接続数とは別です |
+
+実行時の上限: プラグインが一度に抱える量の上限です。protocol の定数ではありません。サーバーの負荷を見て調整します。
+
+| 項目 | 既定値 | 意味 |
+| --- | --- | --- |
+| `connection.command_queue_capacity` | `1024` | 接続ごとに、受け付けて未実行の命令を溜められる数 |
+| `connection.response_queue_capacity` | `64` | 接続ごとに、未送信の応答を溜められる数。あふれるとその接続を切ります（黙って捨てません） |
+| `events.ring_capacity` | `256` | 接続ごとに溜めておくイベントの数 |
+| `events.ring_bytes` | `262144` | 溜めておくイベントの合計バイト数の上限 |
+| `events.poll_default` | `64` | `events.poll` が件数を指定しないときに返す件数 |
+| `events.poll_limit` | `64` | `events.poll` が一度に返す件数の上限。client の指定がこれより大きければ、この値に縮めます |
+| `entities.handle_capacity` | `256` | 接続ごとに発行できる entity handle の数 |
+| `particles.max_count` | `1000` | 1 回の `spawnParticle` で出せる数の上限 |
+| `work.per_request` | `4096` | 1 つの命令の作業量の上限 |
+| `work.per_session_tick` | `4096` | 1 tick あたり、接続ごとの作業量の上限 |
+| `work.per_player_tick` | `8192` | 1 tick あたり、player ごとの作業量の上限 |
+| `work.global_per_tick` | `32768` | 1 tick あたり、サーバー全体の作業量の上限 |
+| `lightning.connection_cooldown_ticks` | `20` | 同じ接続から落雷を続けて呼べる間隔（tick） |
+| `lightning.player_cooldown_ticks` | `20` | 同じ player が落雷を続けて呼べる間隔（tick） |
+| `lightning.global_per_tick` | `2` | サーバー全体で 1 tick に起こせる落雷の数 |
+| `lightning.rolling_window_ticks` | `20` | 下の上限を数える期間（tick） |
+| `lightning.global_per_window` | `8` | 上の期間にサーバー全体で起こせる落雷の数 |
+
+以前の `config.yml` にある `b5:`／`b7:` の項目は、同じ意味の新しい項目が無ければ今も読みます。
+その場合はサーバーログに移動先を示す警告が出るので、新しい項目へ移してください。旧項目は stable release から読まなくなります。
 
 ## 主な capability
 
