@@ -78,12 +78,25 @@ def pair(primary: Rpc, poll_interval: float) -> str:
     raise AssertionError("pairing timed out")
 
 
-def hello(rpc: Rpc, token: str) -> dict:
+def require_mc_version(info: dict, expected: str) -> None:
+    """Stop before the test body when the server runs another Minecraft version.
+
+    The expected version comes from the test instruction (for example "verify b8 on 26.2").
+    knowledge DECISIONS 2026-09-28-03.
+    """
+    actual = info.get("mc_version")
+    if actual != expected:
+        raise AssertionError(
+            f"hello mc_version is {actual!r}, expected {expected!r}; the test body was not run")
+
+
+def hello(rpc: Rpc, token: str, expect_mc: str) -> dict:
     info = successful(rpc.call("hello", {
         "protocol": PROTOCOL,
         "auth": {"token": token},
         "build": {"dimension": "overworld", "origin": [200, 0, 200]},
     }))
+    require_mc_version(info, expect_mc)
     if not info.get("player"):
         raise AssertionError(f"hello did not bind player: {info}")
     if info.get("dimension") != "minecraft:overworld":
@@ -168,15 +181,21 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=25575)
     parser.add_argument("--timeout", type=float, default=60)
     parser.add_argument("--poll-interval", type=float, default=0.5)
+    parser.add_argument(
+        "--expect-mc",
+        required=True,
+        help="Minecraft version the test instruction names; the run fails before the test body "
+             "if hello reports another mc_version",
+    )
     args = parser.parse_args()
 
     primary = secondary = None
     try:
         primary = Rpc(args.host, args.port, args.timeout)
         token = pair(primary, args.poll_interval)
-        primary_info = hello(primary, token)
+        primary_info = hello(primary, token, args.expect_mc)
         secondary = Rpc(args.host, args.port, args.timeout)
-        secondary_info = hello(secondary, token)
+        secondary_info = hello(secondary, token, args.expect_mc)
         if primary_info["player"] != secondary_info["player"]:
             raise AssertionError("connection epochs did not bind the same player")
         print("PASS two active epochs bound to the same paired player")

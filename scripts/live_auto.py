@@ -15,7 +15,7 @@ import sys
 import time
 
 
-PROTOCOL = "23.0.0"
+PROTOCOL = "23.2.0"
 HANDLE = re.compile(r"^mcr_eh_[A-Za-z0-9_-]{22}$")
 PAIR_CODE = re.compile(r"^[0-9]{6}$")
 SESSION_TOKEN = re.compile(r"^mcrs_[A-Za-z0-9_-]{43}$")
@@ -163,6 +163,18 @@ def acquire_interactive_token(
     raise RuntimeError("interactive pairing expired before approval")
 
 
+def require_mc_version(info: dict, expected: str) -> None:
+    """Stop before the test body when the server runs another Minecraft version.
+
+    The expected version comes from the test instruction (for example "verify b8 on 26.2").
+    knowledge DECISIONS 2026-09-28-03.
+    """
+    actual = info.get("mc_version")
+    if actual != expected:
+        raise AssertionError(
+            f"hello mc_version is {actual!r}, expected {expected!r}; the test body was not run")
+
+
 def connect(args, token: str | None = None, rpc_factory=Rpc) -> Rpc:
     rpc = rpc_factory(args.host, args.port, args.timeout)
     try:
@@ -175,6 +187,7 @@ def connect(args, token: str | None = None, rpc_factory=Rpc) -> Rpc:
         info = result(rpc.call("hello", hello_params))
         if info.get("protocol") != args.protocol:
             raise AssertionError(f"hello protocol mismatch: {info}")
+        require_mc_version(info, args.expect_mc)
         expected_context = {
             "dimension": "minecraft:overworld", "origin": [0, 0, 0],
         }
@@ -388,6 +401,12 @@ def main() -> int:
     parser.add_argument("--handle-capacity", type=int, default=8)
     parser.add_argument("--particle-limit", type=int, default=100)
     parser.add_argument("--queue-capacity", type=int, default=1024)
+    parser.add_argument(
+        "--expect-mc",
+        required=True,
+        help="Minecraft version the test instruction names; the run fails before the test body "
+             "if hello reports another mc_version",
+    )
     parser.add_argument(
         "--interactive-pair",
         action="store_true",
