@@ -115,8 +115,8 @@ final class EntityHandleRegistry {
             stagedNew.add(entity);
             issued.add(new Issued(null, entity));
         }
-        int projected = byHandle.size() - stagedInvalidations.size() + stagedNew.size() + reservations;
-        if (projected > capacity) {
+        if (!fitsCapacity(byHandle.size(), stagedInvalidations.size(), stagedNew.size(),
+                reservations, capacity)) {
             throw new CapacityException();
         }
         for (String handle : stagedInvalidations) {
@@ -136,6 +136,11 @@ final class EntityHandleRegistry {
             committed.add(new Issued(handle, entity));
         }
         return committed;
+    }
+
+    /** projected state = 現在のhandle数 − staged失効数 ＋ 新規数 ＋ open中のspawn reservation数 <= capacity。 */
+    static boolean fitsCapacity(int current, int stagedRevokes, int newHandles, int reservations, int capacity) {
+        return (long) current - stagedRevokes + newHandles + reservations <= capacity;
     }
 
     /** 成功した entity.setPose による dimension 移動を、同じ handle の issued dimension へ反映する。 */

@@ -216,9 +216,10 @@ final class WorldB5Commands {
     }
 
     /**
-     * Resolves typed data. Only minecraft:dust and minecraft:block accept object data in B8; object
-     * data for any other particle is particle_data_unsupported. Missing required data is
-     * particle_data_required.
+     * Resolves typed data. Only minecraft:dust and minecraft:block accept object data in B8. Data
+     * for a data-free particle is invalid_params; object data for a particle whose data type B8 does
+     * not support (e.g. minecraft:dust_color_transition) is particle_data_unsupported. Missing
+     * required data is particle_data_required.
      */
     private Object particleData(Particle particle, JsonElement data) throws ParticleDataException {
         String key = particle.getKey().toString();
@@ -228,6 +229,9 @@ final class WorldB5Commands {
                 throw new ParticleDataException("particle_data_required", null);
             }
             return null;
+        }
+        if (!needsData) {
+            throw new IllegalArgumentException("this particle takes no data");
         }
         if (!DUST_ID.equals(key) && !BLOCK_ID.equals(key)) {
             if (data.isJsonObject()) {

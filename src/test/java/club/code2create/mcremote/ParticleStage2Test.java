@@ -106,11 +106,15 @@ class ParticleStage2Test {
         objectWithoutData.spawn("[" + POS + "{\"particle_id\":\"minecraft:dust\"},0,1]");
         assertEquals("particle_data_required", objectWithoutData.context.reason);
 
-        for (String particle : List.of("minecraft:flame", "minecraft:item", "minecraft:falling_dust")) {
+        for (String particle : List.of("minecraft:item", "minecraft:falling_dust")) {
             Harness h = new Harness();
             h.spawn("[" + POS + "{\"particle_id\":\"" + particle + "\",\"data\":{\"color\":[1,2,3],\"size\":1}},0,1]");
             assertEquals("particle_data_unsupported", h.context.reason, particle);
         }
+
+        Harness dataFree = new Harness();
+        dataFree.spawn("[" + POS + "{\"particle_id\":\"minecraft:flame\",\"data\":{\"color\":[1,2,3],\"size\":1}},0,1]");
+        assertEquals("invalid_params", dataFree.context.reason, "data on a data-free particle");
 
         Harness nonObject = new Harness();
         nonObject.spawn("[" + POS + "{\"particle_id\":\"minecraft:flame\",\"data\":5},0,1]");

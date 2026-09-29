@@ -268,10 +268,15 @@ final class EntityLifecycleCommands {
         long maxChunkX = chunkIndex(query.center().getX() + query.radius());
         long minChunkZ = chunkIndex(query.center().getZ() - query.radius());
         long maxChunkZ = chunkIndex(query.center().getZ() + query.radius());
-        long columns = Math.multiplyExact(
+        return workCost(
                 Math.addExact(Math.subtractExact(maxChunkX, minChunkX), 1),
-                Math.addExact(Math.subtractExact(maxChunkZ, minChunkZ), 1));
-        return Math.addExact(columns, query.maxEntities());
+                Math.addExact(Math.subtractExact(maxChunkZ, minChunkZ), 1),
+                query.maxEntities());
+    }
+
+    /** intersecting_chunk_columns + max_entities with checked arithmetic (overflow throws). */
+    static long workCost(long chunkSpanX, long chunkSpanZ, int maxEntities) {
+        return Math.addExact(Math.multiplyExact(chunkSpanX, chunkSpanZ), maxEntities);
     }
 
     /** floorDiv(floor(value), 16), rejecting values whose block index does not fit an int. */
