@@ -41,20 +41,11 @@ McRemote はその命令をサーバーの世界へ反映し、結果を返し�
 
 ### Step 1: プラグインを置いて起動する
 
-[最新のリリース](https://github.com/Naohiro2g/McRemote/releases/tag/v1.21.11-2301.0.0b7.post2)から
-`mc-remote-1.21.11-2301.0.0b7.post2.jar` を取得し、サーバーの `plugins/` に置いてサーバーを起動します。
-`plugins/McRemote/config.yml` が作られます。
+[リリース一覧](https://github.com/Naohiro2g/McRemote/releases)から最新の JAR（`mc-remote-<Minecraft の版>-<版>.jar`）を取得し、
+サーバーの `plugins/` に置いてサーバーを起動します。
+認証は最初から有効で、認証情報の保存領域も起動時に自動で作られます。
 
-### Step 2: 認証を有効にする
-
-`plugins/McRemote/config.yml` の `auth.enforcement` を `true` にして、サーバーを再起動します。
-続けて、サーバーのコンソールで一度だけ次を実行し、認証情報の保存領域を作ります。
-
-```text
-mcremote credential bootstrap
-```
-
-### Step 3: クライアントから接続する
+### Step 2: クライアントから接続する
 
 クライアントの接続先を自分のサーバー（port `25575`）にして、プログラムを実行します。
 クライアントが表示する `/mcremote pair NNN-NNN` をゲーム内のチャットで実行すると、接続が認証されます。
@@ -70,7 +61,11 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 - port `25575` は、信頼できる client からだけ到達できるよう制限します。
 - LuckPerms を使う場合は、接続する player に `mcr.online` または `mcr.offline` と
   `mcr.build.range` meta を付与します。
-- `auth.enforcement: false` は token なしで接続できる開発用の設定です。loopback または隔離した検証環境だけで使用します。
+- `auth.enforcement` の既定は `true` です。`false` は認証障害の診断や移行試験のために、運用者が明示する
+  一時的な bypass です。token なしで接続できてしまうので、loopback または隔離した検証環境だけで使用します。
+- 認証情報の保存先が起動時に欠けている場合、プラグインは新しい保存領域を自動で作り、サーバーログに通知します。
+  以前の token は使えなくなるため、client で再ペアリングしてください。保存済みデータの破損や ID 不一致では
+  認証を停止し、原因をログに出します。
 
 ## 主な capability
 
@@ -126,7 +121,7 @@ local server task は環境固有の server directory を使用します。
 ### smoke test
 
 `scripts/smoke_test.py` は Python 標準ライブラリだけで接続し、hello、build context、
-block set/get、catalog error を一往復確認します。token なし hello を許す隔離した開発設定で、
+block set/get、catalog error を一往復確認します。`auth.enforcement: false` にした隔離した開発設定で、
 サーバー起動後に実行します。
 
 ```sh
