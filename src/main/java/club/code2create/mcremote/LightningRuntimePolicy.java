@@ -1,6 +1,6 @@
 package club.code2create.mcremote;
 
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.ConfigurationSection;
 
 /** Server-local limits for the protocol 23.1 damage-capable lightning command. */
 record LightningRuntimePolicy(
@@ -23,18 +23,17 @@ record LightningRuntimePolicy(
         }
     }
 
-    static LightningRuntimePolicy from(FileConfiguration config) {
+    static LightningRuntimePolicy from(ConfigurationSection config) {
         return new LightningRuntimePolicy(
-                positive(config, "b7.lightning.connection_cooldown_ticks",
-                        DEFAULT_CONNECTION_COOLDOWN_TICKS),
-                positive(config, "b7.lightning.player_cooldown_ticks",
-                        DEFAULT_PLAYER_COOLDOWN_TICKS),
-                positive(config, "b7.lightning.global_per_tick", DEFAULT_GLOBAL_PER_TICK),
-                positive(config, "b7.lightning.rolling_window_ticks", DEFAULT_ROLLING_WINDOW_TICKS),
-                positive(config, "b7.lightning.global_per_window", DEFAULT_GLOBAL_PER_WINDOW));
+                positive(config, "connection_cooldown_ticks", DEFAULT_CONNECTION_COOLDOWN_TICKS),
+                positive(config, "player_cooldown_ticks", DEFAULT_PLAYER_COOLDOWN_TICKS),
+                positive(config, "global_per_tick", DEFAULT_GLOBAL_PER_TICK),
+                positive(config, "rolling_window_ticks", DEFAULT_ROLLING_WINDOW_TICKS),
+                positive(config, "global_per_window", DEFAULT_GLOBAL_PER_WINDOW));
     }
 
-    private static int positive(FileConfiguration config, String path, int fallback) {
-        return Math.max(1, config.getInt(path, fallback));
+    private static int positive(ConfigurationSection config, String key, int fallback) {
+        return Math.max(1, LegacyConfigKeys.getInt(
+                config, "lightning." + key, "b7.lightning." + key, fallback));
     }
 }

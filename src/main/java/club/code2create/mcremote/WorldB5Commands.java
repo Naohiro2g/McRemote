@@ -19,13 +19,13 @@ import java.util.function.Function;
 final class WorldB5Commands {
     private final WorldCommandContext session;
     private final EntityHandleRegistry handles;
-    private final B5RuntimePolicy policy;
+    private final RuntimePolicy policy;
     private final Function<String, Particle> particleResolver;
 
     WorldB5Commands(
             WorldCommandContext session,
             EntityHandleRegistry handles,
-            B5RuntimePolicy policy
+            RuntimePolicy policy
     ) {
         this(session, handles, policy, WorldB5Commands::particle);
     }
@@ -33,7 +33,7 @@ final class WorldB5Commands {
     WorldB5Commands(
             WorldCommandContext session,
             EntityHandleRegistry handles,
-            B5RuntimePolicy policy,
+            RuntimePolicy policy,
             Function<String, Particle> particleResolver
     ) {
         this.session = session;

@@ -654,13 +654,13 @@ class DirectionLightningFixtureContractTest {
         };
     }
 
-    private static B5RuntimePolicy workPolicy(int max, int tickBudget) {
-        return new B5RuntimePolicy(8, 8_000, 8, 8, 8, 1_000,
+    private static RuntimePolicy workPolicy(int max, int tickBudget) {
+        return new RuntimePolicy(8, 8_000, 8, 8, 8, 1_000,
                 max, tickBudget, tickBudget, tickBudget, 16, 16);
     }
 
-    private static B5RuntimePolicy particlePolicy(int maxParticleCount) {
-        return new B5RuntimePolicy(8, 8_000, 8, 8, 8, maxParticleCount,
+    private static RuntimePolicy particlePolicy(int maxParticleCount) {
+        return new RuntimePolicy(8, 8_000, 8, 8, 8, maxParticleCount,
                 4_096, 4_096, 8_192, 32_768, 16, 16);
     }
 
@@ -942,7 +942,7 @@ class DirectionLightningFixtureContractTest {
 
     private static final class ParticleHarness {
         private final ParticleContext context;
-        private B5RuntimePolicy policy = particlePolicy(1_000);
+        private RuntimePolicy policy = particlePolicy(1_000);
         private boolean force;
         private final World world;
 
