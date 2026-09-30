@@ -111,6 +111,8 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 | `work.per_session_tick` | `4096` | 1 tick あたり、接続ごとの作業量の上限 |
 | `work.per_player_tick` | `8192` | 1 tick あたり、player ごとの作業量の上限 |
 | `work.global_per_tick` | `32768` | 1 tick あたり、サーバー全体の作業量の上限 |
+| `sound.per_connection_per_tick` | `16` | 1 tick に、接続ごとに鳴らせる音の数（`world.playSound`、`world.playBlockSound`）。超えると `backpressure` |
+| `sound.global_per_tick` | `64` | 1 tick に、サーバー全体で鳴らせる音の数 |
 | `lightning.connection_cooldown_ticks` | `20` | 同じ接続から落雷を続けて呼べる間隔（tick） |
 | `lightning.player_cooldown_ticks` | `20` | 同じ player が落雷を続けて呼べる間隔（tick） |
 | `lightning.global_per_tick` | `2` | サーバー全体で 1 tick に起こせる落雷の数 |

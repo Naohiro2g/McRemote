@@ -57,6 +57,7 @@ public class McRemote extends JavaPlugin implements Listener {
     private WorkAdmission workAdmission;
     private LightningRuntimePolicy lightningRuntimePolicy;
     private LightningRateAdmission lightningRateAdmission;
+    private SoundRateAdmission soundRateAdmission;
 
     @Override
     public void onEnable(){
@@ -93,6 +94,7 @@ public class McRemote extends JavaPlugin implements Listener {
         this.workAdmission = new WorkAdmission(runtimePolicy);
         this.lightningRuntimePolicy = LightningRuntimePolicy.from(config);
         this.lightningRateAdmission = new LightningRateAdmission(lightningRuntimePolicy);
+        this.soundRateAdmission = new SoundRateAdmission(SoundRateAdmission.Policy.from(config));
         logger.info("Connection command queue capacity: "
                 + runtimePolicy.connectionQueueCapacity());
         logger.info("Resource catalog ready: blocks=" + catalogService.getBlockCount()
@@ -269,6 +271,10 @@ public class McRemote extends JavaPlugin implements Listener {
         return lightningRateAdmission;
     }
 
+    SoundRateAdmission getSoundRateAdmission() {
+        return soundRateAdmission;
+    }
+
     /** enforcement トグル（§10.11.1 item5）。ON で hello が token 必須になる（次ステップで参照）。 */
     public boolean isAuthEnforcement() {
         return this.authEnforcement;
@@ -314,6 +320,7 @@ public class McRemote extends JavaPlugin implements Listener {
         public void run() {
             workAdmission.beginTick();
             lightningRateAdmission.beginTick();
+            soundRateAdmission.beginTick();
             // CopyOnWriteArrayList の反復は snapshot。要素除去はリスト側 remove(Object) で行う
             // （snapshot iterator は remove() 非対応）。RemoteSession は equals 未override＝同一性判定。
             for (RemoteSession s : sessions) {

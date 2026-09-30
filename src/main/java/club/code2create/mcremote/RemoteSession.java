@@ -99,6 +99,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         DirectionCommands directionCommands = new DirectionCommands(this, entityHandles);
         EntityLifecycleCommands entityLifecycleCommands = new EntityLifecycleCommands(
                 this, entityHandles, dimensions, runtimePolicy);
+        SoundCommands soundCommands = new SoundCommands(this, plugin.getSoundRateAdmission());
         LightningCommands lightningCommands = new LightningCommands(
                 this,
                 plugin.getLightningRateAdmission(),
@@ -109,7 +110,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
                 this, blockCommands, miscCommands, buildStateCommands, catalogCommands,
                 eventCommands, worldB5Commands, signCommands, directionCommands, lightningCommands,
-                entityLifecycleCommands));
+                entityLifecycleCommands, soundCommands));
         this.authCommands = new AuthCommands(
                 this, plugin.getPairingManager(), plugin.getCredentialService());
         init();

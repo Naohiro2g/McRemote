@@ -58,6 +58,11 @@ work:
   per_player_tick: 8192
   global_per_tick: 32768
 
+# world.playSound／world.playBlockSound: sounds accepted per server tick.
+sound:
+  per_connection_per_tick: 16
+  global_per_tick: 64
+
 # Full-lightning admission. Rate gates are atomic and all values are measured in server ticks.
 lightning:
   connection_cooldown_ticks: 20

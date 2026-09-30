@@ -259,6 +259,27 @@ def verify_b8(args, token: str | None, height: int) -> None:
                            {"particle_id": "minecraft:dust_color_transition",
                             "data": {"color": [1, 2, 3], "size": 1}}, 0, 1]),
                        "particle_data_unsupported")
+        require_null_result("world.playSound note", rpc.call(
+            "world.playSound", [0.5, y, 0.5, "minecraft:block.note_block.harp", {"note": 14}]))
+        require_null_result("world.playSound pitch", rpc.call(
+            "world.playSound", [0.5, y, 0.5, "minecraft:block.bell.use", {"pitch": 1.5, "volume": 0.5}]))
+        print("PASS world.playSound: note and pitch accepted")
+        require_reason("playSound unknown sound",
+                       rpc.call("world.playSound", [0, y, 0, "minecraft:no.such.sound"]), "unknown_sound")
+        require_reason("playSound pitch and note together",
+                       rpc.call("world.playSound", [0, y, 0, "minecraft:block.bell.use",
+                                                    {"pitch": 1, "note": 12}]), "invalid_params")
+        require_null_result("world.playBlockSound hit", rpc.call(
+            "world.playBlockSound", [0, height, 0, "hit"]))
+        print("PASS world.playBlockSound: block sound group resolved")
+        require_reason("playBlockSound air", rpc.call(
+            "world.playBlockSound", [0, height + 5, 0, "place"]), "no_block")
+        require_reason("playBlockSound unknown kind", rpc.call(
+            "world.playBlockSound", [0, height, 0, "land"]), "invalid_params")
+        if token is None:
+            require_reason("playSound self without a bound player", rpc.call(
+                "world.playSound", [0, y, 0, "minecraft:block.bell.use", {"receiver": "self"}]),
+                "auth_required")
         self_spec = {"particle_id": "minecraft:flame", "receiver": "self"}
         if token is None:
             require_reason("particle self without a bound player",
