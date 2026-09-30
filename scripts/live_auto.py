@@ -264,6 +264,12 @@ def verify_b8(args, token: str | None, height: int) -> None:
         require_null_result("world.playSound pitch", rpc.call(
             "world.playSound", [0.5, y, 0.5, "minecraft:block.bell.use", {"pitch": 1.5, "volume": 0.5}]))
         print("PASS world.playSound: note and pitch accepted")
+        require_null_result("world.playSound bare id", rpc.call(
+            "world.playSound", [0.5, y, 0.5, "block.bell.use"]))
+        bare = result(rpc.call("world.spawnParticle", base + ["flame", 0, 1]))
+        if bare != 1:
+            raise AssertionError(f"bare particle id not accepted: {bare!r}")
+        print("PASS resource id: minecraft: filled in for sound and particle")
         require_reason("playSound unknown sound",
                        rpc.call("world.playSound", [0, y, 0, "minecraft:no.such.sound"]), "unknown_sound")
         require_reason("playSound pitch and note together",
