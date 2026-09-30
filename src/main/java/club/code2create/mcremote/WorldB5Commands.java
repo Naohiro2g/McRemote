@@ -442,8 +442,7 @@ final class WorldB5Commands {
     }
 
     private static NamespacedKey canonicalKey(String raw) {
-        NamespacedKey key = NamespacedKey.fromString(raw);
-        return key != null && raw.equals(key.toString()) ? key : null;
+        return ResourceIds.parse(raw);
     }
 
     private static double nonNegative(double value) {

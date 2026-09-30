@@ -169,10 +169,17 @@ class SoundCommandsTest {
     }
 
     @Test
-    void soundIdMustBeCanonicalWithNamespace() {
-        Harness h = new Harness();
-        h.commands.handlePlaySound(params("[0,0,0,\"block.bell.use\"]"));
-        assertEquals("unknown_sound", h.context.reason, "the minecraft: namespace is not filled in");
+    void minecraftNamespaceMayBeOmittedAndOthersMustBeCanonical() {
+        Harness omitted = new Harness();
+        omitted.commands.handlePlaySound(params("[0,0,0,\"block.bell.use\"]"));
+        assertNull(omitted.context.reason, "minecraft: is filled in");
+        assertEquals(omitted.bell, omitted.worldPlays.get(0).sound, "played by its canonical id");
+
+        for (String bad : List.of("Block.Bell.Use", ":block.bell.use", "minecraft:", "a:b:c", "")) {
+            Harness h = new Harness();
+            h.commands.handlePlaySound(params("[0,0,0,\"" + bad + "\"]"));
+            assertEquals("unknown_sound", h.context.reason, bad);
+        }
     }
 
     @Test

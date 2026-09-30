@@ -241,10 +241,9 @@ final class SoundCommands {
         return (float) Math.pow(2.0, (note - 12) / 12.0);
     }
 
-    /** Only the canonical namespaced form is accepted (same rule as particle and entity IDs). */
+    /** minecraft: may be omitted and is filled in; see {@link ResourceIds}. */
     static NamespacedKey canonicalKey(String raw) {
-        NamespacedKey key = NamespacedKey.fromString(raw);
-        return key != null && raw.equals(key.toString()) ? key : null;
+        return ResourceIds.parse(raw);
     }
 
     static BlockSound blockSound(BlockData data, String kind) {
