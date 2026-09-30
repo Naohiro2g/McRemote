@@ -155,6 +155,46 @@ class SoundCommandsTest {
         assertEquals(SoundRateAdmission.Result.BACKPRESSURE, rate.admit(UUID.randomUUID()));
     }
 
+    @Test
+    void nullOptionsAreInvalidAndEmptyOptionsUseDefaults() {
+        Harness nullOptions = new Harness();
+        nullOptions.commands.handlePlaySound(params("[0,0,0,\"minecraft:block.bell.use\",null]"));
+        assertEquals("invalid_params", nullOptions.context.reason);
+
+        Harness empty = new Harness();
+        empty.commands.handlePlaySound(params("[0,0,0,\"minecraft:block.bell.use\",{}]"));
+        assertNull(empty.context.reason);
+        assertEquals(1.0f, empty.worldPlays.get(0).volume);
+        assertEquals(1.0f, empty.worldPlays.get(0).pitch);
+    }
+
+    @Test
+    void soundIdMustBeCanonicalWithNamespace() {
+        Harness h = new Harness();
+        h.commands.handlePlaySound(params("[0,0,0,\"block.bell.use\"]"));
+        assertEquals("unknown_sound", h.context.reason, "the minecraft: namespace is not filled in");
+    }
+
+    @Test
+    void rateSlotIsNotReturnedWhenWorkIsRejectedAfterwards() {
+        Harness h = new Harness(new SoundRateAdmission.Policy(1, 64));
+        h.context.work = WorkAdmission.Result.WORK_LIMIT_EXCEEDED;
+        h.commands.handlePlaySound(params("[0,0,0,\"minecraft:block.bell.use\"]"));
+        assertEquals("work_limit_exceeded", h.context.reason);
+
+        h.context.work = WorkAdmission.Result.ACCEPTED;
+        h.commands.handlePlaySound(params("[0,0,0,\"minecraft:block.bell.use\"]"));
+        assertEquals("backpressure", h.context.reason, "the slot used by the rejected call stays used");
+    }
+
+    @Test
+    void buildRangeIgnoresYAndIncludesTheEdge() {
+        Harness edge = new Harness();
+        edge.context.buildRange = 5;
+        edge.commands.handlePlaySound(params("[5,1000,-5,\"minecraft:block.bell.use\"]"));
+        assertNull(edge.context.reason);
+    }
+
     // ---- world.playBlockSound ----
 
     @Test
@@ -181,6 +221,19 @@ class SoundCommandsTest {
         assertEquals(0, h.worldPlays.size());
         assertEquals(2.0f, h.playerPlays.get(0).pitch, 1e-6);
         assertEquals(0.5f, h.playerPlays.get(0).volume);
+    }
+
+    @Test
+    void blockSoundDefaultsArePerFieldAndNoteReplacesTheGroupPitch() {
+        Harness volumeOnly = new Harness();
+        volumeOnly.commands.handlePlayBlockSound(params("[0,0,0,\"hit\",{\"volume\":0.3}]"));
+        assertEquals(0.3f, volumeOnly.worldPlays.get(0).volume);
+        assertEquals(0.8f, volumeOnly.worldPlays.get(0).pitch, "pitch keeps the SoundGroup default");
+
+        Harness note = new Harness();
+        note.commands.handlePlayBlockSound(params("[0,0,0,\"hit\",{\"note\":12}]"));
+        assertEquals(1.0f, note.worldPlays.get(0).pitch, 1e-6, "note is not multiplied by the group pitch");
+        assertEquals(0.9f, note.worldPlays.get(0).volume);
     }
 
     @Test
