@@ -41,13 +41,13 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Direct consumer of the Scratch-owned protocol 23.2 entity/particle fixture
- * （scratch-editor {@code 0735a9c957d069f719bee9c91e8be0f9322f4920}）。Every case is mapped to the
+ * （scratch-editor {@code 054a3af017f1abb8cc01cf85b3bc83181e648e19}、successor of {@code 0735a9c}）。Every case is mapped to the
  * production handler or registry path.
  */
 class EntityParticleFixtureContractTest {
     private static final String FIXTURE = "/fixtures/entity-particle-v23.2.json";
     private static final String OWNER_SHA256 =
-            "09c1565bf81d33c92d6282e6e20d926559168cb9d780c07d30ad2f9f5895640e";
+            "ca636b4a2685ea67f24d8e7931e3d30a84e7cec872bb5c5d2eadd178cdac39f2";
     private static final World OVERWORLD = world("overworld");
     private static final World NETHER = world("the_nether");
 
@@ -62,6 +62,165 @@ class EntityParticleFixtureContractTest {
         assertEquals(7, root.getAsJsonObject("nearby").getAsJsonArray("handle_transaction_cases").size());
         assertEquals(7, root.getAsJsonObject("entity_lifecycle").getAsJsonArray("cases").size());
         assertEquals(26, root.getAsJsonObject("particle_stage_2").getAsJsonArray("cases").size());
+        assertEquals(37, root.getAsJsonObject("sound").getAsJsonArray("cases").size());
+        assertEquals(15, root.getAsJsonObject("resource_ids").getAsJsonArray("cases").size());
+    }
+
+    // ---- sound ----
+
+    @Test
+    void soundCases() throws Exception {
+        for (JsonElement element : root().getAsJsonObject("sound").getAsJsonArray("cases")) {
+            JsonObject c = element.getAsJsonObject();
+            String id = c.get("id").getAsString();
+            String scenario = c.has("scenario") ? c.get("scenario").getAsString() : "";
+            SoundHarness h = new SoundHarness(scenario);
+            if (c.get("method").getAsString().equals("world.playSound")) {
+                h.commands.handlePlaySound(c.get("params"));
+            } else {
+                h.commands.handlePlayBlockSound(c.get("params"));
+            }
+            if (c.has("reason")) {
+                assertEquals(c.get("reason").getAsString(), h.reason, id);
+                assertEquals(c.get("code").getAsInt(), h.code, id);
+                assertEquals(0, h.plays.get(), id);
+            } else {
+                assertNull(h.reason, id);
+                assertTrue(h.responded, id);
+                assertNull(h.result, id);
+                assertEquals(1, h.plays.get(), id);
+                assertEquals(1, h.workCalls, id + ": work cost 1");
+            }
+        }
+    }
+
+    // ---- resource IDs (wire §5.0.2) ----
+
+    @Test
+    void resourceIdCases() throws Exception {
+        for (JsonElement element : root().getAsJsonObject("resource_ids").getAsJsonArray("cases")) {
+            JsonObject c = element.getAsJsonObject();
+            String id = c.get("id").getAsString();
+            String kind = c.get("kind").getAsString();
+            String input = c.get("input").getAsString();
+            String canonical = c.has("canonical") ? c.get("canonical").getAsString() : null;
+            switch (kind) {
+                case "block" -> {
+                    java.util.concurrent.atomic.AtomicReference<String> created = new java.util.concurrent.atomic.AtomicReference<>();
+                    BlockCodec codec = new BlockCodec(b -> "minecraft:stone".equals(b) ? Map.of() : null, serialized -> {
+                        created.set(serialized);
+                        return null;
+                    });
+                    JsonObject spec = new JsonObject();
+                    spec.addProperty("block_id", input);
+                    spec.add("state", new JsonObject());
+                    if (canonical != null) {
+                        codec.decode(spec, "params[3]");
+                        assertEquals(canonical, created.get(), id);
+                    } else {
+                        BlockCodec.ValidationException e = assertThrows(BlockCodec.ValidationException.class,
+                                () -> codec.decode(spec, "params[3]"), id);
+                        assertEquals(c.get("reason").getAsString(), e.reason, id);
+                    }
+                }
+                case "dimension" -> {
+                    if (canonical != null) {
+                        assertEquals(canonical, DimensionResolver.parse(input).toString(), id);
+                    } else {
+                        assertThrows(IllegalArgumentException.class, () -> DimensionResolver.parse(input), id);
+                        assertEquals("invalid_params", c.get("reason").getAsString(), id);
+                    }
+                }
+                case "particle", "entity", "sound" -> {
+                    org.bukkit.NamespacedKey key = ResourceIds.parse(input);
+                    if (canonical != null) {
+                        assertEquals(canonical, key.toString(), id);
+                    } else {
+                        assertNull(key, id);
+                        assertEquals("unknown_" + kind, c.get("reason").getAsString(), id);
+                    }
+                }
+                default -> fail("unmapped resource kind " + kind);
+            }
+        }
+    }
+
+    private static final class SoundHarness implements B7CommandContext {
+        final AtomicInteger plays = new AtomicInteger();
+        final Location origin;
+        final SoundCommands commands;
+        UUID bound = UUID.randomUUID();
+        boolean permission = true;
+        int workCalls;
+        boolean responded;
+        Object result;
+        String reason;
+        int code;
+
+        SoundHarness(String scenario) {
+            boolean air = scenario.contains("target_is_air");
+            boolean online = !scenario.equals("bound_player_offline");
+            if (scenario.startsWith("no_bound_player")) {
+                bound = null;
+            }
+            if (scenario.startsWith("permission_denied")) {
+                permission = false;
+            }
+            BlockData data = proxy(BlockData.class, (p, m, a) -> m.getName().equals("getMaterial")
+                    ? (air ? org.bukkit.Material.AIR : org.bukkit.Material.STONE) : defaultValue(m.getReturnType()));
+            org.bukkit.block.Block block = proxy(org.bukkit.block.Block.class, (p, m, a) ->
+                    m.getName().equals("getBlockData") ? data : defaultValue(m.getReturnType()));
+            World world = proxy(World.class, (p, method, args) -> switch (method.getName()) {
+                case "getKey" -> NamespacedKey.minecraft("overworld");
+                case "isChunkLoaded" -> true;
+                case "getBlockAt" -> block;
+                case "playSound" -> {
+                    plays.incrementAndGet();
+                    yield null;
+                }
+                default -> defaultValue(method.getReturnType());
+            });
+            Player player = proxy(Player.class, (p, method, args) -> switch (method.getName()) {
+                case "isOnline" -> online;
+                case "playSound" -> {
+                    plays.incrementAndGet();
+                    yield null;
+                }
+                default -> defaultValue(method.getReturnType());
+            });
+            origin = new Location(world, 0, 0, 0);
+            SoundRateAdmission rate = new SoundRateAdmission(new SoundRateAdmission.Policy(16, 64));
+            rate.beginTick();
+            commands = new SoundCommands(this, rate,
+                    key -> List.of("minecraft:entity.cow.ambient", "minecraft:block.note_block.harp")
+                            .contains(key.toString()),
+                    (blockData, kind) -> new SoundCommands.BlockSound("minecraft:block.stone." + kind, 1f, 1f),
+                    uuid -> player);
+        }
+
+        @Override public UUID getBoundUuid() { return bound; }
+        @Override public UUID getConnectionEpoch() { return UUID.randomUUID(); }
+        @Override public Location getOrigin() { return origin; }
+        @Override public boolean hasConstructionPermission() { return permission; }
+        @Override public boolean isWithinBuildRange(Location target) { return true; }
+        @Override public WorkAdmission.Result admitWork(int units) {
+            workCalls++;
+            return WorkAdmission.Result.ACCEPTED;
+        }
+        @Override public boolean admitSetterWork(long units) { return true; }
+        @Override public boolean rejectTemporaryBackpressure() {
+            reason = "backpressure";
+            code = -32000;
+            return false;
+        }
+        @Override public void respondResult(Object value) {
+            responded = true;
+            result = value;
+        }
+        @Override public void respondError(int code, String reason, Map<String, Object> extraData) {
+            this.code = code;
+            this.reason = reason;
+        }
     }
 
     @Test
