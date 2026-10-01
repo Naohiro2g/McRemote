@@ -1,0 +1,115 @@
+name: Release
+
+# 正式段階の固定trigger（knowledge DECISIONS 2026-09-06-02 / 2026-09-27-03）。
+# human release ownerがGitHub Releaseを公開すると、同じtagのCI（ci.yml）が残したcandidate JARを
+# 再buildせずに昇格する。titleとpre-releaseはtagから導出して明示し、GitHubの既定（tag名）に任せない。
+# workflow_dispatchは既存tagでの検証用。dry_run=trueならReleaseを変更しない。
+# tagのCIが成功してからReleaseを公開する。CIが間に合わず失敗した場合は、workflow_dispatchで
+# dry_run=falseを指定して再実行できる。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "release tag (v<mc-target>-<mc-remote-version>)"
+        required: true
+      dry_run:
+        description: "verify only; do not edit the Release or upload assets"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+      DRY_RUN: ${{ github.event_name == 'release' && 'false' || inputs.dry_run }}
+    steps:
+      # Scripts come from the workflow's own ref; the tag is only used to resolve the commit,
+      # so older tags (before these scripts existed) can be verified with workflow_dispatch.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Test release identity script
+        run: python3 -m unittest discover -s scripts -p 'test_release_identity.py'
+
+      - name: Derive release identity from tag
+        id: identity
+        run: python3 scripts/release_identity.py "${TAG}" --github-output "${GITHUB_OUTPUT}"
+
+      - name: Resolve tag commit
+        id: commit
+        run: |
+          SHA="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+          echo "sha=${SHA}" >> "${GITHUB_OUTPUT}"
+          echo "tag ${TAG} -> ${SHA}"
+
+      - name: Find the successful CI run for the tag
+        id: run
+        run: |
+          RUN_ID="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow ci.yml --branch "${TAG}" \
+            --event push --status success --limit 1 --json databaseId -q '.[0].databaseId')"
+          if [ -z "${RUN_ID}" ]; then
+            echo "no successful ci.yml run for tag ${TAG}" >&2
+            exit 1
+          fi
+          echo "id=${RUN_ID}" >> "${GITHUB_OUTPUT}"
+          echo "candidate run ${RUN_ID}"
+
+      - name: Download candidate artifact (no rebuild)
+        run: gh run download "${{ steps.run.outputs.id }}" --repo "${GITHUB_REPOSITORY}" -n mc-remote-candidate -D candidate
+
+      - name: Verify candidate identity
+        working-directory: candidate
+        env:
+          JAR: ${{ steps.identity.outputs.jar }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          test -f "${JAR}" || { echo "candidate does not contain ${JAR}" >&2; ls -la; exit 1; }
+          test "$(cat source-commit.txt)" = "${SHA}" || {
+            echo "candidate source $(cat source-commit.txt) != tag commit ${SHA}" >&2; exit 1; }
+          sha256sum -c SHA256SUMS
+          stat -c '%s %n' "${JAR}"
+
+      - name: Create manifest.json
+        env:
+          JAR: ${{ steps.identity.outputs.jar }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          python3 scripts/create_release_manifest.py --release-tag "${TAG}" --source-commit "${SHA}" \
+            --jar "candidate/${JAR}" --output candidate/manifest.json
+          cat candidate/manifest.json
+
+      - name: Set title and pre-release, attach assets
+        env:
+          TITLE: ${{ steps.identity.outputs.title }}
+          PRERELEASE: ${{ steps.identity.outputs.prerelease }}
+          JAR: ${{ steps.identity.outputs.jar }}
+        run: |
+          if [ "${PRERELEASE}" = "true" ]; then
+            FLAGS=(--prerelease --latest=false)
+          else
+            FLAGS=(--prerelease=false)
+          fi
+          echo "title: ${TITLE}"
+          echo "flags: ${FLAGS[*]}"
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "dry run: would run gh release edit ${TAG} --title \"${TITLE}\" ${FLAGS[*]}"
+            echo "dry run: would upload candidate/${JAR} candidate/manifest.json"
+            gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json name,isPrerelease,assets \
+              -q '"current title: \(.name), prerelease: \(.isPrerelease), assets: \([.assets[].name] | join(", "))"'
+            exit 0
+          fi
+          gh release edit "${TAG}" --repo "${GITHUB_REPOSITORY}" --title "${TITLE}" "${FLAGS[@]}"
+          gh release upload "${TAG}" --repo "${GITHUB_REPOSITORY}" "candidate/${JAR}" candidate/manifest.json
+          gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json name,isPrerelease,assets \
+            -q '"title: \(.name), prerelease: \(.isPrerelease), assets: \([.assets[].name] | join(", "))"'
