@@ -182,7 +182,6 @@ block set/get、catalog error を一往復確認します。`auth.enforcement: f
 ```sh
 python3 scripts/smoke_test.py \
   --host 127.0.0.1 --port 25575 \
-  --protocol 23.1.0 \
   --dimension overworld --ox 200 --oy 0 --oz 200
 ```
 
@@ -194,8 +193,10 @@ pairing と player position／pose の代表往復は、サーバー内で pair 
 次を使えます。
 
 ```sh
-python3 scripts/player_test.py --host 127.0.0.1 --port 25575 --protocol 23.1.0
+python3 scripts/player_test.py --host 127.0.0.1 --port 25575
 ```
+
+protocol はスクリプトの既定値を使います。別の版を検証するときは `--protocol` で指定できます。
 
 ## ライセンス
 

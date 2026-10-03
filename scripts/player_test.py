@@ -13,7 +13,7 @@ import socket
 import sys
 import time
 
-PROTOCOL = "23.0.0"
+PROTOCOL = "23.2.0"
 
 
 class Rpc:
@@ -116,7 +116,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="McRemote player.* smoke test")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=25575)
-    ap.add_argument("--protocol", default=PROTOCOL)
+    ap.add_argument("--protocol", default=PROTOCOL,
+                    help="client protocol for hello (default: %(default)s)")
     ap.add_argument("--timeout", type=float, default=10.0)
     ap.add_argument("--poll-interval", type=float, default=1.5)
     ap.add_argument("--expect", choices=["success", "permission-denied"], default="success")

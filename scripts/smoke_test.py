@@ -19,7 +19,6 @@ set成功のresult:nullと、明示getBlockの構造化BlockValueを判定する
 使い方（サーバを runServer 等で起動し、新プラグインを反映してから）:
   python3 scripts/smoke_test.py
   python3 scripts/smoke_test.py --host 127.0.0.1 --port 25575 \
-      --protocol 23.0.0 \
       --dimension overworld --ox 200 --oy 0 --oz 200 \
       --x 0 --y 0 --z 0 --material gold_block
 """
@@ -29,14 +28,15 @@ import socket
 import sys
 
 # クライアントが要求する protocol semver（wire-format-design §6.1・clean な protocol 版）
-PROTOCOL = "23.0.0"
+PROTOCOL = "23.2.0"
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="McRemote JSON-RPC smoke test")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=25575)
-    ap.add_argument("--protocol", default=PROTOCOL, help="client protocol for hello")
+    ap.add_argument("--protocol", default=PROTOCOL,
+                    help="client protocol for hello (default: %(default)s)")
     ap.add_argument("--dimension", default="overworld")
     ap.add_argument("--ox", type=int, default=200, help="build origin x")
     ap.add_argument("--oy", type=int, default=0, help="build origin y")
