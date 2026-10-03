@@ -92,9 +92,14 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                 eventRing,
                 runtimePolicy.eventPollDefault(),
                 runtimePolicy.eventPollLimit());
-        WorldB5Commands worldB5Commands = new WorldB5Commands(this, entityHandles, runtimePolicy);
+        WorldB5Commands worldB5Commands = new WorldB5Commands(
+                this, entityHandles, runtimePolicy, WorldB5Commands::particle,
+                new BlockCodec(plugin.getCatalogService()), this::getBoundUuid, org.bukkit.Bukkit::getPlayer);
         SignCommands signCommands = new SignCommands(this, miscCommands);
         DirectionCommands directionCommands = new DirectionCommands(this, entityHandles);
+        EntityLifecycleCommands entityLifecycleCommands = new EntityLifecycleCommands(
+                this, entityHandles, dimensions, runtimePolicy);
+        SoundCommands soundCommands = new SoundCommands(this, plugin.getSoundRateAdmission());
         LightningCommands lightningCommands = new LightningCommands(
                 this,
                 plugin.getLightningRateAdmission(),
@@ -104,7 +109,8 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         this.commandParser = new CommandParser();
         this.commandDispatcher = new CommandDispatcher(this, new RemoteCommandRegistrar().createRegistry(
                 this, blockCommands, miscCommands, buildStateCommands, catalogCommands,
-                eventCommands, worldB5Commands, signCommands, directionCommands, lightningCommands));
+                eventCommands, worldB5Commands, signCommands, directionCommands, lightningCommands,
+                entityLifecycleCommands, soundCommands));
         this.authCommands = new AuthCommands(
                 this, plugin.getPairingManager(), plugin.getCredentialService());
         init();

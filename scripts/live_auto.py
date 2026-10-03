@@ -15,7 +15,7 @@ import sys
 import time
 
 
-PROTOCOL = "23.0.0"
+PROTOCOL = "23.2.0"
 HANDLE = re.compile(r"^mcr_eh_[A-Za-z0-9_-]{22}$")
 PAIR_CODE = re.compile(r"^[0-9]{6}$")
 SESSION_TOKEN = re.compile(r"^mcrs_[A-Za-z0-9_-]{43}$")
@@ -163,6 +163,18 @@ def acquire_interactive_token(
     raise RuntimeError("interactive pairing expired before approval")
 
 
+def require_mc_version(info: dict, expected: str) -> None:
+    """Stop before the test body when the server runs another Minecraft version.
+
+    The expected version comes from the test instruction (for example "verify b8 on 26.2").
+    knowledge DECISIONS 2026-09-28-03.
+    """
+    actual = info.get("mc_version")
+    if actual != expected:
+        raise AssertionError(
+            f"hello mc_version is {actual!r}, expected {expected!r}; the test body was not run")
+
+
 def connect(args, token: str | None = None, rpc_factory=Rpc) -> Rpc:
     rpc = rpc_factory(args.host, args.port, args.timeout)
     try:
@@ -175,6 +187,7 @@ def connect(args, token: str | None = None, rpc_factory=Rpc) -> Rpc:
         info = result(rpc.call("hello", hello_params))
         if info.get("protocol") != args.protocol:
             raise AssertionError(f"hello protocol mismatch: {info}")
+        require_mc_version(info, args.expect_mc)
         expected_context = {
             "dimension": "minecraft:overworld", "origin": [0, 0, 0],
         }
@@ -190,6 +203,98 @@ def connect(args, token: str | None = None, rpc_factory=Rpc) -> Rpc:
     except BaseException:
         rpc.close()
         raise
+
+
+def verify_b8(args, token: str | None, height: int) -> None:
+    """Protocol 23.2 entity lifecycle and particle Stage 2 on a fresh connection epoch."""
+    rpc = connect(args, token)
+    try:
+        y = height + 1
+        handle = result(rpc.call("world.spawnEntity", [0.5, y, 5.5, "minecraft:cow"]))
+        if not HANDLE.fullmatch(handle):
+            raise AssertionError(f"invalid handle: {handle!r}")
+        pose = result(rpc.call("entity.getPose", [handle]))
+        if set(pose) != {"dimension", "pos", "yaw", "pitch"} or pose["dimension"] != "minecraft:overworld":
+            raise AssertionError(f"entity.getPose shape: {pose}")
+        print("PASS entity.getPose: dimension/pos/yaw/pitch")
+
+        nearby = result(rpc.call("world.getNearbyEntities", [0.5, y, 5.5, 2, 4]))
+        if not isinstance(nearby, list) or not any(
+                item.get("handle") == handle and item.get("type") == "minecraft:cow"
+                and set(item) == {"handle", "type", "pos"} for item in nearby):
+            raise AssertionError(f"nearby did not reuse the spawned handle: {nearby}")
+        print("PASS world.getNearbyEntities: reuses same-dimension handle, {handle,type,pos}")
+        require_reason("nearby radius over cap",
+                       rpc.call("world.getNearbyEntities", [0, y, 0, 65, 1]), "invalid_params")
+        require_reason("nearby zero max_entities",
+                       rpc.call("world.getNearbyEntities", [0, y, 0, 1, 0]), "invalid_params")
+
+        moved = result(rpc.call("entity.setPose", [handle, "overworld", 2.5, y, 5.5, 90, 0]))
+        if abs(moved["pos"][0] - 2.5) > 1e-3 or abs(moved["yaw"] - 90) > 1e-3:
+            raise AssertionError(f"entity.setPose did not return the re-read pose: {moved}")
+        print("PASS entity.setPose: teleport and re-read pose")
+
+        require_null_result("entity.remove", rpc.call("entity.remove", [handle]))
+        print("PASS entity.remove: result null")
+        require_reason("removed handle", rpc.call("entity.getPose", [handle]), "entity_not_found")
+
+        base = [0.5, y, 0.5, 0, 0, 0]
+        for label, particle in (
+                ("object default receiver", {"particle_id": "minecraft:flame"}),
+                ("dust typed data", {"particle_id": "minecraft:dust",
+                                     "data": {"color": [255, 80, 0], "size": 1.5}}),
+                ("block typed data", {"particle_id": "minecraft:block",
+                                      "data": {"block_id": "minecraft:stone", "state": {}}})):
+            accepted = result(rpc.call("world.spawnParticle", base + [particle, 0, 3]))
+            if accepted != 3:
+                raise AssertionError(f"particle {label}: accepted {accepted!r}")
+            print(f"PASS world.spawnParticle: {label}")
+        require_reason("particle data on data-free particle",
+                       rpc.call("world.spawnParticle", base + [
+                           {"particle_id": "minecraft:flame",
+                            "data": {"color": [1, 2, 3], "size": 1}}, 0, 1]),
+                       "invalid_params")
+        require_reason("particle unsupported typed data",
+                       rpc.call("world.spawnParticle", base + [
+                           {"particle_id": "minecraft:dust_color_transition",
+                            "data": {"color": [1, 2, 3], "size": 1}}, 0, 1]),
+                       "particle_data_unsupported")
+        require_null_result("world.playSound note", rpc.call(
+            "world.playSound", [0.5, y, 0.5, "minecraft:block.note_block.harp", {"note": 14}]))
+        require_null_result("world.playSound pitch", rpc.call(
+            "world.playSound", [0.5, y, 0.5, "minecraft:block.bell.use", {"pitch": 1.5, "volume": 0.5}]))
+        print("PASS world.playSound: note and pitch accepted")
+        require_null_result("world.playSound bare id", rpc.call(
+            "world.playSound", [0.5, y, 0.5, "block.bell.use"]))
+        bare = result(rpc.call("world.spawnParticle", base + ["flame", 0, 1]))
+        if bare != 1:
+            raise AssertionError(f"bare particle id not accepted: {bare!r}")
+        print("PASS resource id: minecraft: filled in for sound and particle")
+        require_reason("playSound unknown sound",
+                       rpc.call("world.playSound", [0, y, 0, "minecraft:no.such.sound"]), "unknown_sound")
+        require_reason("playSound pitch and note together",
+                       rpc.call("world.playSound", [0, y, 0, "minecraft:block.bell.use",
+                                                    {"pitch": 1, "note": 12}]), "invalid_params")
+        require_null_result("world.playBlockSound hit", rpc.call(
+            "world.playBlockSound", [0, height, 0, "hit"]))
+        print("PASS world.playBlockSound: block sound group resolved")
+        require_reason("playBlockSound air", rpc.call(
+            "world.playBlockSound", [0, height + 5, 0, "place"]), "no_block")
+        require_reason("playBlockSound unknown kind", rpc.call(
+            "world.playBlockSound", [0, height, 0, "land"]), "invalid_params")
+        if token is None:
+            require_reason("playSound self without a bound player", rpc.call(
+                "world.playSound", [0, y, 0, "minecraft:block.bell.use", {"receiver": "self"}]),
+                "auth_required")
+        self_spec = {"particle_id": "minecraft:flame", "receiver": "self"}
+        if token is None:
+            require_reason("particle self without a bound player",
+                           rpc.call("world.spawnParticle", base + [self_spec, 0, 1]), "auth_required")
+        else:
+            result(rpc.call("world.spawnParticle", base + [self_spec, 0, 1]))
+            print("PASS world.spawnParticle: self receiver accepted")
+    finally:
+        rpc.close()
 
 
 def verify_protocol_boundary(args) -> None:
@@ -389,6 +494,12 @@ def main() -> int:
     parser.add_argument("--particle-limit", type=int, default=100)
     parser.add_argument("--queue-capacity", type=int, default=1024)
     parser.add_argument(
+        "--expect-mc",
+        required=True,
+        help="Minecraft version the test instruction names; the run fails before the test body "
+             "if hello reports another mc_version",
+    )
+    parser.add_argument(
         "--interactive-pair",
         action="store_true",
         help="pair once in Minecraft and keep the session token in memory only",
@@ -547,6 +658,7 @@ def main() -> int:
         if not HANDLE.fullmatch(secondary_handle):
             raise AssertionError(f"second epoch handle invalid: {secondary_handle!r}")
         print("PASS world.spawnEntity: opaque handles, capacity, epoch independence")
+        verify_b8(args, token, height)
 
         require_reason(
             "block coordinate fraction rejection",

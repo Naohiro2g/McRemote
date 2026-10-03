@@ -53,7 +53,9 @@ class DirectionLightningFixtureContractTest {
 
         JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
         assertEquals("mcremote.direction-lightning.v23.1", root.get("schema").getAsString());
-        assertEquals(ProtocolInfo.PROTOCOL, root.get("protocol").getAsString());
+        // The 23.1 contract is carried unchanged by later 23.x minors.
+        assertEquals("23.1.0", root.get("protocol").getAsString());
+        assertTrue(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
 
         List<FixtureCase> cases = new ArrayList<>();
         collectCases(root, "", cases);
@@ -656,12 +658,12 @@ class DirectionLightningFixtureContractTest {
 
     private static RuntimePolicy workPolicy(int max, int tickBudget) {
         return new RuntimePolicy(8, 8_000, 8, 8, 8, 1_000,
-                max, tickBudget, tickBudget, tickBudget, 16, 16);
+                max, tickBudget, tickBudget, tickBudget, 16, 16, 64, 64);
     }
 
     private static RuntimePolicy particlePolicy(int maxParticleCount) {
         return new RuntimePolicy(8, 8_000, 8, 8, 8, maxParticleCount,
-                4_096, 4_096, 8_192, 32_768, 16, 16);
+                4_096, 4_096, 8_192, 32_768, 16, 16, 64, 64);
     }
 
     private static JsonArray rangeParams(JsonArray target) {

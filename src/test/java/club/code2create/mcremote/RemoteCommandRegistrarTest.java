@@ -16,15 +16,14 @@ class RemoteCommandRegistrarTest {
     /**
      * DECISIONS 2026-08-26-08: these were never ratified past b5 and are dropped from the b6
      * (protocol 23) registry rather than carried forward as dead handlers. b8 reintroduces
-     * nearby/pose/remove as one new contract instead of resurrecting this shape.
+     * world.getNearbyEntities and entity.remove as part of one new contract (with
+     * entity.getPose／setPose), so only the pos/rotation/pitch/yaw shapes stay removed.
      */
     private static final List<String> REMOVED_PROTOCOL22_ENTITY_METHODS = List.of(
-            "world.getNearbyEntities",
             "entity.getPos", "entity.setPos",
             "entity.getRotation", "entity.setRotation",
             "entity.getPitch", "entity.setPitch",
-            "entity.getYaw", "entity.setYaw",
-            "entity.remove");
+            "entity.getYaw", "entity.setYaw");
 
     @Test
     void b5RegistersPollButLeavesClearUnreachable() {
@@ -99,6 +98,24 @@ class RemoteCommandRegistrarTest {
         assertNotNull(registry.get("world.strikeLightning"));
         assertTrue(registry.get("world.strikeLightning").requiresOrigin());
         assertNull(registry.get("world.strikeLightningEffect"));
+    }
+
+    @Test
+    void b8RegistersEntityLifecycleQuartet() {
+        CommandRegistry registry = new CommandRegistry();
+        EntityLifecycleCommands lifecycle = new EntityLifecycleCommands(
+                null, new EntityHandleRegistry(1), new DimensionResolver(key -> null),
+                RuntimePolicy.from(new org.bukkit.configuration.file.YamlConfiguration()));
+
+        RemoteCommandRegistrar.registerB8EntityCommands(registry, lifecycle);
+
+        assertTrue(registry.get("world.getNearbyEntities").requiresOrigin());
+        assertTrue(registry.get("entity.getPose").requiresOrigin());
+        assertTrue(registry.get("entity.setPose").requiresOrigin());
+        assertTrue(!registry.get("entity.remove").requiresOrigin());
+        for (String name : REMOVED_PROTOCOL22_ENTITY_METHODS) {
+            assertNull(registry.get(name), name);
+        }
     }
 
     private static final class CapturingContext implements CommandDispatchContext {

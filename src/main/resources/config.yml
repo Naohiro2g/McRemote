@@ -26,8 +26,8 @@ auth:
   max_long_lived_credentials_per_uuid: 16  # distinct from concurrent session limit
 
 # Runtime limits below are implementation limits, not protocol constants.
-# Older configs grouped them under "b5:" / "b7:". Those keys are still read when the
-# new key is absent (with a warning) and will be ignored from the stable release.
+# Older configs grouped them under "b5:" / "b7:". On startup those values are moved to the
+# keys below (an existing new key wins) and the old keys are removed; the server log lists both.
 
 # Per-connection queues.
 connection:
@@ -44,6 +44,8 @@ events:
 # Entity handles issued to clients.
 entities:
   handle_capacity: 256
+  nearby_max_radius: 64     # world.getNearbyEntities radius cap; can be lowered, never above 64
+  nearby_max_entities: 64   # world.getNearbyEntities max_entities cap; can be lowered, never above 64
 
 # Particle spawning.
 particles:
@@ -55,6 +57,11 @@ work:
   per_session_tick: 4096
   per_player_tick: 8192
   global_per_tick: 32768
+
+# world.playSound／world.playBlockSound: sounds accepted per server tick.
+sound:
+  per_connection_per_tick: 16
+  global_per_tick: 64
 
 # Full-lightning admission. Rate gates are atomic and all values are measured in server ticks.
 lightning:

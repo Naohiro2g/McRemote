@@ -29,15 +29,17 @@ class NonTtyInput(io.StringIO):
 
 
 class PersistentRpc:
-    def __init__(self):
+    def __init__(self, mc_version="1.21.11"):
         self.calls = []
         self.closed = False
+        self.mc_version = mc_version
 
     def call(self, method, params):
         self.calls.append((method, params))
         if method == "hello":
             return {"jsonrpc": "2.0", "id": 1,
                     "result": {"protocol": "23.0.0",
+                               "mc_version": self.mc_version,
                                "dimension": "minecraft:overworld",
                                "origin": [0, 0, 0]}}
         if method in {"build.setDimension", "build.setOrigin"}:
@@ -53,7 +55,8 @@ class PersistentRpc:
 class LiveAutoAuthenticationTest(unittest.TestCase):
     def setUp(self):
         self.args = SimpleNamespace(
-            host="127.0.0.1", port=25575, timeout=10.0, protocol="23.0.0")
+            host="127.0.0.1", port=25575, timeout=10.0, protocol="23.0.0",
+            expect_mc="1.21.11")
 
     def test_auth_required_pair_pending_token_authenticated_hello_sequence(self):
         calls = []
@@ -134,6 +137,15 @@ class LiveAutoAuthenticationTest(unittest.TestCase):
         self.assertNotIn(SESSION_TOKEN, output.getvalue())
         self.assertFalse(rpc.closed)
         connected.close()
+        self.assertTrue(rpc.closed)
+
+    def test_mc_version_mismatch_fails_before_the_test_body(self):
+        rpc = PersistentRpc(mc_version="26.2")
+
+        with self.assertRaisesRegex(AssertionError, "the test body was not run"):
+            LIVE_AUTO.connect(self.args, "mcrs_token", rpc_factory=lambda *_: rpc)
+
+        self.assertEqual(["hello"], [method for method, _ in rpc.calls])
         self.assertTrue(rpc.closed)
 
     def test_non_tty_fails_before_any_network_request(self):

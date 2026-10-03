@@ -104,19 +104,23 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 | `events.poll_default` | `64` | `events.poll` が件数を指定しないときに返す件数 |
 | `events.poll_limit` | `64` | `events.poll` が一度に返す件数の上限。client の指定がこれより大きければ、この値に縮めます |
 | `entities.handle_capacity` | `256` | 接続ごとに発行できる entity handle の数 |
+| `entities.nearby_max_radius` | `64` | `world.getNearbyEntities` で指定できる半径の上限（ブロック）。下げられますが、64 より上には上げられません |
+| `entities.nearby_max_entities` | `64` | `world.getNearbyEntities` で一度に返せる entity の数の上限。下げられますが、64 より上には上げられません |
 | `particles.max_count` | `1000` | 1 回の `spawnParticle` で出せる数の上限 |
 | `work.per_request` | `4096` | 1 つの命令の作業量の上限 |
 | `work.per_session_tick` | `4096` | 1 tick あたり、接続ごとの作業量の上限 |
 | `work.per_player_tick` | `8192` | 1 tick あたり、player ごとの作業量の上限 |
 | `work.global_per_tick` | `32768` | 1 tick あたり、サーバー全体の作業量の上限 |
+| `sound.per_connection_per_tick` | `16` | 1 tick に、接続ごとに鳴らせる音の数（`world.playSound`、`world.playBlockSound`）。超えると `backpressure` |
+| `sound.global_per_tick` | `64` | 1 tick に、サーバー全体で鳴らせる音の数 |
 | `lightning.connection_cooldown_ticks` | `20` | 同じ接続から落雷を続けて呼べる間隔（tick） |
 | `lightning.player_cooldown_ticks` | `20` | 同じ player が落雷を続けて呼べる間隔（tick） |
 | `lightning.global_per_tick` | `2` | サーバー全体で 1 tick に起こせる落雷の数 |
 | `lightning.rolling_window_ticks` | `20` | 下の上限を数える期間（tick） |
 | `lightning.global_per_window` | `8` | 上の期間にサーバー全体で起こせる落雷の数 |
 
-以前の `config.yml` にある `b5:`／`b7:` の項目は、同じ意味の新しい項目が無ければ今も読みます。
-その場合はサーバーログに移動先を示す警告が出るので、新しい項目へ移してください。旧項目は stable release から読まなくなります。
+以前の `config.yml` にある `b5:`／`b7:` の項目は、起動時に同じ意味の新しい項目へ値を移して削除します。
+変えていた値は引き継がれ、移した項目と削除した項目はサーバーログに出ます。新しい項目がすでにある場合は新しい項目が優先され、旧項目は削除されます。
 
 ## 主な capability
 

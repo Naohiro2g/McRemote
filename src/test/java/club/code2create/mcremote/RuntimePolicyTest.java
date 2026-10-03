@@ -45,7 +45,7 @@ class RuntimePolicyTest {
         config.set("work.per_player_tick", 21);
         config.set("work.global_per_tick", 22);
 
-        assertEquals(new RuntimePolicy(13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 11, 12),
+        assertEquals(new RuntimePolicy(13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 11, 12, 64, 64),
                 RuntimePolicy.from(config));
     }
 

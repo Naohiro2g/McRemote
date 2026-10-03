@@ -11,7 +11,9 @@ public class RemoteCommandRegistrar {
             WorldB5Commands worldB5Commands,
             SignCommands signCommands,
             DirectionCommands directionCommands,
-            LightningCommands lightningCommands
+            LightningCommands lightningCommands,
+            EntityLifecycleCommands entityLifecycleCommands,
+            SoundCommands soundCommands
     ) {
         CommandRegistry registry = new CommandRegistry();
         PlayerCommands playerCommands = session.getPlayerCommands();
@@ -33,6 +35,8 @@ public class RemoteCommandRegistrar {
         registry.registerStructured("world.getSign", signCommands::handleGetSign);
         registry.registerStructured("world.updateSignLine", signCommands::handleUpdateSignLine);
         registerB7Commands(registry, directionCommands, lightningCommands);
+        registerB8EntityCommands(registry, entityLifecycleCommands);
+        registerB8SoundCommands(registry, soundCommands);
         registry.register("catalog.get", catalogCommands::handleGet, false);
 
         // Protocol 22 build context. build.setWorld is intentionally not registered.
@@ -58,5 +62,18 @@ public class RemoteCommandRegistrar {
     ) {
         directionCommands.register(registry);
         lightningCommands.register(registry);
+    }
+
+    /** b8 entity lifecycle slice（protocol 23.2.0、DECISIONS 2026-09-30-01）。 */
+    static void registerB8EntityCommands(
+            CommandRegistry registry,
+            EntityLifecycleCommands entityLifecycleCommands
+    ) {
+        entityLifecycleCommands.register(registry);
+    }
+
+    /** b8 sound slice（protocol 23.2.0、world.playSound／world.playBlockSound）。 */
+    static void registerB8SoundCommands(CommandRegistry registry, SoundCommands soundCommands) {
+        soundCommands.register(registry);
     }
 }
