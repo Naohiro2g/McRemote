@@ -18,8 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Fixture-driven contract test against the exact bytes of scratch-editor's
- * mc-remote/protocol/test/fixtures/sign-v23.json (agent/b6-source-refresh@104f194d), the fixture
+ * Fixture-driven contract test against Naohiro2g/minecraft-remote-tooling
+ * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code packages/protocol/test/fixtures/sign-v23.json}, the fixture
  * DECISIONS 2026-08-26-05 anchors as the b6 sign exact contract. Drives McRemote's production
  * parser/encoder from the same fixture the Scratch client tests against, instead of duplicating
  * fixture values as separate Java literals (see also SignCommandsTest for hand-written edge cases

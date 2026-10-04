@@ -21,9 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Fixture-driven contract test against the exact bytes of scratch-editor's
- * mc-remote/protocol/test/fixtures/events-v23.json (agent/b6-source-refresh@104f194d), the same
- * fixed SHA SignFixtureContractTest and EntityHandleFixtureContractTest use.
+ * Fixture-driven contract test against Naohiro2g/minecraft-remote-tooling
+ * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code packages/protocol/test/fixtures/events-v23.json}.
  */
 class EventsFixtureContractTest {
     private static final String FIXTURE = "/fixtures/events-v23.json";

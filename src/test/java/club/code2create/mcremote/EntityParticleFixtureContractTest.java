@@ -40,9 +40,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Direct consumer of the Scratch-owned protocol 23.2 entity/particle fixture
- * （scratch-editor {@code 054a3af017f1abb8cc01cf85b3bc83181e648e19}、successor of {@code 0735a9c}）。Every case is mapped to the
- * production handler or registry path.
+ * Direct consumer of Naohiro2g/minecraft-remote-tooling
+ * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code packages/protocol/test/fixtures/entity-particle-v23.2.json}.
+ * Every case is mapped to the production handler or registry path.
  */
 class EntityParticleFixtureContractTest {
     private static final String FIXTURE = "/fixtures/entity-particle-v23.2.json";

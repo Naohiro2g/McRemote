@@ -18,8 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Fixture-driven contract test against scratch-editor's events-v23.json (same fixed SHA as
- * SignFixtureContractTest/EventsFixtureContractTest): its projectile_targets.entity.handle example
+ * Fixture-driven contract test against Naohiro2g/minecraft-remote-tooling
+ * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code packages/protocol/test/fixtures/events-v23.json}. Its projectile_targets.entity.handle example
  * documents the protocol 23 mcr_eh_ handle shape shared with the Scratch client.
  */
 class EntityHandleFixtureContractTest {

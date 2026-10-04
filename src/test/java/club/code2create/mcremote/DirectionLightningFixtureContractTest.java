@@ -38,7 +38,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Direct consumer of the Scratch-owned protocol 23.1 direction/lightning fixture. */
+/**
+ * Direct consumer of Naohiro2g/minecraft-remote-tooling
+ * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code packages/protocol/test/fixtures/direction-lightning-v23.1.json}.
+ */
 class DirectionLightningFixtureContractTest {
     private static final String FIXTURE = "/fixtures/direction-lightning-v23.1.json";
     private static final String FIXTURE_SHA256 =

@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mockStatic;
 
 /**
- * Exact shared fixture from Naohiro2g/scratch-editor at
- * {@code 62e46fd156a55c57794227d370a72f3558aa43d8},
- * {@code mc-remote/protocol/test/fixtures/chat-event-compat-v23.2.json}.
+ * Exact shared fixture from Naohiro2g/minecraft-remote-tooling at
+ * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code packages/protocol/test/fixtures/chat-event-compat-v23.2.json}.
  * Tests the server's producer paths; client/observer rejection cases belong to their consumers.
  */
 class ChatEventCompatibilityFixtureContractTest {

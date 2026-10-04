@@ -53,7 +53,7 @@ final class SignCommands {
     private static final String DEFAULT_COLOR_TOKEN = "black";
     // Fixed to Minecraft's traditional 16-color order (not alphabetical) to byte-match the shared
     // sign-v23.json fixture's invalid_property_value.data.allowed list (DECISIONS 2026-08-26-05
-    // fixes the token vocabulary; this repo and scratch-editor's fixture agree on this list order).
+    // fixes the token vocabulary; this repo and minecraft-remote-tooling agree on this list order).
     private static final List<Object> ALLOWED_COLOR_TOKENS = List.of(
             "black", "dark_blue", "dark_green", "dark_aqua", "dark_red", "dark_purple", "gold",
             "gray", "dark_gray", "blue", "green", "aqua", "red", "light_purple", "yellow", "white",
