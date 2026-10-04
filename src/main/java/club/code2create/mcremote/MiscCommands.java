@@ -19,8 +19,8 @@ public class MiscCommands {
 
     /**
      * chat.post(msg) — チャットへ送信（wire-format-design §4 表、params=[msg]）。
-     * 既定は send-only（notification）。id 付き要求にのみ ack を、msg 欠落時にのみ
-     * §5 error（-32602 invalid_params）を同期応答する（DECISIONS 2026-06-27-04）。
+     * id 付き要求の成功 result は null（DECISIONS 2026-10-03-01）。msg 欠落／空文字は
+     * §5 error（-32602 invalid_params）を同期応答する。
      * notification では respondResult/respondError とも no-op。
      */
     public void handleChatPost(String[] args) {
@@ -31,7 +31,7 @@ public class MiscCommands {
         }
         String message = args[0];
         Bukkit.broadcast(Component.text(message));
-        session.respondResult(message);
+        session.respondResult(null);
     }
 
     Location parseRelativeBlockLocation(String xstr, String ystr, String zstr) {

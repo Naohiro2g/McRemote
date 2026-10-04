@@ -8,7 +8,8 @@ import java.util.regex.Pattern;
  *
  * hello で名乗る版は **clean な protocol semver `23.2.0`**（DECISIONS 2026-09-23-01／2026-09-30-01）。
  * b8 は entity lifecycle（nearby／pose／remove）と particle Stage 2 を後方互換追加する。
- * 配布パッケージ版 `2320.0.0b8`（fold 形・`b8` 接尾辞）は jar/PyPI 名のレイヤであって
+ * b9 はこの protocol のまま、成功 result 等の契約を固定する。
+ * 配布パッケージ版 `2320.0.0b9`（fold 形・`b9` 接尾辞）は jar/PyPI 名のレイヤであって
  * **wire には載せない**（`b1` は配布チャンネル表記で互換に無関係）。plugin / api は同一の protocol
  * 文字列を名乗る（§2 番号対称性）。
  *
@@ -19,7 +20,7 @@ public final class ProtocolInfo {
 
     /**
      * 本プラグインが hello で名乗る protocol semver（wire-format-design §6.2）。
-     * パッケージ版は gradle.properties の pluginVersion（`2320.0.0b8`）＝こことは別レイヤ。
+     * パッケージ版は gradle.properties の pluginVersion（`2320.0.0b9`）＝こことは別レイヤ。
      */
     public static final String PROTOCOL = "23.2.0";
 
