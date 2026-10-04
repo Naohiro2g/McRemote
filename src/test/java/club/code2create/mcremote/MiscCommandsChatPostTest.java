@@ -75,7 +75,7 @@ class MiscCommandsChatPostTest {
         }
     }
 
-    private static Fixture dispatch(String request) throws Exception {
+    static Fixture dispatch(String request) throws Exception {
         ParsedCommand parsed = new CommandParser().parse(request);
         // Avoid the live socket constructor; result/error methods, serializer, and enqueue stay real.
         RemoteSession session = mock(RemoteSession.class, CALLS_REAL_METHODS);
@@ -93,7 +93,7 @@ class MiscCommandsChatPostTest {
         field.set(session, value);
     }
 
-    private record Fixture(ConnectionFrameQueue frames) {
+    record Fixture(ConnectionFrameQueue frames) {
         JsonObject response() {
             String frame = frames.poll();
             assertNotNull(frame, "production handler must enqueue one response frame");
