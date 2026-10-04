@@ -125,15 +125,30 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 ## 主な capability
 
 - stream-local な dimension／origin と、構造化された block set/get
-- paired player の position／pose
+- paired player の position／pose／direction
 - bounded event poll と opaque entity handle
-- particle／entity spawn、height query
+- particle（色・ブロックの指定、全員／本人への表示）、entity spawn、height query
+- 周囲の entity の検索、position／pose／direction の取得・変更、削除
+- 落雷、位置やブロックからのサウンド再生
 - sign の get／replace／1行 update
 - catalog、pairing、session／long-lived credential
 - notification と `connection.flush` barrier
 
-method の exact params、result、error、成熟状態は README ではなく
+使える命令は[公開版の API 一覧](https://mc-remote.com/api/)で確認できます。
+params、result、error の詳しい契約は
 [protocol SSOT](https://github.com/Naohiro2g/mc-remote-knowledge/tree/main/10-protocol) を参照してください。
+
+## 更新と前の版への戻し
+
+更新前にサーバーを停止し、使用中の JAR と `plugins/McRemote/config.yml` を控え、world をバックアップします。
+新しい JAR へ置き換えるときは、`plugins/` に McRemote の JAR が1つだけある状態にして起動してください。
+クライアントも対象リリースに対応する版へ揃えます。認証情報の保存領域は保持します。
+
+beta の問題は通常、次の beta で修正します。前の版へ戻す必要がある場合は、同じ Minecraft の版の中で、
+控えておいた JAR とその版の設定を使い、クライアントの版も合わせてください。設定には上記の起動時移行があるので、
+以前の JAR だけに戻しても、設定値が引き継がれるとは限りません。world の変更は JAR の交換では元に戻りません。
+版を戻した後は、起動・認証・代表操作を確認します。release ごとの検証状況は
+[release gate の記録](https://github.com/Naohiro2g/mc-remote-knowledge/blob/main/00-hub/release-gate-notes_ja.md)を参照してください。
 
 ## 制約と安全
 
