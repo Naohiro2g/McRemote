@@ -11,7 +11,8 @@ import json
 import sys
 import uuid
 
-from pair_test import PROTOCOL, RpcClient, load_token_file
+from pair_test import RpcClient, load_token_file
+from protocol_version import PROTOCOL
 
 
 def credential_id(raw: str) -> str:
@@ -63,7 +64,8 @@ def parse_args():
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
-    parser.add_argument("--protocol", default=PROTOCOL)
+    parser.add_argument("--protocol", default=PROTOCOL,
+                        help="client protocol for hello (default: %(default)s)")
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--close-timeout", type=float, default=5.0)
     parser.add_argument("--token-file", required=True)

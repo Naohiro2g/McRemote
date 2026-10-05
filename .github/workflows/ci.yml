@@ -1,7 +1,7 @@
 name: Build
 
 on:
-  # タグプッシュによる自動トリガー（例: v1.21.4-0.6.14）
+  # タグプッシュによる自動トリガー（形式: v<mc-target>-<mc-remote-version>）
   push:
     tags:
       - 'v*'

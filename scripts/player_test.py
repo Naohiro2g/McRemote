@@ -3,8 +3,8 @@
 
 pair -> token -> hello の後、player.getPos / player.setPos と
 player.getPose / player.setPose を確認する。
-LuckPerms あり・権限なし環境では --expect permission-denied を指定し、hello の
-permission_denied 到達を b2 gate 証跡として扱う。
+LuckPerms あり・権限なし環境では --expect permission-denied を指定し、
+hello が permission_denied を返すことを確認する。
 """
 import argparse
 import json
@@ -13,7 +13,7 @@ import socket
 import sys
 import time
 
-PROTOCOL = "23.2.0"
+from protocol_version import PROTOCOL
 
 
 class Rpc:

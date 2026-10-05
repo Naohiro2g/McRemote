@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""McRemote b6 candidate live-auto smoke test for world.setSign/world.getSign/world.updateSignLine
+"""McRemote live-auto smoke test for world.setSign/world.getSign/world.updateSignLine
 (Python standard library only).
 
-The exact wire contract for all three is locked by DECISIONS 2026-08-26-05. This plugin is the
-candidate that decision carries (McRemote codex/b6-set-sign@a34fec0); method-set state (shared
-fixture, cross-client parity, formal evidence, release) is separate and still open. This script
+The exact wire contract for all three is locked by DECISIONS 2026-08-26-05. This script
 exercises all three against a real Paper server. It reuses the live_auto.py connection harness
 rather than duplicating it.
 
@@ -22,6 +20,7 @@ Confirming the rendered color against a live client is a live-human task.
 import argparse
 import sys
 
+from protocol_version import PROTOCOL
 from live_auto import (
     Rpc,
     acquire_interactive_token,
@@ -263,10 +262,17 @@ def verify_sign(rpc: Rpc, height: int) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="McRemote b6 world.setSign live-auto candidate")
+    parser = argparse.ArgumentParser(description="McRemote sign live-auto runner")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
-    parser.add_argument("--protocol", default="23.0.0")
+    parser.add_argument("--protocol", default=PROTOCOL,
+                        help="client protocol for hello (default: %(default)s)")
+    parser.add_argument(
+        "--expect-mc",
+        required=True,
+        help="Minecraft version the test instruction names; the run fails before the test body "
+             "if hello reports another mc_version",
+    )
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument(
         "--interactive-pair",
@@ -285,7 +291,7 @@ def main() -> int:
         verify_sign(rpc, height)
         verify_get_sign_and_style(rpc, height)
         verify_update_sign_line(rpc, height)
-        print("PASS: McRemote b6 world.setSign/world.getSign/world.updateSignLine live-auto candidate")
+        print("PASS: McRemote world.setSign/world.getSign/world.updateSignLine live-auto")
         return 0
     except (AssertionError, OSError, RuntimeError) as error:
         print(f"FAIL: {error}", file=sys.stderr)

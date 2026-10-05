@@ -17,7 +17,7 @@ import json
 import socket
 import sys
 
-PROTOCOL = "23.0.0"
+from protocol_version import PROTOCOL
 BOGUS_TOKEN = "mcrs_bogus_token_that_does_not_resolve"
 OLD_PLAYER_TOKEN = "mcrp_legacy_token_is_not_migrated"
 MALFORMED_TOKEN = "not_a_mcremote_token"
@@ -64,7 +64,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="McRemote hello auth-enforcement smoke test")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=25575)
-    ap.add_argument("--protocol", default=PROTOCOL)
+    ap.add_argument("--protocol", default=PROTOCOL,
+                        help="client protocol for hello (default: %(default)s)")
     ap.add_argument("--timeout", type=float, default=10.0)
     ap.add_argument("--expect", choices=["on", "off"], required=True,
                     help="サーバの auth.enforcement 設定に合わせる")

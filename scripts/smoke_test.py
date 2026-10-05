@@ -27,8 +27,7 @@ import json
 import socket
 import sys
 
-# クライアントが要求する protocol semver（wire-format-design §6.1・clean な protocol 版）
-PROTOCOL = "23.2.0"
+from protocol_version import PROTOCOL
 
 
 def main() -> int:

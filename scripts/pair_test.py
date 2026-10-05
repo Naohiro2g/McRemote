@@ -39,7 +39,7 @@ import time
 import uuid
 
 
-PROTOCOL = "23.0.0"
+from protocol_version import PROTOCOL
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -334,7 +334,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="McRemote pairing smoke test")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
-    parser.add_argument("--protocol", default=PROTOCOL)
+    parser.add_argument("--protocol", default=PROTOCOL,
+                        help="client protocol for hello (default: %(default)s)")
     parser.add_argument("--token-type", default="session", choices=["session", "long_lived"])
     parser.add_argument("--device", default=None, help="optional long-lived credential device label")
     parser.add_argument("--poll-interval", type=float, default=1.5, help="pairPoll interval")

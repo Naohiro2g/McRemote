@@ -13,7 +13,7 @@ import sys
 import time
 
 
-PROTOCOL = "23.0.0"
+from protocol_version import PROTOCOL
 CHAT_MARKER = "MCR_B5_CHAT"
 EVENT_TYPES = {"pickaxe_poke", "chat_posted", "projectile_hit"}
 
@@ -81,7 +81,7 @@ def pair(primary: Rpc, poll_interval: float) -> str:
 def require_mc_version(info: dict, expected: str) -> None:
     """Stop before the test body when the server runs another Minecraft version.
 
-    The expected version comes from the test instruction (for example "verify b8 on 26.2").
+    The expected version comes from the test instruction.
     knowledge DECISIONS 2026-09-28-03.
     """
     actual = info.get("mc_version")
@@ -90,9 +90,9 @@ def require_mc_version(info: dict, expected: str) -> None:
             f"hello mc_version is {actual!r}, expected {expected!r}; the test body was not run")
 
 
-def hello(rpc: Rpc, token: str, expect_mc: str) -> dict:
+def hello(rpc: Rpc, token: str, expect_mc: str, protocol: str = PROTOCOL) -> dict:
     info = successful(rpc.call("hello", {
-        "protocol": PROTOCOL,
+        "protocol": protocol,
         "auth": {"token": token},
         "build": {"dimension": "overworld", "origin": [200, 0, 200]},
     }))
@@ -179,6 +179,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="McRemote live-human runner")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
+    parser.add_argument("--protocol", default=PROTOCOL,
+                        help="client protocol for hello (default: %(default)s)")
     parser.add_argument("--timeout", type=float, default=60)
     parser.add_argument("--poll-interval", type=float, default=0.5)
     parser.add_argument(
@@ -193,9 +195,9 @@ def main() -> int:
     try:
         primary = Rpc(args.host, args.port, args.timeout)
         token = pair(primary, args.poll_interval)
-        primary_info = hello(primary, token, args.expect_mc)
+        primary_info = hello(primary, token, args.expect_mc, args.protocol)
         secondary = Rpc(args.host, args.port, args.timeout)
-        secondary_info = hello(secondary, token, args.expect_mc)
+        secondary_info = hello(secondary, token, args.expect_mc, args.protocol)
         if primary_info["player"] != secondary_info["player"]:
             raise AssertionError("connection epochs did not bind the same player")
         print("PASS two active epochs bound to the same paired player")

@@ -7,7 +7,7 @@ plugins {
 }
 
 // ──────── plugin version ──────────────────────────────────────────────── //
-// The plugin jar will be like "mc-remote-1.21.11-2000.0.0.jar".
+// JAR name: mc-remote-<mcVersion>-<pluginVersion>.jar (gradle.properties).
 val mcVersion: String = providers.gradleProperty("mcVersion").get()
 val mcJavaVersion: Int = providers.gradleProperty("mcJavaVersion").map(String::toInt).get()
 val paperApiVersion: String = providers.gradleProperty("paperApiVersion").get()

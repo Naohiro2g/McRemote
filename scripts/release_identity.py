@@ -3,8 +3,8 @@
 
 The tag is the only input (knowledge DECISIONS 2026-09-27-03, versioning-design §10.12.1):
 
-    tag    v<mc-target>-<mc-remote-version>      v1.21.11-2320.0.0b8
-    title  McRemote <mc-target> / <mc-remote-version>   McRemote 1.21.11 / 2320.0.0b8
+    tag    v<mc-target>-<mc-remote-version>
+    title  McRemote <mc-target> / <mc-remote-version>
     jar    mc-remote-<mc-target>-<mc-remote-version>.jar
 
 A pre-release version (aN / bN / rcN, including its .postN) must be published as a GitHub

@@ -163,22 +163,19 @@ beta の問題は通常、次の beta で修正します。前の版へ戻す必
 
 ## 開発
 
-version と toolchain は `gradle.properties` が所有します。設計と wire contract の正本は
+配布版・Minecraft／Paper API の版・toolchain は [`gradle.properties`](gradle.properties) が所有します。
+hello で使う protocol 版は [`ProtocolInfo.PROTOCOL`](src/main/java/club/code2create/mcremote/ProtocolInfo.java) が所有します。
+設計と wire contract の正本は
 [mc-remote-knowledge](https://github.com/Naohiro2g/mc-remote-knowledge) にあります。
 
 ```sh
 ./gradlew build
 ```
 
-Paper 26.2 API に対する一時的な compatibility compile は Java 25 で実行できます。
-
-```sh
-./gradlew \
-  -PmcJavaVersion=25 \
-  -PpaperApiVersion=26.2.build.121-stable \
-  -PpluginApiVersion=26.2 \
-  compileJava
-```
+別の Paper API に対する一時的な compatibility compile は、対象の検証指示に従い、
+`-PmcJavaVersion`、`-PpaperApiVersion`、`-PpluginApiVersion` で値を指定して
+`compileJava` を実行します。compile の成功だけでは、その Minecraft 版での動作確認や
+対応版の追加を意味しません。
 
 local server task は環境固有の server directory を使用します。
 
@@ -211,7 +208,11 @@ pairing と player position／pose の代表往復は、サーバー内で pair 
 python3 scripts/player_test.py --host 127.0.0.1 --port 25575
 ```
 
-protocol はスクリプトの既定値を使います。別の版を検証するときは `--protocol` で指定できます。
+検証スクリプトはこの checkout 内で使います。protocol の既定値は
+`scripts/protocol_version.py` が `ProtocolInfo.PROTOCOL` から読み取るので、スクリプトごとの更新は不要です。
+別の版を検証するときは `--protocol` で指定できます。`live_auto.py`、`live_human.py`、
+`sign_live_auto.py` の `--expect-mc` は、検証指示に書かれた Minecraft 版を明示してください。
+接続先の `hello.mc_version` が違う場合は、試験本体を実行せず失敗します。
 
 ## ライセンス
 

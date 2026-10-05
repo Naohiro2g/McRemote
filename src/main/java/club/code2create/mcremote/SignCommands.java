@@ -25,12 +25,9 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 /**
- * b6 sign three-op slice: world.setSign / world.getSign / world.updateSignLine. The exact wire
+ * Sign operations: world.setSign / world.getSign / world.updateSignLine. The exact wire
  * contract (LineSpec/LineValue shape, allowed color/decoration tokens, canonical output, result
- * and error reasons) is locked by DECISIONS 2026-08-26-05; this implementation is the plugin
- * candidate that decision carries (McRemote codex/b6-set-sign@a34fec0). Method-set state (shared
- * fixture, cross-client parity, formal evidence, release) remains `candidate` until those separate
- * gates close.
+ * and error reasons) is locked by DECISIONS 2026-08-26-05.
  *
  * world.setSign/world.getSign are pure PUT/GET (no-merge, whole-face replace). world.updateSignLine
  * is the sign-specific PATCH primitive discussed in that session: it targets exactly one line on
@@ -46,7 +43,7 @@ final class SignCommands {
     private static final Logger logger = Logger.getLogger("McR_Sign");
     private static final int LINE_COUNT = 4;
     // Provisional bound, not a protocol invariant: pending cross-repo ratification like other
-    // b5/b6 finite placeholder values (queue/ring/particle/work limits).
+    // finite placeholder values (queue/ring/particle/work limits).
     private static final int MAX_LINE_CODEPOINTS = 64;
     // Vanilla's rendered default for a sign line with no explicit color. Ratified by DECISIONS
     // 2026-08-26-05 ("無色をblackへ正規化する").

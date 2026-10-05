@@ -3,7 +3,7 @@
 
 Runs against an isolated Paper server directly, or bootstraps one in-memory
 session token with ``--interactive-pair`` on an auth-enforced server. It
-exercises b5 request/response behavior that does not require player-generated
+exercises request/response behavior that does not require player-generated
 events; event-producing Minecraft actions remain outside this script.
 """
 
@@ -15,7 +15,7 @@ import sys
 import time
 
 
-PROTOCOL = "23.2.0"
+from protocol_version import PROTOCOL
 HANDLE = re.compile(r"^mcr_eh_[A-Za-z0-9_-]{22}$")
 PAIR_CODE = re.compile(r"^[0-9]{6}$")
 SESSION_TOKEN = re.compile(r"^mcrs_[A-Za-z0-9_-]{43}$")
@@ -166,7 +166,7 @@ def acquire_interactive_token(
 def require_mc_version(info: dict, expected: str) -> None:
     """Stop before the test body when the server runs another Minecraft version.
 
-    The expected version comes from the test instruction (for example "verify b8 on 26.2").
+    The expected version comes from the test instruction.
     knowledge DECISIONS 2026-09-28-03.
     """
     actual = info.get("mc_version")
@@ -488,7 +488,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="McRemote live-auto")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=25575)
-    parser.add_argument("--protocol", default=PROTOCOL)
+    parser.add_argument("--protocol", default=PROTOCOL,
+                        help="client protocol for hello (default: %(default)s)")
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--handle-capacity", type=int, default=8)
     parser.add_argument("--particle-limit", type=int, default=100)
