@@ -15,6 +15,36 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConnectionCommandQueueTest {
     @Test
+    void byteBudgetBackpressuresEvenWhenCountSlotsRemainAndRecoversAfterRemoval() throws Exception {
+        ConnectionCommandQueue queue = new ConnectionCommandQueue(10, 100);
+        queue.put("12345"); // 50 estimated bytes.
+        queue.put("67890");
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<?> put = executor.submit(() -> { queue.put("third"); return null; });
+            assertThrows(TimeoutException.class, () -> put.get(100, TimeUnit.MILLISECONDS));
+            assertEquals("12345", queue.removeHead());
+            put.get(1, TimeUnit.SECONDS);
+            assertEquals("67890", queue.removeHead());
+            assertEquals("third", queue.removeHead());
+            assertThrows(IllegalArgumentException.class, () -> queue.put("x".repeat(31)));
+            queue.put("again");
+            assertEquals("again", queue.removeHead());
+        } finally { executor.shutdownNow(); }
+    }
+
+    @Test
+    void preHelloDeadlineAlsoBoundsBlockedQueueWithoutLeakingBytePermits() throws Exception {
+        ConnectionCommandQueue queue = new ConnectionCommandQueue(1, 100);
+        queue.put("first");
+        assertThrows(IllegalStateException.class,
+                () -> queue.put("other", System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(50)));
+        assertEquals("first", queue.removeHead());
+        queue.put("again");
+        assertEquals("again", queue.removeHead());
+    }
+
+    @Test
     void fullQueueBackpressuresProducerWithoutDroppingEitherCommand() throws Exception {
         ConnectionCommandQueue queue = new ConnectionCommandQueue(1);
         queue.put("first");

@@ -58,6 +58,11 @@ public class McRemote extends JavaPlugin implements Listener {
     private LightningRuntimePolicy lightningRuntimePolicy;
     private LightningRateAdmission lightningRateAdmission;
     private SoundRateAdmission soundRateAdmission;
+    private PreAuthPolicy preAuthPolicy;
+    private PreAuthAdmission preAuthAdmission;
+
+    PreAuthPolicy preAuthPolicy() { return preAuthPolicy; }
+    PreAuthAdmission preAuthAdmission() { return preAuthAdmission; }
 
     @Override
     public void onEnable(){
@@ -88,7 +93,10 @@ public class McRemote extends JavaPlugin implements Listener {
         logger.info("Credential domain health: " + credentialService.health()
                 + " (" + credentialService.healthDetail() + ")");
         this.tokenStore = new TokenStore(credentialService);
-        this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl);
+        this.preAuthPolicy = PreAuthPolicy.from(config);
+        this.preAuthAdmission = new PreAuthAdmission(preAuthPolicy);
+        this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl,
+                preAuthPolicy.maxPendingPairs());
         this.catalogService = new CatalogService();
         this.runtimePolicy = RuntimePolicy.from(config);
         this.workAdmission = new WorkAdmission(runtimePolicy);

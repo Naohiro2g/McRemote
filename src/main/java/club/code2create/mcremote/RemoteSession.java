@@ -26,10 +26,10 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     // world_constants の nullable 値等を出すため serializeNulls（§6.2 フィールド常在）。
     private static final Gson GSON = new GsonBuilder().serializeNulls().create();
 
-    public boolean pendingRemoval = false;
+    public volatile boolean pendingRemoval = false;
     private Location origin = null;
     // hello（§8）が済むまでコマンドを受け付けない＝サーバが入口の門番（無言 bot を弾く）
-    private boolean helloComplete = false;
+    private volatile boolean helloComplete = false;
     // 処理中の要求の JSON-RPC id（応答／エラー封筒の相関キー）。null＝notification。
     private Integer activeId = null;
     private Player attachedPlayer = null;
@@ -39,7 +39,8 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     private TokenStore.TokenType boundTokenType = null;
     private UUID boundCredentialId = null;
     private final Socket socket;
-    private BufferedReader in;
+    private BoundedLineReader in;
+    private final PreAuthAdmission.Lease admission;
     private BufferedWriter out;
     private Thread inThread;
     private Thread outThread;
@@ -70,9 +71,10 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     // pre-hello の auth.* 経路（§6.5）。ペアリングは hello の前段ゆえ門番より前に通す。
     private final AuthCommands authCommands;
 
-    public RemoteSession(McRemote plugin, Socket socket) throws IOException {
+    RemoteSession(McRemote plugin, Socket socket, PreAuthAdmission.Lease admission) throws IOException {
         this.plugin = plugin;
         this.socket = socket;
+        this.admission = admission;
         DimensionResolver dimensions = new DimensionResolver();
         this.playerCommands = new PlayerCommands(this, dimensions);
         this.miscCommands = new MiscCommands(this);
@@ -80,7 +82,8 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         this.buildStateCommands = new BuildStateCommands(this, dimensions);
         this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
         RuntimePolicy runtimePolicy = plugin.getRuntimePolicy();
-        this.inQueue = new ConnectionCommandQueue(runtimePolicy.connectionQueueCapacity());
+        this.inQueue = new ConnectionCommandQueue(runtimePolicy.connectionQueueCapacity(),
+                plugin.preAuthPolicy().commandQueueBytes());
         this.outQueue = new ConnectionFrameQueue(runtimePolicy.connectionResponseQueueCapacity());
         this.eventRing = new EventRing(
                 runtimePolicy.eventRingCapacity(),
@@ -120,7 +123,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         socket.setTcpNoDelay(true);
         socket.setKeepAlive(true);
         socket.setTrafficClass(0x10);
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+        this.in = new BoundedLineReader(socket, plugin.preAuthPolicy(), () -> helloComplete);
         this.out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
         startThreads();
     }
@@ -224,14 +227,14 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         if (!"hello".equals(parsed.getName())) {
             respondError(-32600, "expected_hello", null);
             logger.warning("Pre-hello method rejected: " + parsed.getName());
-            close();
+            requestCloseAfterFlush();
             return;
         }
         String clientProtocol = extractHelloProtocol(parsed.getParams());
         if (clientProtocol == null) {
             respondError(-32602, "protocol_required", null);
             logger.warning("Malformed hello: missing protocol in params");
-            close();
+            requestCloseAfterFlush();
             return;
         }
         if (!ProtocolInfo.isCompatible(clientProtocol)) {
@@ -241,7 +244,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
             data.put("client_requires", clientProtocol);
             respondError(-32600, "protocol_mismatch", data);
             logger.warning("Protocol mismatch: server=" + ProtocolInfo.PROTOCOL + " client=" + clientProtocol);
-            close();
+            requestCloseAfterFlush();
             return;
         }
         // hello auth 検証（§6.1/§6.3・versioning §10.11.1 item5 enforcement トグル）。
@@ -254,7 +257,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
             if (enforce) {
                 respondError(-32000, "auth_required", null);
                 logger.warning("Hello rejected: auth_required (enforcement ON, no token)");
-                close();
+                requestCloseAfterFlush();
                 return;
             }
         } else {
@@ -294,7 +297,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                     respondError(-32000, "permission_denied", null);
                     logger.warning("Hello rejected: permission_denied uuid=" + uuid
                             + " state=" + (currentlyOnline ? "online" : "offline"));
-                    close(); // token は温存（resolve のみ・revoke しない）
+                    requestCloseAfterFlush(); // token は温存（resolve のみ・revoke しない）
                     return;
                 }
                 int maxSessions = plugin.getMaxSessionsPerUuid();
@@ -306,7 +309,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                     respondError(-32000, "too_many_sessions", data);
                     logger.warning("Hello rejected: too_many_sessions uuid=" + uuid
                             + " current=" + currentSessions + " limit=" + maxSessions);
-                    close();
+                    requestCloseAfterFlush();
                     return;
                 }
                 boundUuid = uuid;
@@ -322,16 +325,17 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         } catch (BuildStateCommands.InvalidBuildException e) {
             respondError(-32602, "invalid_params", null);
             logger.warning("Hello rejected: invalid build context");
-            close();
+            requestCloseAfterFlush();
             return;
         } catch (BuildStateCommands.UnknownDimensionException e) {
             respondError(-32000, "unknown_dimension", BuildStateCommands.dimensionData(e.dimension()));
             logger.warning("Hello rejected: unknown_dimension");
-            close();
+            requestCloseAfterFlush();
             return;
         }
         respondResult(buildHelloResult());
         helloComplete = true;
+        admission.authenticated();
         logger.info("hello OK (client protocol " + clientProtocol + ", advertising " + ProtocolInfo.PROTOCOL
                 + (boundUuid != null ? ", player " + boundUuid : ", no auth") + ")");
     }
@@ -419,6 +423,10 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
             return;
         }
         running = false;
+        // Closing the socket wakes blocked reads/writes before cleanup. Never join network
+        // threads on the Paper main thread: an idle peer must not stall Minecraft ticks.
+        try { socket.close(); } catch (IOException ignored) {}
+        admission.close();
         eventRing.clear();
         entityHandles.clear();
 
@@ -429,19 +437,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         if (inThread != null && Thread.currentThread() != inThread) {
             inThread.interrupt();
         }
-        try {
-            if (Thread.currentThread() != inThread) {
-                inThread.join(2000);
-            }
-            if (Thread.currentThread() != outThread) {
-                outThread.join(2000);
-            }
-        } catch (InterruptedException e) {
-            logger.warning("Failed to stop in/out thread");
-            StringWriter sw = new StringWriter();
-            e.printStackTrace(new PrintWriter(sw));
-            logger.warning(sw.toString());
-        }
+        if (outThread != null && Thread.currentThread() != outThread) outThread.interrupt();
         try {
             socket.close();
         } catch (Exception e) {
@@ -567,6 +563,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     }
 
     void tick() {
+        if (in.helloExpired()) { failInputTransport(); return; }
         if (closingAfterFlush) {
             return;
         }
@@ -607,11 +604,13 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                     if (newLine == null) {
                         running = false;
                     } else {
-                        inQueue.put(newLine);
+                        inQueue.put(newLine, helloComplete ? null : in.helloDeadline());
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     running = false;
+                } catch (IOException | IllegalStateException | IllegalArgumentException limitOrDisconnect) {
+                    failInputTransport();
                 } catch (Exception e) {
                     if (running) {
                         StringWriter sw = new StringWriter();
@@ -621,14 +620,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                     running = false;
                 }
             }
-            try {
-                in.close();
-            } catch (Exception e) {
-                logger.warning("Failed to close input buffer");
-                StringWriter sw = new StringWriter();
-                e.printStackTrace(new PrintWriter(sw));
-                logger.warning(sw.toString());
-            }
+            failInputTransport();
         }
     }
 
@@ -797,5 +789,18 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         } catch (IOException e) {
             logger.warning("Failed to close saturated response transport: " + e.getMessage());
         }
+    }
+
+    boolean allowPreHelloPair(String method) { return plugin.preAuthAdmission().allowPair(method); }
+
+    /** Transport rejection: no new auth result/error shape, token issuance or retry. */
+    void failInputTransport() {
+        pendingRemoval = true;
+        running = false;
+        synchronized (queueLock) { queueLock.notifyAll(); }
+        try { socket.close(); } catch (IOException ignored) {}
+        if (inThread != null) inThread.interrupt();
+        if (outThread != null) outThread.interrupt();
+        // The slot remains reserved until TickHandler removes this session from its bounded list.
     }
 }

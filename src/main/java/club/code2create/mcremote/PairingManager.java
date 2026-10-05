@@ -25,6 +25,7 @@ public class PairingManager {
     private final TokenStore tokenStore;
     private final long pairCodeTtlSeconds;
     private final long sessionTokenTtlSeconds;
+    private final int maxPendingPairs;
 
     /** pairing_id → pending。 */
     private final ConcurrentHashMap<String, PendingPair> byPairingId = new ConcurrentHashMap<>();
@@ -33,9 +34,16 @@ public class PairingManager {
 
     public PairingManager(TokenStore tokenStore, long pairCodeTtlSeconds,
                           long sessionTokenTtlSeconds) {
+        this(tokenStore, pairCodeTtlSeconds, sessionTokenTtlSeconds, 128);
+    }
+
+    public PairingManager(TokenStore tokenStore, long pairCodeTtlSeconds,
+                          long sessionTokenTtlSeconds, int maxPendingPairs) {
+        if (maxPendingPairs < 1) throw new IllegalArgumentException("maxPendingPairs must be positive");
         this.tokenStore = tokenStore;
         this.pairCodeTtlSeconds = pairCodeTtlSeconds;
         this.sessionTokenTtlSeconds = sessionTokenTtlSeconds;
+        this.maxPendingPairs = maxPendingPairs;
     }
 
     private static final class PendingPair {
@@ -61,15 +69,18 @@ public class PairingManager {
     public record BeginResult(String pairingId, String pairCode, long expiresIn) {}
 
     /** pending を新規作成し {@code pairing_id}＋6桁 {@code pair_code}＋{@code expires_in} を返す。 */
-    public BeginResult begin(TokenStore.TokenType tokenType, String device) {
+    public synchronized BeginResult begin(TokenStore.TokenType tokenType, String device) {
         Instant now = Instant.now();
         sweep(now);
+        if (byPairingId.size() >= maxPendingPairs) throw new CapacityExceeded();
         String pairingId = UUID.randomUUID().toString();
         String pairCode = reserveCode(pairingId);
         byPairingId.put(pairingId,
                 new PendingPair(pairingId, pairCode, tokenType, device, now.plusSeconds(pairCodeTtlSeconds)));
         return new BeginResult(pairingId, pairCode, pairCodeTtlSeconds);
     }
+
+    static final class CapacityExceeded extends RuntimeException {}
 
     /** 6桁 code を atomically 予約（putIfAbsent で衝突回避）。 */
     private String reserveCode(String pairingId) {

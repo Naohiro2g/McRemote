@@ -95,6 +95,29 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 
 実行時の上限: プラグインが一度に抱える量の上限です。protocol の定数ではありません。サーバーの負荷を見て調整します。
 
+認証前にも接続・受信・pairing の上限を適用します。接続数や頻度、入力サイズ、待ち時間、
+保留 pair 数が上限を超えた場合は TCP 接続を閉じます。新しい認証 error や token を返さず、
+自動再試行もしません。接続数と頻度は Bridge 配下も含めたサーバー全体の値です。
+以下は有限な暫定値で、授業相当の負荷での本較正は別途必要です。
+
+| 項目 | 既定値 | 意味 |
+| --- | --- | --- |
+| `connection.max_connections` | `128` | hello 完了後も含む全接続数 |
+| `connection.max_pre_hello_connections` | `32` | hello 完了前の接続数 |
+| `connection.accepts_per_second` | `32` | 1 秒の受付窓内の接続試行数。超過は session 作成前に拒否 |
+| `connection.max_frame_bytes` | `65536` | 改行を除く入力 1 行の UTF-8 byte 数。hello 後も適用 |
+| `connection.command_queue_bytes` | `1048576` | 接続ごとの入力 queue の推定 String 保存量。各行を `40 + 2 × UTF-16 長` byte と計算 |
+| `connection.pre_hello_idle_seconds` | `30` | hello 前の入力待ち時間（秒） |
+| `connection.hello_timeout_seconds` | `180` | 接続から hello 成功までの絶対期限（秒）。pairing の継続でも延長しない |
+| `auth.pair_begins_per_second` | `8` | 1 秒の窓内に受け付ける pairBegin 数 |
+| `auth.pair_polls_per_second` | `128` | 1 秒の窓内に受け付ける pairPoll 数 |
+| `auth.max_pending_pairs` | `128` | 承認待ち・token 受け取り待ちの pair の総数 |
+
+各値は正の整数で指定します。既定の hello 期限は pair code の 120 秒を確保しています。
+`auth.pair_code_ttl_seconds` を延ばす場合は、hello 期限も余裕を持って延ばしてください。
+入力 queue は件数か保存量の上限に達すると受信側を待機させ、TCP の backpressure を掛けます。
+hello 前はこの待機にも絶対期限を適用します。
+
 | 項目 | 既定値 | 意味 |
 | --- | --- | --- |
 | `connection.command_queue_capacity` | `1024` | 接続ごとに、受け付けて未実行の命令を溜められる数 |

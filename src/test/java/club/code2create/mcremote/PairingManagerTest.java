@@ -9,10 +9,43 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 
 class PairingManagerTest {
     @TempDir
     Path temp;
+
+    @Test
+    void pendingCapCannotBeExceededByParallelBegins() throws Exception {
+        PairingManager pairing = new PairingManager(mock(TokenStore.class), 120, 7200, 2);
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(8);
+        try {
+            var jobs = new java.util.ArrayList<java.util.concurrent.Future<Boolean>>();
+            for (int i = 0; i < 16; i++) jobs.add(executor.submit(() -> {
+                try { pairing.begin(TokenStore.TokenType.SESSION, null); return true; }
+                catch (PairingManager.CapacityExceeded expected) { return false; }
+            }));
+            int accepted = 0;
+            for (var job : jobs) if (job.get(2, java.util.concurrent.TimeUnit.SECONDS)) accepted++;
+            assertEquals(2, accepted);
+        } finally { executor.shutdownNow(); }
+    }
+
+    @Test
+    void consumingPairFreesPendingCapacityAndExpiryCanBeSwept() throws Exception {
+        CredentialService credentials = new CredentialService(temp.resolve("snapshot.json"), temp.resolve("authority"), 16);
+        PairingManager pairing = new PairingManager(new TokenStore(credentials), 120, 7200, 1);
+        var first = pairing.begin(TokenStore.TokenType.SESSION, null);
+        assertThrows(PairingManager.CapacityExceeded.class,
+                () -> pairing.begin(TokenStore.TokenType.SESSION, null));
+        pairing.bind(first.pairCode(), UUID.randomUUID());
+        assertInstanceOf(PairingManager.Ok.class, pairing.poll(first.pairingId()));
+        assertTrue(pairing.begin(TokenStore.TokenType.SESSION, null).pairCode().matches("[0-9]{6}"));
+        PairingManager expired = new PairingManager(mock(TokenStore.class), -1, 7200, 1);
+        expired.begin(TokenStore.TokenType.SESSION, null);
+        expired.begin(TokenStore.TokenType.SESSION, null); // Expired entries are swept before capacity admission.
+    }
 
     @Test
     void sessionPairingAndTokenResolutionRemainUnchanged() throws Exception {

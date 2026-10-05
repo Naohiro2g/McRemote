@@ -25,6 +25,10 @@ public class AuthCommands {
 
     /** pre-hello で許可する pairing method。 */
     public boolean handlePreHello(ParsedCommand parsed) {
+        if (!session.allowPreHelloPair(parsed.getName())) {
+            session.failInputTransport();
+            return true;
+        }
         return switch (parsed.getName()) {
             case "auth.pairBegin" -> {
                 handlePairBegin(parsed);
@@ -89,7 +93,12 @@ public class AuthCommands {
                 return;
             }
         }
-        PairingManager.BeginResult result = pairingManager.begin(type, device);
+        PairingManager.BeginResult result;
+        try { result = pairingManager.begin(type, device); }
+        catch (PairingManager.CapacityExceeded saturated) {
+            session.failInputTransport();
+            return;
+        }
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("pairing_id", result.pairingId());
         response.put("pair_code", result.pairCode());

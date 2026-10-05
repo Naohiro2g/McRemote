@@ -8,11 +8,11 @@ public class ServerListenerThread implements Runnable {
 	private static final Logger logger = Logger.getLogger("McR_Server");
 
 	public ServerSocket serverSocket;
-	boolean running = true;
-	private static McRemote plugin;
+	volatile boolean running = true;
+	private final McRemote plugin;
 
 	public ServerListenerThread(McRemote plugin, SocketAddress bindAddress) throws IOException {
-		ServerListenerThread.plugin = plugin;
+		this.plugin = plugin;
 		serverSocket = new ServerSocket();
 		serverSocket.setReuseAddress(true);
 		serverSocket.bind(bindAddress);
@@ -23,8 +23,16 @@ public class ServerListenerThread implements Runnable {
 		while (running) {
 			try {
 				Socket newConnection = serverSocket.accept();
-				if (!running) return;
-				plugin.handleConnection(new RemoteSession(plugin, newConnection));
+				if (!running) { newConnection.close(); break; }
+				PreAuthAdmission.Lease lease = plugin.preAuthAdmission().acquire();
+				if (lease == null) { newConnection.close(); continue; }
+				try {
+					plugin.handleConnection(new RemoteSession(plugin, newConnection, lease));
+				} catch (Exception failed) {
+					lease.close();
+					newConnection.close();
+					throw failed;
+				}
 			} catch (Exception e) {
 				if (running) {
 					logger.warning("Error creating new connection");
