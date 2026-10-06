@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LuckPermsPermissionManagerTest {
     private static final String META_KEY = "mcr.build.range";
+    private static final String BLOCKS_META_KEY = "mcr.build.blocks";
 
     @Test
     void returnsEffectiveUserMetaWithoutReadingPrimaryGroup() {
@@ -63,12 +64,45 @@ class LuckPermsPermissionManagerTest {
     }
 
     private static Fixture fixture(String effectiveMeta) {
+        return fixture(effectiveMeta, () -> null);
+    }
+
+    @Test
+    void blockAllowanceUsesEffectiveMetaAndDefaultsOnlyWhenMissing() {
+        Fixture missing = fixture("500");
+        assertEquals(4096, missing.manager().resolveConstructionPermissions(missing.player()).buildBlocks());
+        for (String value : new String[]{"0", "256", "32768"}) {
+            Fixture fixture = fixture("500", () -> value);
+            assertEquals(Integer.parseInt(value), fixture.manager().resolveConstructionPermissions(fixture.player()).buildBlocks());
+            assertEquals(1, fixture.loadCalls().get());
+        }
+        for (String value : new String[]{"-1", "not-an-integer", "2147483648", ""}) {
+            Fixture fixture = fixture("500", () -> value);
+            assertEquals(0, fixture.manager().resolveConstructionPermissions(fixture.player()).buildBlocks());
+        }
+    }
+
+    @Test
+    void existingBlockSnapshotDoesNotChangeUntilReconnection() {
+        var current = new java.util.concurrent.atomic.AtomicReference<>("256");
+        Fixture fixture = fixture("500", current::get);
+        ConstructionPermissions existing = fixture.manager().resolveConstructionPermissions(fixture.player());
+        current.set("32768");
+        assertEquals(256, existing.buildBlocks());
+        assertEquals(32768, fixture.manager().resolveConstructionPermissions(fixture.player()).buildBlocks());
+        assertEquals(2, fixture.loadCalls().get());
+    }
+
+    private static Fixture fixture(String effectiveMeta, java.util.function.Supplier<String> blocksMeta) {
         UUID uuid = UUID.randomUUID();
         QueryOptions queryOptions = proxy(QueryOptions.class, (method, args) -> null);
         CachedMetaData metaData = proxy(CachedMetaData.class, (method, args) -> {
             if (method.getName().equals("getMetaValue")) {
-                assertEquals(META_KEY, args[0]);
-                return effectiveMeta;
+                return switch ((String) args[0]) {
+                    case META_KEY -> effectiveMeta;
+                    case BLOCKS_META_KEY -> blocksMeta.get();
+                    default -> throw new AssertionError("unexpected meta key " + args[0]);
+                };
             }
             return null;
         });
@@ -116,7 +150,7 @@ class LuckPermsPermissionManagerTest {
             default -> null;
         });
         LuckPermsPermissionManager manager = new LuckPermsPermissionManager(
-                luckPerms, "mcr.online", "mcr.offline", META_KEY,
+                luckPerms, "mcr.online", "mcr.offline", META_KEY, BLOCKS_META_KEY,
                 () -> queryOptions);
         return new Fixture(manager, player, loadCalls);
     }

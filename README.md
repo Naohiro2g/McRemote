@@ -78,8 +78,26 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 | `luckperm_permissions.online` | `mcr.online` | player がゲームに入っている（online）間、client からの建築などを許す LuckPerms の permission node |
 | `luckperm_permissions.offline` | `mcr.offline` | player がゲームに入っていない（offline）間も、client からの建築などを許す permission node |
 | `luckperm_permissions.build.range` | `mcr.build.range` | player ごとの build range を読む LuckPerms の meta key |
+| `luckperm_permissions.build.blocks` | `mcr.build.blocks` | player ごとの1操作あたりの対象block数を読む LuckPerms の meta key |
 | `default_build_range` | `1000` | LuckPerms が無いときなどに使う build range（ブロック）。建築原点から X 方向と Z 方向それぞれにこの距離まで建築できます |
 | `supported_mc_versions` | `["1.21.11"]` | hello で client に伝える対応 Minecraft の版。空にすると、動いているサーバーの版を伝えます |
+
+`mcr.build.blocks` は `world.setBlock`／`world.setBlocks` の1操作で指定する対象block数の上限です。
+`setBlocks` は両端を含む直方体の体積で数え、元から同じblockだった場所も含めます。
+LuckPerms の継承・contextを含む実効metaを接続時に読み、変更は再接続で反映します。
+未設定またはLuckPermsが無い場合は4096。`0` はblock編集を禁止し、負値・不正な整数も編集を禁止します。
+上限超過は既存の `build_denied` で拒否し、範囲内の一部だけを変更しません。
+
+例えばグループごとに、次のように設定できます。
+
+```text
+/lp group visitor meta set mcr.build.blocks 256
+/lp group member meta set mcr.build.blocks 32768
+```
+
+このmetaは既存のwork予算を増やしません。現在は1要求と1接続の1tickのwork上限がそれぞれ4096なので、
+metaを32768にしても、その量の `setBlocks` はまだ実行できません。複数tickへの分割は後続の変更です。
+tokenに束縛されない明示的な認証bypassではこのplayer metaを適用せず、既存のwork予算を適用します。
 
 認証（`auth`）:
 

@@ -44,6 +44,10 @@ public class BlockEditCommands {
                 session.respondError(-32000, "build_denied", null);
                 return;
             }
+            if (!session.isWithinBuildBlocks(1)) {
+                session.respondError(-32000, "build_denied", null);
+                return;
+            }
             if (!session.admitSetterWork(1)) {
                 return;
             }
@@ -81,6 +85,10 @@ public class BlockEditCommands {
                 return;
             }
             long volume = BlockEditVolume.between(x1, y1, z1, x2, y2, z2);
+            if (!session.isWithinBuildBlocks(volume)) {
+                session.respondError(-32000, "build_denied", null);
+                return;
+            }
             if (!session.admitSetterWork(volume)) {
                 return;
             }

@@ -134,6 +134,7 @@ public class McRemote extends JavaPlugin implements Listener {
         String onlinePermission = config.getString("luckperm_permissions.online", "mcr.online");
         String offlinePermission = config.getString("luckperm_permissions.offline", "mcr.offline");
         String buildRangeMetaKey = config.getString("luckperm_permissions.build.range", "mcr.build.range");
+        String buildBlocksMetaKey = config.getString("luckperm_permissions.build.blocks", "mcr.build.blocks");
         int defaultBuildRange = config.getInt("default_build_range", 32);
         this.defaultBuildRange = defaultBuildRange;
 
@@ -142,7 +143,7 @@ public class McRemote extends JavaPlugin implements Listener {
         if (luckPermsEnabled) {
             logger.info("initializing PermissionManager (LuckPermsPermissionManager)");
             this.permissionManager = new LuckPermsPermissionManager(
-                    this, onlinePermission, offlinePermission, buildRangeMetaKey);
+                    this, onlinePermission, offlinePermission, buildRangeMetaKey, buildBlocksMetaKey);
         } else {
             logger.info("initializing FallbackPermissionManager");
             this.permissionManager = new FallbackPermissionManager(onlinePermission, offlinePermission, defaultBuildRange);

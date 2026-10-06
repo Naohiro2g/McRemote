@@ -557,6 +557,12 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         return withinBuildRange(origin, target, range);
     }
 
+    /** Player policy for one setBlock/setBlocks operation, independent of work/tick budgets. */
+    public boolean isWithinBuildBlocks(long count) {
+        if (boundUuid == null) return true; // Explicit auth bypass still obeys the existing work budgets.
+        return constructionPermissions != null && constructionPermissions.allowsBlockCount(count);
+    }
+
     static boolean withinBuildRange(Location origin, Location target, int range) {
         return Math.abs(target.getX() - origin.getX()) <= range
                 && Math.abs(target.getZ() - origin.getZ()) <= range;

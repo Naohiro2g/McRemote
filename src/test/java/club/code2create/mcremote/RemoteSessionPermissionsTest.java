@@ -88,6 +88,18 @@ class RemoteSessionPermissionsTest {
     }
 
     @Test
+    void blockCountLimitIsInclusiveAndZeroDisablesSingleBlockEditsToo() {
+        ConstructionPermissions snapshot = new ConstructionPermissions(true, true, 100, 256);
+        assertTrue(snapshot.allowsBlockCount(1));
+        assertTrue(snapshot.allowsBlockCount(256));
+        assertFalse(snapshot.allowsBlockCount(257));
+        assertFalse(snapshot.allowsBlockCount(Long.MAX_VALUE));
+        assertFalse(snapshot.allowsBlockCount(0));
+        assertFalse(new ConstructionPermissions(true, true, 100, 0).allowsBlockCount(1));
+        assertThrows(IllegalArgumentException.class, () -> new ConstructionPermissions(true, true, 100, -1));
+    }
+
+    @Test
     void buildRangeIncludesXZBoundaryAndExcludesY() {
         Location origin = new Location(null, 10.5, 64, -20.5);
         assertTrue(RemoteSession.withinBuildRange(

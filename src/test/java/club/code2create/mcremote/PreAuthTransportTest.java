@@ -92,7 +92,10 @@ class PreAuthTransportTest {
                 TokenStore.ResolveStatus.ACTIVE,
                 new TokenStore.TokenRecord(playerId, TokenStore.TokenType.SESSION,
                         java.time.Instant.now(), java.time.Instant.now().plusSeconds(7200), null, null, null), null));
-        when(plugin.getPermissionManager()).thenReturn(new FallbackPermissionManager("online", "offline", 100));
+        IPermissionManager permissions = mock(IPermissionManager.class);
+        when(permissions.resolveConstructionPermissions(any())).thenReturn(
+                new ConstructionPermissions(true, true, 100, 256));
+        when(plugin.getPermissionManager()).thenReturn(permissions);
         org.bukkit.OfflinePlayer offline = mock(org.bukkit.OfflinePlayer.class);
         when(offline.getName()).thenReturn("test-player");
         World world = mock(World.class);
@@ -111,6 +114,12 @@ class PreAuthTransportTest {
                         + "\",\"auth\":{\"token\":\"test-session-token\"}}");
                 tickUntil(session, session::isHelloComplete);
                 assertEquals(playerId, session.getBoundUuid());
+                assertTrue(session.isWithinBuildBlocks(256));
+                assertFalse(session.isWithinBuildBlocks(257));
+                when(permissions.resolveConstructionPermissions(any())).thenReturn(
+                        new ConstructionPermissions(true, true, 100, 32768));
+                assertFalse(session.isWithinBuildBlocks(32768)); // Existing connection keeps its hello snapshot.
+                verify(permissions, times(1)).resolveConstructionPermissions(offline);
                 var second = admission.acquire();
                 assertNotNull(second);
                 second.authenticated();

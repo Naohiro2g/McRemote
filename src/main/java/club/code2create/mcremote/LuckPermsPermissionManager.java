@@ -22,6 +22,7 @@ public class LuckPermsPermissionManager implements IPermissionManager {
     private final String onlinePermission;
     private final String offlinePermission;
     private final String buildRangeMetaKey;
+    private final String buildBlocksMetaKey;
     private final Supplier<QueryOptions> queryOptionsSupplier;
 
     /**
@@ -33,11 +34,14 @@ public class LuckPermsPermissionManager implements IPermissionManager {
      * @param onlinePermission  online 用権限ノード
      * @param offlinePermission offline 用権限ノード
      * @param buildRangeMetaKey effective meta のキー（build.range）
+     * @param buildBlocksMetaKey effective meta のキー（build.blocks）
      */
-    public LuckPermsPermissionManager(JavaPlugin plugin, String onlinePermission, String offlinePermission, String buildRangeMetaKey) {
+    public LuckPermsPermissionManager(JavaPlugin plugin, String onlinePermission, String offlinePermission,
+                                     String buildRangeMetaKey, String buildBlocksMetaKey) {
         this.onlinePermission = onlinePermission;
         this.offlinePermission = offlinePermission;
         this.buildRangeMetaKey = buildRangeMetaKey;
+        this.buildBlocksMetaKey = buildBlocksMetaKey;
         this.queryOptionsSupplier = LuckPermsPermissionManager::serverGlobalQueryOptions;
         try {
             var provider = plugin.getServer().getServicesManager().getRegistration(LuckPerms.class);
@@ -57,11 +61,13 @@ public class LuckPermsPermissionManager implements IPermissionManager {
             String onlinePermission,
             String offlinePermission,
             String buildRangeMetaKey,
+            String buildBlocksMetaKey,
             Supplier<QueryOptions> queryOptionsSupplier) {
         this.luckPerms = luckPerms;
         this.onlinePermission = onlinePermission;
         this.offlinePermission = offlinePermission;
         this.buildRangeMetaKey = buildRangeMetaKey;
+        this.buildBlocksMetaKey = buildBlocksMetaKey;
         this.queryOptionsSupplier = queryOptionsSupplier;
     }
 
@@ -71,12 +77,13 @@ public class LuckPermsPermissionManager implements IPermissionManager {
         User user = luckPerms.getUserManager().loadUser(uuid).join();
         if (user == null) {
             logger.warning("LuckPerms: User not found for " + uuid);
-            return new ConstructionPermissions(false, false, 0);
+            return new ConstructionPermissions(false, false, 0, 0);
         }
         QueryOptions options = queryOptionsSupplier.get();
         Tristate online = user.getCachedData().getPermissionData(options).checkPermission(onlinePermission);
         Tristate offline = user.getCachedData().getPermissionData(options).checkPermission(offlinePermission);
-        String metaValue = user.getCachedData().getMetaData(options).getMetaValue(buildRangeMetaKey);
+        var meta = user.getCachedData().getMetaData(options);
+        String metaValue = meta.getMetaValue(buildRangeMetaKey);
         int range = 0;
         if (metaValue != null) {
             try {
@@ -89,9 +96,23 @@ public class LuckPermsPermissionManager implements IPermissionManager {
             logger.info("LuckPerms: User " + uuid + " does not have effective meta '"
                     + buildRangeMetaKey + "'.");
         }
+        int blocks = resolveBuildBlocks(meta.getMetaValue(buildBlocksMetaKey));
         logger.info("LuckPerms: construction snapshot on " + uuid
-                + " online=" + online + " offline=" + offline + " range=" + range);
-        return new ConstructionPermissions(online.asBoolean(), offline.asBoolean(), range);
+                + " online=" + online + " offline=" + offline + " range=" + range + " blocks=" + blocks);
+        return new ConstructionPermissions(online.asBoolean(), offline.asBoolean(), range, blocks);
+    }
+
+    private int resolveBuildBlocks(String value) {
+        if (value == null) return ConstructionPermissions.DEFAULT_BUILD_BLOCKS;
+        try {
+            int blocks = Integer.parseInt(value.trim());
+            if (blocks >= 0) return blocks;
+        } catch (NumberFormatException ignored) {
+            // An explicit invalid policy must not silently grant the default allowance.
+        }
+        logger.warning("LuckPerms: Invalid effective meta for key '" + buildBlocksMetaKey
+                + "'; block edits are disabled for this snapshot.");
+        return 0;
     }
 
     private static QueryOptions serverGlobalQueryOptions() {
