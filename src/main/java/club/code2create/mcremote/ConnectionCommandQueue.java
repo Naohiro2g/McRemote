@@ -13,17 +13,23 @@ final class ConnectionCommandQueue {
     private final ArrayBlockingQueue<String> commands;
     private final Semaphore bytes;
     private final int byteCapacity;
+    private final ConnectionLimitStats stats;
 
     ConnectionCommandQueue(int capacity) {
         this(capacity, Integer.MAX_VALUE);
     }
 
     ConnectionCommandQueue(int capacity, int byteCapacity) {
+        this(capacity, byteCapacity, new ConnectionLimitStats());
+    }
+
+    ConnectionCommandQueue(int capacity, int byteCapacity, ConnectionLimitStats stats) {
         if (capacity <= 0 || byteCapacity <= 0) {
             throw new IllegalArgumentException("capacity must be positive");
         }
         this.commands = new ArrayBlockingQueue<>(capacity, true);
         this.byteCapacity = byteCapacity;
+        this.stats = stats;
         this.bytes = new Semaphore(byteCapacity, true);
     }
 
@@ -35,15 +41,27 @@ final class ConnectionCommandQueue {
         if (deadline != null && System.nanoTime() - deadline >= 0)
             throw new IllegalStateException("hello deadline exceeded while queueing");
         int weight = weight(Objects.requireNonNull(command, "command"));
-        if (weight > byteCapacity) throw new IllegalArgumentException("command exceeds queue byte budget");
-        if (deadline == null) bytes.acquire(weight);
-        else if (!bytes.tryAcquire(weight, Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS))
-            throw new IllegalStateException("hello deadline exceeded while queueing");
+        if (weight > byteCapacity) {
+            stats.rejected(ConnectionLimitStats.Reason.COMMAND_QUEUE_BYTES);
+            throw new IllegalArgumentException("command exceeds queue byte budget");
+        }
+        if (!bytes.tryAcquire(weight)) {
+            stats.queueWait();
+            if (deadline == null) bytes.acquire(weight);
+            else if (!bytes.tryAcquire(weight, Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS))
+                throw new IllegalStateException("hello deadline exceeded while queueing");
+        }
+        stats.queue(byteCapacity - bytes.availablePermits(), commands.size());
         boolean accepted = false;
         try {
-            if (deadline == null) { commands.put(command); accepted = true; }
-            else accepted = commands.offer(command, Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+            accepted = commands.offer(command);
+            if (!accepted) {
+                stats.queueWait();
+                if (deadline == null) { commands.put(command); accepted = true; }
+                else accepted = commands.offer(command, Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
+            }
             if (!accepted) throw new IllegalStateException("hello deadline exceeded while queueing");
+            stats.queue(byteCapacity - bytes.availablePermits(), commands.size());
         } finally {
             if (!accepted) bytes.release(weight);
         }

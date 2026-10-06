@@ -19,11 +19,7 @@ auth:
   pair_code_ttl_seconds: 120   # lifetime of the 6-digit pair_code (§6.5)
   session_token_ttl_seconds: 7200   # mcrs_ session token (~2h)
   max_sessions_per_uuid: 16    # item 7; same UUID concurrent hello sessions cap
-  # Global pairing budgets, including clients behind a Bridge. Saturation closes
-  # the requesting transport without issuing a token or automatically retrying.
-  pair_begins_per_second: 8
-  pair_polls_per_second: 128
-  max_pending_pairs: 128
+  # Connection/pairing budgets are selected internally from Paper's max-players.
   # long-lived credential lifecycle (platform-design §9). Relative paths are under
   # plugins/McRemote. They are independently mountable; do not nest one in the other.
   credential_store_path: "credential-store/snapshot.json"
@@ -34,22 +30,10 @@ auth:
 # Older configs grouped them under "b5:" / "b7:". On startup those values are moved to the
 # keys below (an existing new key wins) and the old keys are removed; the server log lists both.
 
-# Per-connection queues.
+# Connection admission uses internal 16/24/32-player profiles selected at startup
+# from Paper's max-players. Input byte limits and pre-hello timeouts are internal.
+# Per-connection queue counts remain separate from these admission profiles.
 connection:
-  # Positive, server-local provisional limits; admission happens before threads
-  # and session state are created. The authenticated sessions count toward the total.
-  max_connections: 128
-  max_pre_hello_connections: 32
-  accepts_per_second: 32
-  # UTF-8 request bytes excluding the line terminator; applies after hello too.
-  max_frame_bytes: 65536
-  # Estimated queued String storage (40 + 2 * UTF-16 length per command).
-  command_queue_bytes: 1048576
-  # Idle read timeout and absolute deadline from TCP accept until successful hello.
-  # 180s allows the default 120s human pairing window. Increase the deadline too
-  # when increasing pair_code_ttl_seconds. No idle timeout after successful hello.
-  pre_hello_idle_seconds: 30
-  hello_timeout_seconds: 180
   command_queue_capacity: 1024   # commands accepted but not yet executed
   response_queue_capacity: 64    # saturation fails the connection; frames are never dropped silently
 

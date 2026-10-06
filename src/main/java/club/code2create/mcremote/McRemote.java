@@ -60,6 +60,8 @@ public class McRemote extends JavaPlugin implements Listener {
     private SoundRateAdmission soundRateAdmission;
     private PreAuthPolicy preAuthPolicy;
     private PreAuthAdmission preAuthAdmission;
+    private ConnectionLimitStats connectionLimitStats;
+    private long nextConnectionLimitLog;
 
     PreAuthPolicy preAuthPolicy() { return preAuthPolicy; }
     PreAuthAdmission preAuthAdmission() { return preAuthAdmission; }
@@ -93,10 +95,19 @@ public class McRemote extends JavaPlugin implements Listener {
         logger.info("Credential domain health: " + credentialService.health()
                 + " (" + credentialService.healthDetail() + ")");
         this.tokenStore = new TokenStore(credentialService);
-        this.preAuthPolicy = PreAuthPolicy.from(config);
-        this.preAuthAdmission = new PreAuthAdmission(preAuthPolicy);
+        int maxPlayers = getServer().getMaxPlayers();
+        this.preAuthPolicy = PreAuthPolicy.forMaxPlayers(maxPlayers, pairCodeTtl);
+        this.connectionLimitStats = new ConnectionLimitStats();
+        this.preAuthAdmission = new PreAuthAdmission(preAuthPolicy, connectionLimitStats);
+        this.nextConnectionLimitLog = System.nanoTime() + 30_000_000_000L;
+        logger.info("Connection profile: max-players=" + maxPlayers
+                + " profile=" + PreAuthPolicy.profilePlayers(maxPlayers) + " " + preAuthPolicy);
+        if (maxPlayers > 32) {
+            logger.warning("max-players exceeds the current 32-player connection profile; "
+                    + "using its bounded limits without claiming capacity above 32 players.");
+        }
         this.pairingManager = new PairingManager(tokenStore, pairCodeTtl, sessionTokenTtl,
-                preAuthPolicy.maxPendingPairs());
+                preAuthPolicy.maxPendingPairs(), connectionLimitStats);
         this.catalogService = new CatalogService();
         this.runtimePolicy = RuntimePolicy.from(config);
         this.workAdmission = new WorkAdmission(runtimePolicy);
@@ -234,6 +245,13 @@ public class McRemote extends JavaPlugin implements Listener {
             }
             serverThread = null;
         }
+        logConnectionLimitSummary();
+    }
+
+    private void logConnectionLimitSummary() {
+        if (connectionLimitStats == null) return;
+        String summary = connectionLimitStats.drainSummary();
+        if (summary != null) logger.info(summary);
     }
 
     public int getDefaultBuildRange() {
@@ -338,6 +356,11 @@ public class McRemote extends JavaPlugin implements Listener {
                 } else {
                     s.tick();
                 }
+            }
+            long now = System.nanoTime();
+            if (now - nextConnectionLimitLog >= 0) {
+                logConnectionLimitSummary();
+                nextConnectionLimitLog = now + 30_000_000_000L;
             }
         }
     }

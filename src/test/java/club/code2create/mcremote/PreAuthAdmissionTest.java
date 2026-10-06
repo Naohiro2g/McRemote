@@ -1,6 +1,5 @@
 package club.code2create.mcremote;
 
-import org.bukkit.configuration.MemoryConfiguration;
 import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,13 +48,24 @@ class PreAuthAdmissionTest {
         assertTrue(admission.allowPair("auth.pairPoll"));
     }
 
-    @Test void configurationCannotDisableLimitsWithZeroOrNegativeValues() {
-        MemoryConfiguration config = new MemoryConfiguration();
-        assertEquals(32, PreAuthPolicy.from(config).maxPendingConnections());
-        config.set("connection.max_connections", 0);
-        assertThrows(IllegalArgumentException.class, () -> PreAuthPolicy.from(config));
-        config.set("connection.max_connections", 3);
-        config.set("auth.max_pending_pairs", -1);
-        assertThrows(IllegalArgumentException.class, () -> PreAuthPolicy.from(config));
+    @Test void sixteenPlayersAndFourHelpersCanCompleteFourConnectionSetupPhasesInOneWindow() {
+        ConnectionLimitStats stats = new ConnectionLimitStats();
+        PreAuthAdmission admission = new PreAuthAdmission(PreAuthPolicy.forMaxPlayers(16, 120), () -> 0, stats);
+        for (int phase = 0; phase < 4; phase++) {
+            for (int person = 0; person < 20; person++) {
+                var lease = admission.acquire();
+                assertNotNull(lease, "phase=" + phase + " person=" + person);
+                if (phase == 1) assertTrue(admission.allowPair("auth.pairBegin"));
+                if (phase == 2) assertTrue(admission.allowPair("auth.pairPoll"));
+                if (phase == 3) lease.authenticated();
+                else lease.close();
+            }
+        }
+        assertFalse(admission.allowPair("auth.pairBegin"));
+        assertNull(admission.acquire());
+        String summary = stats.drainSummary();
+        assertTrue(summary.contains("ACCEPT_RATE=1"));
+        assertTrue(summary.contains("PAIR_BEGIN_RATE=1"));
+        assertTrue(summary.contains("connection_peak=20"));
     }
 }

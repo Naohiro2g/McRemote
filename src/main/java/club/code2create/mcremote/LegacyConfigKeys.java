@@ -105,6 +105,12 @@ final class LegacyConfigKeys {
                 config.set(section, null);
             }
         }
+        for (String path : PreAuthPolicy.RETIRED_CONFIG_KEYS) {
+            if (config.contains(path, true)) {
+                config.set(path, null);
+                removed.add(path + " (replaced by the max-players connection profile)");
+            }
+        }
         return new Migration(added, moved, removed);
     }
 }

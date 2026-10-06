@@ -16,7 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConnectionCommandQueueTest {
     @Test
     void byteBudgetBackpressuresEvenWhenCountSlotsRemainAndRecoversAfterRemoval() throws Exception {
-        ConnectionCommandQueue queue = new ConnectionCommandQueue(10, 100);
+        ConnectionLimitStats stats = new ConnectionLimitStats();
+        ConnectionCommandQueue queue = new ConnectionCommandQueue(10, 100, stats);
         queue.put("12345"); // 50 estimated bytes.
         queue.put("67890");
         ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -30,6 +31,10 @@ class ConnectionCommandQueueTest {
             assertThrows(IllegalArgumentException.class, () -> queue.put("x".repeat(31)));
             queue.put("again");
             assertEquals("again", queue.removeHead());
+            String summary = stats.drainSummary();
+            assertTrue(summary.contains("queue_bytes_peak=100"));
+            assertTrue(summary.contains("queue_waits=1"));
+            assertTrue(summary.contains("COMMAND_QUEUE_BYTES=1"));
         } finally { executor.shutdownNow(); }
     }
 

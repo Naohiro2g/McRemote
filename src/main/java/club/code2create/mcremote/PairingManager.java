@@ -26,6 +26,7 @@ public class PairingManager {
     private final long pairCodeTtlSeconds;
     private final long sessionTokenTtlSeconds;
     private final int maxPendingPairs;
+    private final ConnectionLimitStats stats;
 
     /** pairing_id → pending。 */
     private final ConcurrentHashMap<String, PendingPair> byPairingId = new ConcurrentHashMap<>();
@@ -39,11 +40,17 @@ public class PairingManager {
 
     public PairingManager(TokenStore tokenStore, long pairCodeTtlSeconds,
                           long sessionTokenTtlSeconds, int maxPendingPairs) {
+        this(tokenStore, pairCodeTtlSeconds, sessionTokenTtlSeconds, maxPendingPairs, new ConnectionLimitStats());
+    }
+
+    PairingManager(TokenStore tokenStore, long pairCodeTtlSeconds,
+                   long sessionTokenTtlSeconds, int maxPendingPairs, ConnectionLimitStats stats) {
         if (maxPendingPairs < 1) throw new IllegalArgumentException("maxPendingPairs must be positive");
         this.tokenStore = tokenStore;
         this.pairCodeTtlSeconds = pairCodeTtlSeconds;
         this.sessionTokenTtlSeconds = sessionTokenTtlSeconds;
         this.maxPendingPairs = maxPendingPairs;
+        this.stats = stats;
     }
 
     private static final class PendingPair {
@@ -72,11 +79,15 @@ public class PairingManager {
     public synchronized BeginResult begin(TokenStore.TokenType tokenType, String device) {
         Instant now = Instant.now();
         sweep(now);
-        if (byPairingId.size() >= maxPendingPairs) throw new CapacityExceeded();
+        if (byPairingId.size() >= maxPendingPairs) {
+            stats.rejected(ConnectionLimitStats.Reason.PENDING_PAIRS);
+            throw new CapacityExceeded();
+        }
         String pairingId = UUID.randomUUID().toString();
         String pairCode = reserveCode(pairingId);
         byPairingId.put(pairingId,
                 new PendingPair(pairingId, pairCode, tokenType, device, now.plusSeconds(pairCodeTtlSeconds)));
+        stats.pendingPairs(byPairingId.size());
         return new BeginResult(pairingId, pairCode, pairCodeTtlSeconds);
     }
 

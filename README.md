@@ -98,23 +98,31 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 認証前にも接続・受信・pairing の上限を適用します。接続数や頻度、入力サイズ、待ち時間、
 保留 pair 数が上限を超えた場合は TCP 接続を閉じます。新しい認証 error や token を返さず、
 自動再試行もしません。接続数と頻度は Bridge 配下も含めたサーバー全体の値です。
-以下は有限な暫定値で、授業相当の負荷での本較正は別途必要です。
+接続・pairing の値は個別に設定せず、起動時の Paper の有効な `max-players` から内部テーブルを選びます。
+16 以下は16人向け、17–24は24人向け、25–32は32人向けです。33以上では32人向けの上限を使い、
+想定範囲外であることを起動ログへ通知します。設定人数は建築処理性能の保証ではありません。
+以下は試用で較正する有限な暫定値です。
 
-| 項目 | 既定値 | 意味 |
-| --- | --- | --- |
-| `connection.max_connections` | `128` | hello 完了後も含む全接続数 |
-| `connection.max_pre_hello_connections` | `32` | hello 完了前の接続数 |
-| `connection.accepts_per_second` | `32` | 1 秒の受付窓内の接続試行数。超過は session 作成前に拒否 |
-| `connection.max_frame_bytes` | `65536` | 改行を除く入力 1 行の UTF-8 byte 数。hello 後も適用 |
-| `connection.command_queue_bytes` | `1048576` | 接続ごとの入力 queue の推定 String 保存量。各行を `40 + 2 × UTF-16 長` byte と計算 |
-| `connection.pre_hello_idle_seconds` | `30` | hello 前の入力待ち時間（秒） |
-| `connection.hello_timeout_seconds` | `180` | 接続から hello 成功までの絶対期限（秒）。pairing の継続でも延長しない |
-| `auth.pair_begins_per_second` | `8` | 1 秒の窓内に受け付ける pairBegin 数 |
-| `auth.pair_polls_per_second` | `128` | 1 秒の窓内に受け付ける pairPoll 数 |
-| `auth.max_pending_pairs` | `128` | 承認待ち・token 受け取り待ちの pair の総数 |
+| 上限 | 16人向け | 24人向け | 32人向け |
+| --- | ---: | ---: | ---: |
+| 全接続数（hello後も含む） | 64 | 96 | 128 |
+| hello前の同時接続数 | 32 | 48 | 64 |
+| 1秒の受付窓内の接続試行数 | 80 | 112 | 144 |
+| 1秒の窓内のpairBegin数 | 20 | 28 | 36 |
+| 1秒の窓内のpairPoll数 | 64 | 96 | 128 |
+| 保留pair数 | 32 | 48 | 64 |
 
-各値は正の整数で指定します。既定の hello 期限は pair code の 120 秒を確保しています。
-`auth.pair_code_ttl_seconds` を延ばす場合は、hello 期限も余裕を持って延ばしてください。
+人数に関係なく、入力1行は改行を除くUTF-8で64KiB、接続ごとの入力queueの保存量は1MiBです。
+保存量は各行を `40 + 2 × UTF-16長` byteで見積もります。これらはhello後も適用します。
+hello前の入力待ちは30秒、hello成功までの絶対期限は180秒で、継続入力やpairingでも延長しません。
+`auth.pair_code_ttl_seconds` が120秒より長い場合は、絶対期限をその値＋60秒へ自動的に延ばします。
+hello成功後の入力待ちには、このtimeoutを適用しません。
+
+以前の10個の個別設定キーは起動時に削除し、対象キーと内部テーブルへの切替をログへ通知します。
+Paperの `max-players` を変更した後は、サーバーを再起動してください。
+起動ログには選択テーブルと実効値を表示し、使用中は30秒間隔で変化のあった集計を表示します。
+`rejected` は前回集計からの理由別件数、`*_peak` は起動後の最高値、`queue_waits` はqueue空き待ち回数です。
+通常の切断は上限拒否へ計上せず、IP・UUID・token・入力本文を集計へ含めません。停止時にも残りを出力します。
 入力 queue は件数か保存量の上限に達すると受信側を待機させ、TCP の backpressure を掛けます。
 hello 前はこの待機にも絶対期限を適用します。
 

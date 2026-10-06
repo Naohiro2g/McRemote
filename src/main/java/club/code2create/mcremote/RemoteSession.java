@@ -83,7 +83,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         this.catalogCommands = new CatalogCommands(this, plugin.getCatalogService());
         RuntimePolicy runtimePolicy = plugin.getRuntimePolicy();
         this.inQueue = new ConnectionCommandQueue(runtimePolicy.connectionQueueCapacity(),
-                plugin.preAuthPolicy().commandQueueBytes());
+                plugin.preAuthPolicy().commandQueueBytes(), admission.stats());
         this.outQueue = new ConnectionFrameQueue(runtimePolicy.connectionResponseQueueCapacity());
         this.eventRing = new EventRing(
                 runtimePolicy.eventRingCapacity(),
@@ -123,7 +123,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         socket.setTcpNoDelay(true);
         socket.setKeepAlive(true);
         socket.setTrafficClass(0x10);
-        this.in = new BoundedLineReader(socket, plugin.preAuthPolicy(), () -> helloComplete);
+        this.in = new BoundedLineReader(socket, plugin.preAuthPolicy(), () -> helloComplete, admission.stats());
         this.out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
         startThreads();
     }
@@ -610,6 +610,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
                     Thread.currentThread().interrupt();
                     running = false;
                 } catch (IOException | IllegalStateException | IllegalArgumentException limitOrDisconnect) {
+                    in.helloExpired(); // Also records a deadline reached while waiting for queue space.
                     failInputTransport();
                 } catch (Exception e) {
                     if (running) {

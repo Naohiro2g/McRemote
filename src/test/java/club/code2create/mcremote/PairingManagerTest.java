@@ -18,7 +18,8 @@ class PairingManagerTest {
 
     @Test
     void pendingCapCannotBeExceededByParallelBegins() throws Exception {
-        PairingManager pairing = new PairingManager(mock(TokenStore.class), 120, 7200, 2);
+        ConnectionLimitStats stats = new ConnectionLimitStats();
+        PairingManager pairing = new PairingManager(mock(TokenStore.class), 120, 7200, 2, stats);
         var executor = java.util.concurrent.Executors.newFixedThreadPool(8);
         try {
             var jobs = new java.util.ArrayList<java.util.concurrent.Future<Boolean>>();
@@ -29,6 +30,9 @@ class PairingManagerTest {
             int accepted = 0;
             for (var job : jobs) if (job.get(2, java.util.concurrent.TimeUnit.SECONDS)) accepted++;
             assertEquals(2, accepted);
+            String summary = stats.drainSummary();
+            assertTrue(summary.contains("PENDING_PAIRS=14"));
+            assertTrue(summary.contains("pending_pair_peak=2"));
         } finally { executor.shutdownNow(); }
     }
 

@@ -80,6 +80,25 @@ class LegacyConfigKeysTest {
         }
     }
 
+    @Test
+    void individualConnectionOverridesRetireOnceWithoutRemovingOtherAuthAndQueueSettings() throws IOException {
+        YamlConfiguration config = operatorConfig();
+        for (String path : PreAuthPolicy.RETIRED_CONFIG_KEYS) config.set(path, 7);
+        config.set("auth.max_sessions_per_uuid", 3);
+        config.set("auth.pair_code_ttl_seconds", 300);
+        config.set("connection.command_queue_capacity", 42);
+        LegacyConfigKeys.Migration migration = LegacyConfigKeys.migrate(config, packaged());
+        for (String path : PreAuthPolicy.RETIRED_CONFIG_KEYS) {
+            assertFalse(config.contains(path, true));
+            assertFalse(packaged().contains(path));
+            assertTrue(migration.removed().stream().anyMatch(item -> item.startsWith(path + " ")));
+        }
+        assertEquals(3, config.getInt("auth.max_sessions_per_uuid"));
+        assertEquals(300, config.getInt("auth.pair_code_ttl_seconds"));
+        assertEquals(42, config.getInt("connection.command_queue_capacity"));
+        assertFalse(LegacyConfigKeys.migrate(config, packaged()).changed());
+    }
+
     /** An operator config written before the migration: only the top-level keys Stack renders. */
     private static YamlConfiguration operatorConfig() {
         YamlConfiguration config = new YamlConfiguration();
