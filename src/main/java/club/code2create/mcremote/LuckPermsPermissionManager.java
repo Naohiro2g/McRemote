@@ -103,7 +103,7 @@ public class LuckPermsPermissionManager implements IPermissionManager {
     }
 
     private int resolveBuildBlocks(String value) {
-        if (value == null) return ConstructionPermissions.DEFAULT_BUILD_BLOCKS;
+        if (value == null) return 0;
         try {
             int blocks = Integer.parseInt(value.trim());
             if (blocks >= 0) return blocks;

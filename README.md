@@ -80,12 +80,14 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 | `luckperm_permissions.build.range` | `mcr.build.range` | player ごとの build range を読む LuckPerms の meta key |
 | `luckperm_permissions.build.blocks` | `mcr.build.blocks` | player ごとの1操作あたりの対象block数を読む LuckPerms の meta key |
 | `default_build_range` | `1000` | LuckPerms が無いときなどに使う build range（ブロック）。建築原点から X 方向と Z 方向それぞれにこの距離まで建築できます |
+| `default_build_blocks` | `32768` | LuckPerms が無いときの1操作あたりの対象block数。既存configの明示値は `0` も含めて保持します |
 | `supported_mc_versions` | `["1.21.11"]` | hello で client に伝える対応 Minecraft の版。空にすると、動いているサーバーの版を伝えます |
 
 `mcr.build.blocks` は `world.setBlock`／`world.setBlocks` の1操作で指定する対象block数の上限です。
 `setBlocks` は両端を含む直方体の体積で数え、元から同じblockだった場所も含めます。
 LuckPerms の継承・contextを含む実効metaを接続時に読み、変更は再接続で反映します。
-未設定またはLuckPermsが無い場合は4096。`0` はblock編集を禁止し、負値・不正な整数も編集を禁止します。
+LuckPermsがある場合、meta未設定は `0`（block編集禁止）です。LuckPermsが無い場合はconfigの
+`default_build_blocks`（配布既定32768）を使います。metaの `0`、負値・不正な整数も編集を禁止します。
 上限超過は既存の `build_denied` で拒否し、範囲内の一部だけを変更しません。
 
 例えばグループごとに、次のように設定できます。

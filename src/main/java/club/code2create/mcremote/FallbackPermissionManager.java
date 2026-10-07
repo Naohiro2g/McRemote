@@ -11,11 +11,14 @@ public class FallbackPermissionManager implements IPermissionManager {
     private final String onlinePermission;
     private final String offlinePermission;
     private final int defaultBuildRange;
+    private final int defaultBuildBlocks;
 
-    public FallbackPermissionManager(String onlinePermission, String offlinePermission, int defaultBuildRange) {
+    public FallbackPermissionManager(String onlinePermission, String offlinePermission,
+                                     int defaultBuildRange, int defaultBuildBlocks) {
         this.onlinePermission = onlinePermission;
         this.offlinePermission = offlinePermission;
         this.defaultBuildRange = defaultBuildRange;
+        this.defaultBuildBlocks = defaultBuildBlocks;
         logger.info("FallbackPermissionManager initialized with defaultBuildRange: " + defaultBuildRange);
     }
 
@@ -23,6 +26,6 @@ public class FallbackPermissionManager implements IPermissionManager {
     public ConstructionPermissions resolveConstructionPermissions(OfflinePlayer player) {
         logger.info("Fallback: always allowing permission '" + onlinePermission + "' for " + player.getName());
         logger.info("Fallback: always allowing permission '" + offlinePermission + "' for " + player.getName());
-        return new ConstructionPermissions(true, true, defaultBuildRange);
+        return new ConstructionPermissions(true, true, defaultBuildRange, defaultBuildBlocks);
     }
 }

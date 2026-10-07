@@ -25,9 +25,15 @@ class RemoteSessionPermissionsTest {
     @Test
     void fallbackPermissionManagerResolvesBothNodesAndRangeTogether() {
         FallbackPermissionManager manager = new FallbackPermissionManager(
-                "mcr.online", "mcr.offline", 32);
-        assertEquals(new ConstructionPermissions(true, true, 32),
+                "mcr.online", "mcr.offline", 32, 12_345);
+        assertEquals(new ConstructionPermissions(true, true, 32, 12_345),
                 manager.resolveConstructionPermissions(player()));
+    }
+
+    @Test
+    void fallbackExplicitZeroDisablesBlockEdits() {
+        var manager = new FallbackPermissionManager("mcr.online", "mcr.offline", 32, 0);
+        assertFalse(manager.resolveConstructionPermissions(player()).allowsBlockCount(1));
     }
 
     @Test

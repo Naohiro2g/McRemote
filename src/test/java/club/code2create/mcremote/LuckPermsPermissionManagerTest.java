@@ -59,7 +59,7 @@ class LuckPermsPermissionManagerTest {
         ConstructionPermissions snapshot = fixture.manager()
                 .resolveConstructionPermissions(fixture.player());
 
-        assertEquals(new ConstructionPermissions(true, false, 500), snapshot);
+        assertEquals(new ConstructionPermissions(true, false, 500, 0), snapshot);
         assertEquals(1, fixture.loadCalls().get());
     }
 
@@ -68,9 +68,9 @@ class LuckPermsPermissionManagerTest {
     }
 
     @Test
-    void blockAllowanceUsesEffectiveMetaAndDefaultsOnlyWhenMissing() {
+    void blockAllowanceUsesEffectiveMetaAndDisablesEditsWhenMissing() {
         Fixture missing = fixture("500");
-        assertEquals(4096, missing.manager().resolveConstructionPermissions(missing.player()).buildBlocks());
+        assertEquals(0, missing.manager().resolveConstructionPermissions(missing.player()).buildBlocks());
         for (String value : new String[]{"0", "256", "32768"}) {
             Fixture fixture = fixture("500", () -> value);
             assertEquals(Integer.parseInt(value), fixture.manager().resolveConstructionPermissions(fixture.player()).buildBlocks());

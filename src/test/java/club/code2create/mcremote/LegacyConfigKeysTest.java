@@ -99,6 +99,24 @@ class LegacyConfigKeysTest {
         assertFalse(LegacyConfigKeys.migrate(config, packaged()).changed());
     }
 
+    @Test
+    void missingBuildBlocksGetsDistributionDefaultAndExplicitValuesSurviveMigration() throws IOException {
+        YamlConfiguration missing = operatorConfig();
+        missing.setDefaults(packaged());
+        assertTrue(LegacyConfigKeys.migrate(missing, packaged()).added().contains("default_build_blocks"));
+        assertTrue(missing.contains("default_build_blocks", true));
+        assertEquals(32768, missing.getInt("default_build_blocks"));
+        assertFalse(LegacyConfigKeys.migrate(missing, packaged()).changed());
+
+        for (int explicit : new int[]{0, 256, 4096, 32769}) {
+            YamlConfiguration config = operatorConfig();
+            config.set("default_build_blocks", explicit);
+            config.setDefaults(packaged());
+            assertFalse(LegacyConfigKeys.migrate(config, packaged()).added().contains("default_build_blocks"));
+            assertEquals(explicit, config.getInt("default_build_blocks"));
+        }
+    }
+
     /** An operator config written before the migration: only the top-level keys Stack renders. */
     private static YamlConfiguration operatorConfig() {
         YamlConfiguration config = new YamlConfiguration();

@@ -2,7 +2,7 @@ package club.code2create.mcremote;
 
 /** Immutable construction admission resolved once while an authenticated hello is admitted. */
 record ConstructionPermissions(boolean onlineAllowed, boolean offlineAllowed, int buildRange, int buildBlocks) {
-    static final int DEFAULT_BUILD_BLOCKS = 4_096;
+    static final int DEFAULT_BUILD_BLOCKS = 32_768;
 
     ConstructionPermissions(boolean onlineAllowed, boolean offlineAllowed, int buildRange) {
         this(onlineAllowed, offlineAllowed, buildRange, DEFAULT_BUILD_BLOCKS);
