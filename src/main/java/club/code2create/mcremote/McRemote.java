@@ -44,6 +44,7 @@ public class McRemote extends JavaPlugin implements Listener {
     public static McRemote instance;
     private IPermissionManager permissionManager;
     private int defaultBuildRange;
+    private java.util.List<String> supportedMinecraftVersions;
     // 認証（wire §6.5）：pairing/token の正本は plugin 常駐。複数 session スレッド＋/mcremote pair の
     // 主スレッドから共有アクセスされるため concurrent 実装（169e64f の CME 教訓）。
     private TokenStore tokenStore;
@@ -136,6 +137,11 @@ public class McRemote extends JavaPlugin implements Listener {
         String buildRangeMetaKey = config.getString("luckperm_permissions.build.range", "mcr.build.range");
         String buildBlocksMetaKey = config.getString("luckperm_permissions.build.blocks", "mcr.build.blocks");
         int defaultBuildRange = config.getInt("default_build_range", 32);
+        supportedMinecraftVersions = MinecraftTargets.bundled();
+        if (MinecraftTargets.differsFromConfig(config, supportedMinecraftVersions)) {
+            logger.warning("config supported_mc_versions differs from the bundled declaration; hello uses "
+                    + supportedMinecraftVersions + ". The configured value is preserved.");
+        }
         int defaultBuildBlocks = config.getInt("default_build_blocks", ConstructionPermissions.DEFAULT_BUILD_BLOCKS);
         this.defaultBuildRange = defaultBuildRange;
 
@@ -261,6 +267,10 @@ public class McRemote extends JavaPlugin implements Listener {
         return this.defaultBuildRange;
     }
 
+    public java.util.List<String> getSupportedMinecraftVersions() {
+        return supportedMinecraftVersions;
+    }
+
     public IPermissionManager getPermissionManager() {
         return this.permissionManager;
     }
@@ -345,6 +355,7 @@ public class McRemote extends JavaPlugin implements Listener {
 
     @NullMarked
     private class TickHandler implements Runnable {
+        private int firstSession;
         @Override
         public void run() {
             workAdmission.beginTick();
@@ -352,14 +363,18 @@ public class McRemote extends JavaPlugin implements Listener {
             soundRateAdmission.beginTick();
             // CopyOnWriteArrayList の反復は snapshot。要素除去はリスト側 remove(Object) で行う
             // （snapshot iterator は remove() 非対応）。RemoteSession は equals 未override＝同一性判定。
-            for (RemoteSession s : sessions) {
+            RemoteSession[] snapshot = sessions.toArray(RemoteSession[]::new);
+            for (int i = 0; i < snapshot.length; i++) {
+                RemoteSession s = snapshot[(firstSession + i) % snapshot.length];
                 if (s.pendingRemoval) {
+                    s.discardPendingBlockEdits();
                     s.close();
                     sessions.remove(s);
                 } else {
                     s.tick();
                 }
             }
+            if (snapshot.length != 0) firstSession = (firstSession + 1) % snapshot.length;
             long now = System.nanoTime();
             if (now - nextConnectionLimitLog >= 0) {
                 logConnectionLimitSummary();

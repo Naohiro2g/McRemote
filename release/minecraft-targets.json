@@ -1,0 +1,8 @@
+{
+  "schema": "mc-remote.minecraft-targets",
+  "schema_version": 1,
+  "minecraft_versions": [
+    "1.21.11",
+    "26.2"
+  ]
+}

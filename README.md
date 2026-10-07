@@ -37,11 +37,11 @@ McRemote はその命令をサーバーの世界へ反映し、結果を返し�
 
 ## 自分のサーバーに入れる（最短手順）
 
-前提: Paper `1.21.11` のサーバーと Java 21。
+前提: リリースに記載された対応版のPaperと、その版に必要なJava。
 
 ### Step 1: プラグインを置いて起動する
 
-[リリース一覧](https://github.com/Naohiro2g/McRemote/releases)から最新の JAR（`mc-remote-<Minecraft の版>-<版>.jar`）を取得し、
+[リリース一覧](https://github.com/Naohiro2g/McRemote/releases)から使うリリースのJARを取得し、
 サーバーの `plugins/` に置いてサーバーを起動します。
 認証は最初から有効で、認証情報の保存領域も起動時に自動で作られます。
 
@@ -81,7 +81,7 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 | `luckperm_permissions.build.blocks` | `mcr.build.blocks` | player ごとの1操作あたりの対象block数を読む LuckPerms の meta key |
 | `default_build_range` | `1000` | LuckPerms が無いときなどに使う build range（ブロック）。建築原点から X 方向と Z 方向それぞれにこの距離まで建築できます |
 | `default_build_blocks` | `32768` | LuckPerms が無いときの1操作あたりの対象block数。既存configの明示値は `0` も含めて保持します |
-| `supported_mc_versions` | `["1.21.11"]` | hello で client に伝える対応 Minecraft の版。空にすると、動いているサーバーの版を伝えます |
+| `supported_mc_versions` | 配布JARの宣言から生成 | helloはJAR同梱の対応版一覧を使います。この設定は広告を変更しません。既存値は保持し、宣言と違えば起動時にwarningを出します |
 
 `mcr.build.blocks` は `world.setBlock`／`world.setBlocks` の1操作で指定する対象block数の上限です。
 `setBlocks` は両端を含む直方体の体積で数え、元から同じblockだった場所も含めます。
@@ -97,10 +97,30 @@ LuckPermsがある場合、meta未設定は `0`（block編集禁止）です。L
 /lp group member meta set mcr.build.blocks 32768
 ```
 
+### LuckPermsを入れたときの設定
+
+LuckPermsを入れると、configの`default_build_range`と`default_build_blocks`から、playerの実効metaへ切り替わります。
+metaが無いと範囲とblock数が0になるため、使うグループへ先に設定してください。管理者として、例えば次を実行します。
+
+```text
+/lp group default permission set mcr.online true
+/lp group default meta set mcr.build.range 100
+/lp group default meta set mcr.build.blocks 32768
+```
+
+`mcr.build.range`は建築原点からX・Zの各方向へ建築できる距離、`mcr.build.blocks`は1操作の対象block数です。
+上の値は設定例です。グループ名と値は用途に合わせて変え、playerがそのグループを継承していることを確認してください。
+特定のplayerだけを設定する場合は`group default`を`user <player名>`へ置き換えます。
+ゲームから退出した後にも操作させる用途では、必要なグループに`mcr.offline true`も設定します。
+設定後はMcRemoteクライアントを切断・再接続し、新しいpermission snapshotを読ませてください。
+コマンドの詳細はLuckPerms公式の[meta設定](https://luckperms.net/wiki/Meta-Commands)と
+[permission設定](https://luckperms.net/wiki/Permission-Commands)を参照できます。
+
 このmetaはwork予算を増やしません。既定の1要求のwork上限は32768、1接続の1tickのwork上限は4096です。
-複数tickへの分割は未実装なので、metaを32768にしても、既定のtick予算ではその量の `setBlocks` を実行できません。
-id付き要求は `backpressure` で拒否され、FAST通知は予算に収まるまでFIFO先頭で待つため、
-1tickの上限を常に超える通知は後続の `flush` も待たせ続けます。大きな操作はtick分割対応まで分けて送ってください。
+`setBlocks`は既定tick予算に収まる分ずつ施工し、同じ接続の後続操作を待たせます。id付き要求は全量の施工後に
+`result:null`を返し、FAST通知の後に送る`connection.flush`も完了まで待ちます。
+開始前に予算がまったく無ければid付きは`backpressure`、FASTは延期します。施工開始後の予算不足では進捗を保って待ちます。
+途中失敗や切断では施工済み部分が残るため、操作全体の自動再送は避けてください。
 tokenに束縛されない明示的な認証bypassではこのplayer metaを適用せず、既存のwork予算を適用します。
 
 認証（`auth`）:

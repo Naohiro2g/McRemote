@@ -197,7 +197,7 @@ final class WorldB5Commands {
                 }
             }
             // (8) permission／build range, (9) work, (10) chunk
-            if (!preflightLocation(location) || !admit(count) || !prepareChunk(location)) {
+            if (!preflightLocation(location) || !admitParticle(count) || !prepareChunk(location)) {
                 return;
             }
             // (11) spawn
@@ -420,6 +420,15 @@ final class WorldB5Commands {
                 result == WorkAdmission.Result.BACKPRESSURE
                         ? "backpressure" : "work_limit_exceeded",
                 null);
+        return false;
+    }
+
+    private boolean admitParticle(int count) {
+        WorkAdmission.Result result = session.admitWork(count);
+        if (result == WorkAdmission.Result.ACCEPTED) return true;
+        if (result == WorkAdmission.Result.BACKPRESSURE) session.recordParticleWorkBackpressure();
+        session.respondError(-32000, result == WorkAdmission.Result.BACKPRESSURE
+                ? "backpressure" : "work_limit_exceeded", null);
         return false;
     }
 

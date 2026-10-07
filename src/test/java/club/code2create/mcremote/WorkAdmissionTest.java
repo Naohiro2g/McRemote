@@ -12,6 +12,22 @@ class WorkAdmissionTest {
             8, 8_000, 8, 8, 8, 10, 10, 6, 8, 12, 4, 4, 64, 64);
 
     @Test
+    void bulkReservationsSharePlayerAndGlobalAndRespectOtherWork() {
+        var admission = new WorkAdmission(POLICY);
+        UUID first = UUID.randomUUID(), second = UUID.randomUUID(), player = UUID.randomUUID();
+        assertEquals(true, admission.permitsRequest(10));
+        assertEquals(false, admission.permitsRequest(11));
+        assertEquals(WorkAdmission.Result.ACCEPTED, admission.admit(first, player, 2));
+        assertEquals(4, admission.reserve(first, player, 10));
+        assertEquals(2, admission.reserve(second, player, 10));
+        assertEquals(0, admission.reserve(second, player, 10));
+        assertEquals(4, admission.reserve(UUID.randomUUID(), null, 10));
+        assertEquals(0, admission.reserve(UUID.randomUUID(), null, 10));
+        admission.beginTick();
+        assertEquals(6, admission.reserve(second, player, 10));
+    }
+
+    @Test
     void distinguishesOversizedRequestFromTemporaryBudgetPressure() {
         WorkAdmission admission = new WorkAdmission(POLICY);
         UUID session = UUID.randomUUID();

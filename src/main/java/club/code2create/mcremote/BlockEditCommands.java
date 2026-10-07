@@ -3,6 +3,7 @@ package club.code2create.mcremote;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import org.bukkit.Location;
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
@@ -20,6 +21,7 @@ public class BlockEditCommands {
     private final RemoteSession session;
     private final MiscCommands miscCommands;
     private final BlockCodec blockCodec;
+    private BlockEditCursor pending;
 
     public BlockEditCommands(RemoteSession session, MiscCommands miscCommands) {
         this.session = session;
@@ -64,6 +66,7 @@ public class BlockEditCommands {
     }
 
     public void handleSetBlocks(JsonElement params) {
+        if (pending != null) { resumeCuboid(); return; }
         try {
             JsonArray args = WireParams.positional(params, 7);
             int x1 = coordinate(args, 0);
@@ -89,11 +92,10 @@ public class BlockEditCommands {
                 session.respondError(-32000, "build_denied", null);
                 return;
             }
-            if (!session.admitSetterWork(volume)) {
+            if (!session.admitBulkRequest(volume)) {
                 return;
             }
-            setCuboid(world, loc1, loc2, data);
-            session.respondResult(null);
+            pending = new BlockEditCursor(world, loc1, loc2, data, (int) volume);
         } catch (BlockCodec.ValidationException e) {
             session.respondError(-32602, e.reason, e.data);
             logger.warning("Invalid BlockSpec for world.setBlocks: " + e.getMessage());
@@ -101,6 +103,7 @@ public class BlockEditCommands {
             session.respondError(-32602, "invalid_params", pathData("params"));
             logger.warning("Invalid parameters for world.setBlocks: " + e.getMessage());
         }
+        resumeCuboid();
     }
 
     private int coordinate(JsonArray args, int index) {
@@ -116,21 +119,37 @@ public class BlockEditCommands {
         return session.isWithinBuildRange(targetLoc);
     }
 
-    private void setCuboid(World world, Location loc1, Location loc2, BlockData data) {
-        int minX = Math.min(loc1.getBlockX(), loc2.getBlockX());
-        int maxX = Math.max(loc1.getBlockX(), loc2.getBlockX());
-        int minY = Math.min(loc1.getBlockY(), loc2.getBlockY());
-        int maxY = Math.max(loc1.getBlockY(), loc2.getBlockY());
-        int minZ = Math.min(loc1.getBlockZ(), loc2.getBlockZ());
-        int maxZ = Math.max(loc1.getBlockZ(), loc2.getBlockZ());
+    void cancelPending() {
+        pending = null;
+    }
 
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = maxY; y >= minY; y--) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    world.getBlockAt(x, y, z).setBlockData(data, false);
-                }
-            }
+    private void resumeCuboid() {
+        BlockEditCursor cursor = pending;
+        if (cursor == null) return;
+        if (session.pendingRemoval) { cancelPending(); return; }
+        int units = session.reserveBulkWork(cursor.remaining);
+        if (units == 0) {
+            if (cursor.started) throw CommandDeferredException.INSTANCE;
+            if (!session.rejectTemporaryBackpressure()) { cancelPending(); return; }
         }
+        try {
+            if (Bukkit.getWorld(cursor.world.getUID()) != cursor.world) {
+                throw new IllegalStateException("setBlocks world is no longer available");
+            }
+            for (int i = 0; i < units; i++) {
+                if (session.pendingRemoval) { cancelPending(); return; }
+                cursor.world.getBlockAt(cursor.x, cursor.y, cursor.z).setBlockData(cursor.data, false);
+                cursor.advance();
+            }
+        } catch (RuntimeException e) {
+            cancelPending();
+            session.respondError(-32603, "internal_error", null);
+            logger.warning("Paper operation failed during world.setBlocks: " + e.getClass().getSimpleName());
+            return;
+        }
+        if (cursor.remaining != 0) throw CommandDeferredException.INSTANCE;
+        cancelPending();
+        session.respondResult(null);
     }
 
     private static Map<String, Object> pathData(String path) {

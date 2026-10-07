@@ -6,7 +6,8 @@ import java.util.EnumMap;
 final class ConnectionLimitStats {
     enum Reason {
         ACCEPT_RATE, CONNECTIONS, PRE_HELLO_CONNECTIONS, PAIR_BEGIN_RATE, PAIR_POLL_RATE,
-        PENDING_PAIRS, FRAME_BYTES, IDLE_TIMEOUT, HELLO_DEADLINE, COMMAND_QUEUE_BYTES
+        PENDING_PAIRS, FRAME_BYTES, IDLE_TIMEOUT, HELLO_DEADLINE, COMMAND_QUEUE_BYTES,
+        PARTICLE_NOTIFICATION_WORK_BACKPRESSURE
     }
 
     private final EnumMap<Reason, Long> rejected = new EnumMap<>(Reason.class);

@@ -43,6 +43,23 @@ final class WorkAdmission {
         return Result.ACCEPTED;
     }
 
+    boolean permitsRequest(long units) {
+        return units >= 0 && units <= policy.maxWorkPerRequest();
+    }
+
+    /** Reserve only this tick's share of an already validated bulk request. */
+    synchronized int reserve(UUID sessionEpoch, UUID player, int remaining) {
+        if (!permitsRequest(remaining) || remaining == 0) return 0;
+        int units = Math.min(remaining, policy.sessionWorkPerTick() - sessionWork.getOrDefault(sessionEpoch, 0));
+        if (player != null) units = Math.min(units, policy.playerWorkPerTick() - playerWork.getOrDefault(player, 0));
+        units = Math.min(units, policy.globalWorkPerTick() - globalWork);
+        if (units <= 0) return 0;
+        sessionWork.merge(sessionEpoch, units, Integer::sum);
+        if (player != null) playerWork.merge(player, units, Integer::sum);
+        globalWork += units;
+        return units;
+    }
+
     private static int safeAdd(int left, int right) {
         long sum = (long) left + right;
         return sum > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) sum;

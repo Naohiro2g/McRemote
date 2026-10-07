@@ -11,10 +11,10 @@ default_build_range: 1000
 # Maximum blocks in one setBlock/setBlocks operation without LuckPerms.
 # With LuckPerms, a missing mcr.build.blocks meta disables block edits instead.
 default_build_blocks: 32768
-# MC versions this server advertises as compatible in the hello handshake
-# (protocol §8.1). Empty -> falls back to the running server version.
+# Generated distribution default. hello uses the bundled declaration, not this override.
+# Existing operator values are preserved; mismatches produce a startup warning.
 supported_mc_versions:
-  - "1.21.11"
+@minecraft_targets@
 # Authentication (wire-format-design §6.5 / versioning-design §10.11.1).
 # Authentication is enforced by default. Set this to false only for an explicit
 # development override that needs token-less hello compatibility.

@@ -23,6 +23,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Protocol 23.2 particle Stage 2（wire §5.8.3、DECISIONS 2026-09-23-01／2026-09-30-01）。 */
 class ParticleStage2Test {
+    @Test
+    void onlyTemporaryParticleWorkPressureTriggersDiagnosticHook() {
+        Harness pressured = new Harness();
+        pressured.context.workResult = WorkAdmission.Result.BACKPRESSURE;
+        pressured.spawn("[" + POS + "\"minecraft:flame\",0,5]");
+        assertEquals(1, pressured.context.workPressureHooks);
+        assertNull(pressured.spawned.particle);
+        Harness permanent = new Harness();
+        permanent.context.workResult = WorkAdmission.Result.WORK_LIMIT_EXCEEDED;
+        permanent.spawn("[" + POS + "\"minecraft:flame\",0,5]");
+        assertEquals(0, permanent.context.workPressureHooks);
+        Harness invalid = new Harness();
+        invalid.context.workResult = WorkAdmission.Result.BACKPRESSURE;
+        invalid.spawn("[" + POS + "\"minecraft:flame\",0,1001]");
+        assertEquals(0, invalid.context.workPressureHooks);
+    }
+
     private static final String POS = "0,0,0,0,0,0,";
 
     @Test
@@ -240,6 +257,9 @@ class ParticleStage2Test {
     }
 
     private static final class Context implements WorldCommandContext {
+        int workPressureHooks;
+        WorkAdmission.Result workResult = WorkAdmission.Result.ACCEPTED;
+        @Override public void recordParticleWorkBackpressure() { workPressureHooks++; }
         private final Location origin;
         boolean permission = true;
         int permissionChecks;
@@ -261,7 +281,7 @@ class ParticleStage2Test {
         @Override public WorkAdmission.Result admitWork(int units) {
             workCalls++;
             lastWork = units;
-            return WorkAdmission.Result.ACCEPTED;
+            return workResult;
         }
         @Override public void respondResult(Object value) { result = value; }
         @Override public void respondError(int code, String reason, Map<String, Object> data) {

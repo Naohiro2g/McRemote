@@ -1,4 +1,5 @@
 import java.util.*
+import groovy.json.JsonSlurper
 
 plugins {
     `java-library`
@@ -7,7 +8,7 @@ plugins {
 }
 
 // ──────── plugin version ──────────────────────────────────────────────── //
-// JAR name: mc-remote-<mcVersion>-<pluginVersion>.jar (gradle.properties).
+// JAR name: mc-remote-<pluginVersion>.jar; development floor stays independent.
 val mcVersion: String = providers.gradleProperty("mcVersion").get()
 val mcJavaVersion: Int = providers.gradleProperty("mcJavaVersion").map(String::toInt).get()
 val paperApiVersion: String = providers.gradleProperty("paperApiVersion").get()
@@ -22,7 +23,7 @@ val memoryX = "8G"  // Maximum memory size
 // ──────────────────────────────────────────────────────────────────────── //
 
 group = "club.code2create"
-version = "$mcVersion-$pluginVersion"
+version = pluginVersion
 val projectDir = project.rootDir
 
 java {
@@ -67,6 +68,12 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.register<JavaExec>("localCompatibilityFixture") {
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("club.code2create.mcremote.LocalCompatibilityFixture")
+}
+
 val isWindows: Boolean = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("windows")
 
 tasks.jar {
@@ -79,7 +86,24 @@ tasks.jar {
     dirPermissions { unix("0755") }
 }
 
+val minecraftTargetsFile = file("release/minecraft-targets.json")
+val targetsDeclaration = JsonSlurper().parse(minecraftTargetsFile) as Map<*, *>
+val minecraftTargets = (targetsDeclaration["minecraft_versions"] as? List<*>)?.map {
+    require(it is String && it.matches(Regex("\\d+\\.\\d+(?:\\.\\d+)?"))) { "Invalid Minecraft target: $it" }
+    it
+} ?: error("Minecraft targets must be a list")
+require(targetsDeclaration["schema"] == "mc-remote.minecraft-targets" && targetsDeclaration["schema_version"] == 1) { "Invalid Minecraft declaration schema" }
+require(minecraftTargets.isNotEmpty() && minecraftTargets.distinct().size == minecraftTargets.size && minecraftTargets.first() == mcVersion) { "Targets must be unique and begin with the development floor" }
+
 tasks.processResources {
+    inputs.file(minecraftTargetsFile)
+    from(minecraftTargetsFile)
+    filesMatching("config.yml") {
+        filter { line ->
+            if (line == "@minecraft_targets@") minecraftTargets.joinToString("\n") { "  - \"$it\"" } else line
+        }
+    }
+
     filesMatching("plugin.yml") {
         expand(mapOf(
             "project" to mapOf("version" to version.toString()),

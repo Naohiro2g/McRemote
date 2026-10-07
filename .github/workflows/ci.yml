@@ -1,7 +1,7 @@
 name: Build
 
 on:
-  # タグプッシュによる自動トリガー（形式: v<mc-target>-<mc-remote-version>）
+  # タグプッシュによる自動トリガー（形式: v<mc-remote-version>）
   push:
     tags:
       - 'v*'
@@ -27,7 +27,7 @@ jobs:
         run: |
           MC_VERSION=$(./gradlew -q printMcVersion)
           PLUGIN_VERSION=$(./gradlew -q printPluginVersion)
-          FULL_VERSION="${MC_VERSION}-${PLUGIN_VERSION}"
+          FULL_VERSION="${PLUGIN_VERSION}"
           echo "MC_VERSION=${MC_VERSION}" >> "${GITHUB_ENV}"
           echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> "${GITHUB_ENV}"
           echo "FULL_VERSION=${FULL_VERSION}" >> "${GITHUB_ENV}"
@@ -54,6 +54,7 @@ jobs:
           test -f "build/libs/${JAR_NAME}"
           install -d "${CANDIDATE_DIR}"
           cp "build/libs/${JAR_NAME}" "${CANDIDATE_DIR}/${JAR_NAME}"
+          cp release/minecraft-targets.json "${CANDIDATE_DIR}/minecraft-targets.json"
           printf '%s\n' "${GITHUB_SHA}" > "${CANDIDATE_DIR}/source-commit.txt"
           (
             cd "${CANDIDATE_DIR}"

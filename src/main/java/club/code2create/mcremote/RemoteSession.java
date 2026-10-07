@@ -369,10 +369,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
      */
     private Map<String, Object> buildHelloResult() {
         String mcVersion = Bukkit.getMinecraftVersion();
-        List<String> supported = plugin.getConfig().getStringList("supported_mc_versions");
-        if (supported.isEmpty()) {
-            supported = List.of(mcVersion);
-        }
+        List<String> supported = plugin.getSupportedMinecraftVersions();
         // y_sea は座標式に使わない情報定数。world 不明時は number|null の null（§6.2 / DECISIONS 2026-07-02-02）。
         Integer ySea = (origin != null && origin.getWorld() != null)
                 ? origin.getWorld().getSeaLevel() - 1
@@ -500,6 +497,12 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         return plugin.getWorkAdmission().admit(connectionEpoch, boundUuid, units);
     }
 
+    @Override
+    public void recordParticleWorkBackpressure() {
+        if (activeId == null) admission.stats().rejected(
+                ConnectionLimitStats.Reason.PARTICLE_NOTIFICATION_WORK_BACKPRESSURE);
+    }
+
     /**
      * Applies b5 work admission to a setter before world access. A temporarily pressured
      * notification stays at the FIFO head because it has no response channel for retry advice.
@@ -517,6 +520,20 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         }
         sessionWorkError(result);
         return false;
+    }
+
+    boolean admitBulkRequest(long units) {
+        if (plugin.getWorkAdmission().permitsRequest(units)) return true;
+        respondError(-32000, "work_limit_exceeded", null);
+        return false;
+    }
+
+    int reserveBulkWork(int remaining) {
+        return plugin.getWorkAdmission().reserve(connectionEpoch, boundUuid, remaining);
+    }
+
+    void discardPendingBlockEdits() {
+        blockCommands.cancelPending();
     }
 
     @Override
@@ -569,6 +586,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     }
 
     void tick() {
+        if (pendingRemoval) { discardPendingBlockEdits(); return; }
         if (in.helloExpired()) { failInputTransport(); return; }
         if (closingAfterFlush) {
             return;

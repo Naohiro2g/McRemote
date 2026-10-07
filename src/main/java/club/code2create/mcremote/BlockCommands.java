@@ -15,4 +15,8 @@ public class BlockCommands {
         registry.registerStructured("world.setBlock", editCommands::handleSetBlock);
         registry.registerStructured("world.setBlocks", editCommands::handleSetBlocks);
     }
+
+    void cancelPending() {
+        editCommands.cancelPending();
+    }
 }

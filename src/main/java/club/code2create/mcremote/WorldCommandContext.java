@@ -14,6 +14,8 @@ interface WorldCommandContext {
 
     WorkAdmission.Result admitWork(int units);
 
+    default void recordParticleWorkBackpressure() { }
+
     void respondResult(Object value);
 
     void respondError(int code, String reason, Map<String, Object> extraData);

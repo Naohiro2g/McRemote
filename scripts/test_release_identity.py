@@ -12,6 +12,18 @@ SPEC.loader.exec_module(RELEASE)
 
 
 class ReleaseIdentityTest(unittest.TestCase):
+    def test_single_jar_identity_uses_declared_targets_and_keeps_legacy_identity(self):
+        identity = RELEASE.parse_tag("v2320.0.0b10", ("1.21.11", "26.2"))
+        self.assertEqual("McRemote 2320.0.0b10 (Minecraft 1.21.11, 26.2)", identity.title)
+        self.assertEqual("mc-remote-2320.0.0b10.jar", identity.jar)
+        self.assertTrue(identity.prerelease)
+        with self.assertRaises(ValueError):
+            RELEASE.parse_tag("v2320.0.0b10")
+        with self.assertRaises(ValueError):
+            RELEASE.parse_tag("v2320.0.0b10", ("26.2", "26.2"))
+        legacy = RELEASE.parse_tag("v1.21.11-2320.0.0b9", ("1.21.11", "26.2"))
+        self.assertEqual("McRemote 1.21.11 / 2320.0.0b9", legacy.title)
+
     def test_published_titles_follow_the_rule(self):
         # The b7 titles the coordinator corrected by hand (2026-09-27-03).
         for tag, title in (

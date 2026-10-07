@@ -2,7 +2,8 @@ name: Release
 
 # 正式段階の固定trigger（knowledge DECISIONS 2026-09-06-02 / 2026-09-27-03）。
 # human release ownerがGitHub Releaseを公開すると、同じtagのCI（ci.yml）が残したcandidate JARを
-# 再buildせずに昇格する。titleとpre-releaseはtagから導出して明示し、GitHubの既定（tag名）に任せない。
+# 再buildせずに昇格する。b10以降のtitleはtagとcandidateの対応版宣言から作る。
+# 新形式の公開はmanifest互換と対象別PASSの結び付けが完了するまで保留。
 # workflow_dispatchは既存tagでの検証用。dry_run=trueならReleaseを変更しない。
 # tagのCIが成功してからReleaseを公開する。CIが間に合わず失敗した場合は、workflow_dispatchで
 # dry_run=falseを指定して再実行できる。
@@ -12,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "release tag (v<mc-target>-<mc-remote-version>)"
+        description: "release tag (v<mc-remote-version>; legacy MC-prefixed tags accepted)"
         required: true
       dry_run:
         description: "verify only; do not edit the Release or upload assets"
@@ -42,10 +43,6 @@ jobs:
       - name: Test release identity script
         run: python3 -m unittest discover -s scripts -p 'test_release_identity.py'
 
-      - name: Derive release identity from tag
-        id: identity
-        run: python3 scripts/release_identity.py "${TAG}" --github-output "${GITHUB_OUTPUT}"
-
       - name: Resolve tag commit
         id: commit
         run: |
@@ -68,6 +65,10 @@ jobs:
       - name: Download candidate artifact (no rebuild)
         run: gh run download "${{ steps.run.outputs.id }}" --repo "${GITHUB_REPOSITORY}" -n mc-remote-candidate -D candidate
 
+      - name: Derive release identity from tag
+        id: identity
+        run: python3 scripts/release_identity.py "${TAG}" --targets candidate/minecraft-targets.json --github-output "${GITHUB_OUTPUT}" --body-output candidate/minecraft-section.md
+
       - name: Verify candidate identity
         working-directory: candidate
         env:
@@ -80,7 +81,30 @@ jobs:
           sha256sum -c SHA256SUMS
           stat -c '%s %n' "${JAR}"
 
-      - name: Create manifest.json
+      - name: Require completed b10 publication contract
+        run: |
+          if [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?(\.post[0-9]+)?$ && "${DRY_RUN}" != "true" ]]; then
+            echo "MC-free release publication waits for manifest compatibility and per-target PASS verification." >&2
+            exit 1
+          fi
+
+      - name: Verify bundled target declaration
+        if: steps.identity.outputs.mc_target == ''
+        env:
+          JAR: ${{ steps.identity.outputs.jar }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile
+          declaration = Path("candidate/minecraft-targets.json").read_bytes()
+          with ZipFile(Path("candidate") / os.environ["JAR"]) as jar:
+              if jar.read("minecraft-targets.json") != declaration:
+                  raise SystemExit("candidate declaration differs from the tested JAR")
+          PY
+
+      - name: Create legacy manifest.json
+        if: steps.identity.outputs.mc_target != ''
         env:
           JAR: ${{ steps.identity.outputs.jar }}
           SHA: ${{ steps.commit.outputs.sha }}
