@@ -29,7 +29,7 @@ record RuntimePolicy(
     static final int DEFAULT_EVENT_POLL_LIMIT = 64;
     static final int DEFAULT_ENTITY_HANDLE_CAPACITY = 256;
     static final int DEFAULT_MAX_PARTICLE_COUNT = 1_000;
-    static final int DEFAULT_MAX_WORK_PER_REQUEST = 4_096;
+    static final int DEFAULT_MAX_WORK_PER_REQUEST = 32_768;
     static final int DEFAULT_SESSION_WORK_PER_TICK = 4_096;
     static final int DEFAULT_PLAYER_WORK_PER_TICK = 8_192;
     static final int DEFAULT_GLOBAL_WORK_PER_TICK = 32_768;

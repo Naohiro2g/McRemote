@@ -2,6 +2,7 @@ package club.code2create.mcremote;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -15,7 +16,7 @@ class B5PluginRuntimePolicyFixtureTest {
     private static final String FIXTURE = "/fixtures/b5-plugin-runtime-policy-v23.json";
 
     @Test
-    void fixtureLocksCandidateRuntimePolicy() throws IOException {
+    void fixtureKeepsHistoricalCandidateRuntimePolicy() throws IOException {
         JsonObject policy = fixture().getAsJsonObject("runtime_policy");
         assertEquals(RuntimePolicy.DEFAULT_CONNECTION_QUEUE_CAPACITY,
                 integer(policy, "connection_fifo_capacity"));
@@ -33,8 +34,12 @@ class B5PluginRuntimePolicyFixtureTest {
                 integer(policy, "entity_handle_capacity"));
         assertEquals(RuntimePolicy.DEFAULT_MAX_PARTICLE_COUNT,
                 integer(policy, "max_particle_count"));
-        assertEquals(RuntimePolicy.DEFAULT_MAX_WORK_PER_REQUEST,
-                integer(policy, "max_work_per_request"));
+        // The b5 fixture keeps its published policy; later defaults do not rewrite that history.
+        int candidateWorkLimit = integer(policy, "max_work_per_request");
+        assertEquals(4096, candidateWorkLimit);
+        YamlConfiguration candidateConfig = new YamlConfiguration();
+        candidateConfig.set("work.per_request", candidateWorkLimit);
+        assertEquals(candidateWorkLimit, RuntimePolicy.from(candidateConfig).maxWorkPerRequest());
         assertEquals(RuntimePolicy.DEFAULT_SESSION_WORK_PER_TICK,
                 integer(policy, "session_work_per_tick"));
         assertEquals(RuntimePolicy.DEFAULT_PLAYER_WORK_PER_TICK,

@@ -50,6 +50,18 @@ class RuntimePolicyTest {
     }
 
     @Test
+    void existingOperatorAndLegacyRequestLimitsArePreserved() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("work.per_request", 4096);
+        assertEquals(4096, RuntimePolicy.from(config).maxWorkPerRequest());
+        config.set("work.per_request", null);
+        config.set("b5.max_work_per_request", 2048);
+        assertEquals(2048, RuntimePolicy.from(config).maxWorkPerRequest());
+        config.set("b5.max_work_per_request", null);
+        assertEquals(32768, RuntimePolicy.from(config).maxWorkPerRequest());
+    }
+
+    @Test
     void legacyB5KeysAreReadOnlyWhenTheNewKeyIsAbsent() {
         YamlConfiguration config = new YamlConfiguration();
         config.set("b5.event_ring_capacity", 99);

@@ -95,8 +95,10 @@ LuckPerms の継承・contextを含む実効metaを接続時に読み、変更�
 /lp group member meta set mcr.build.blocks 32768
 ```
 
-このmetaは既存のwork予算を増やしません。現在は1要求と1接続の1tickのwork上限がそれぞれ4096なので、
-metaを32768にしても、その量の `setBlocks` はまだ実行できません。複数tickへの分割は後続の変更です。
+このmetaはwork予算を増やしません。既定の1要求のwork上限は32768、1接続の1tickのwork上限は4096です。
+複数tickへの分割は未実装なので、metaを32768にしても、既定のtick予算ではその量の `setBlocks` を実行できません。
+id付き要求は `backpressure` で拒否され、FAST通知は予算に収まるまでFIFO先頭で待つため、
+1tickの上限を常に超える通知は後続の `flush` も待たせ続けます。大きな操作はtick分割対応まで分けて送ってください。
 tokenに束縛されない明示的な認証bypassではこのplayer metaを適用せず、既存のwork予算を適用します。
 
 認証（`auth`）:
@@ -156,7 +158,7 @@ hello 前はこの待機にも絶対期限を適用します。
 | `entities.nearby_max_radius` | `64` | `world.getNearbyEntities` で指定できる半径の上限（ブロック）。下げられますが、64 より上には上げられません |
 | `entities.nearby_max_entities` | `64` | `world.getNearbyEntities` で一度に返せる entity の数の上限。下げられますが、64 より上には上げられません |
 | `particles.max_count` | `1000` | 1 回の `spawnParticle` で出せる数の上限 |
-| `work.per_request` | `4096` | 1 つの命令の作業量の上限 |
+| `work.per_request` | `32768` | 1 つの命令の作業量の上限。接続・プレイヤー・全体のtick予算も別に適用します |
 | `work.per_session_tick` | `4096` | 1 tick あたり、接続ごとの作業量の上限 |
 | `work.per_player_tick` | `8192` | 1 tick あたり、player ごとの作業量の上限 |
 | `work.global_per_tick` | `32768` | 1 tick あたり、サーバー全体の作業量の上限 |
@@ -167,6 +169,9 @@ hello 前はこの待機にも絶対期限を適用します。
 | `lightning.global_per_tick` | `2` | サーバー全体で 1 tick に起こせる落雷の数 |
 | `lightning.rolling_window_ticks` | `20` | 下の上限を数える期間（tick） |
 | `lightning.global_per_window` | `8` | 上の期間にサーバー全体で起こせる落雷の数 |
+
+既存の `config.yml` に指定した `work.per_request` の値は維持します。
+既定値32768を使うには、この項目が未設定であるか、設定値を32768へ変更する必要があります。
 
 以前の `config.yml` にある `b5:`／`b7:` の項目は、起動時に同じ意味の新しい項目へ値を移して削除します。
 変えていた値は引き継がれ、移した項目と削除した項目はサーバーログに出ます。新しい項目がすでにある場合は新しい項目が優先され、旧項目は削除されます。

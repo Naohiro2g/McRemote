@@ -46,18 +46,36 @@ class BlockEditCommandsTest {
         }
     }
 
-    @Test void largerRoleAllowanceDoesNotRaiseExistingWorkBudget() {
+    @Test void largerRoleAllowanceDoesNotRaiseExistingTickBudget() {
         try (var bukkit = mockStatic(Bukkit.class)) {
             Harness h = harness(32768, bukkit);
             h.commands.handleSetBlocks(JsonParser.parseString("[0,0,0,31,31,31," + STONE + "]"));
             verify(h.session).isWithinBuildBlocks(32768L);
             verify(h.session).admitSetterWork(32768L);
-            verify(h.session).respondError(-32000, "work_limit_exceeded", null);
+            verify(h.session).respondError(-32000, "backpressure", null);
             verify(h.world, never()).getBlockAt(anyInt(), anyInt(), anyInt());
         }
     }
 
+    @Test void full32768CuboidExecutesWhenRoleAndTickBudgetsAllowIt() {
+        try (var bukkit = mockStatic(Bukkit.class)) {
+            MemoryConfiguration config = new MemoryConfiguration();
+            config.set("work.per_session_tick", 32768);
+            config.set("work.per_player_tick", 32768);
+            Harness h = harness(32768, bukkit, RuntimePolicy.from(config));
+            h.commands.handleSetBlocks(JsonParser.parseString("[0,0,0,31,31,31," + STONE + "]"));
+            verify(h.session).admitSetterWork(32768L);
+            verify(h.block, times(32768)).setBlockData(h.data, false);
+            verify(h.session).respondResult(null);
+            verify(h.session, never()).respondError(anyInt(), anyString(), any());
+        }
+    }
+
     private static Harness harness(int maxBlocks, org.mockito.MockedStatic<Bukkit> bukkit) {
+        return harness(maxBlocks, bukkit, RuntimePolicy.from(new MemoryConfiguration()));
+    }
+
+    private static Harness harness(int maxBlocks, org.mockito.MockedStatic<Bukkit> bukkit, RuntimePolicy policy) {
         World world = mock(World.class);
         Block block = mock(Block.class);
         BlockData data = mock(BlockData.class);
@@ -74,7 +92,7 @@ class BlockEditCommandsTest {
         when(session.isWithinBuildRange(any())).thenReturn(true);
         ConstructionPermissions snapshot = new ConstructionPermissions(true, true, 1000, maxBlocks);
         when(session.isWithinBuildBlocks(anyLong())).thenAnswer(call -> snapshot.allowsBlockCount(call.getArgument(0, Long.class)));
-        WorkAdmission work = new WorkAdmission(RuntimePolicy.from(new MemoryConfiguration()));
+        WorkAdmission work = new WorkAdmission(policy);
         UUID epoch = UUID.randomUUID();
         when(session.admitSetterWork(anyLong())).thenAnswer(call -> {
             WorkAdmission.Result result = work.admit(epoch, null, call.getArgument(0, Long.class).intValue());
