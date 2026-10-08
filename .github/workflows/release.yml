@@ -3,7 +3,7 @@ name: Release
 # 正式段階の固定trigger（knowledge DECISIONS 2026-09-06-02 / 2026-09-27-03）。
 # human release ownerがGitHub Releaseを公開すると、同じtagのCI（ci.yml）が残したcandidate JARを
 # 再buildせずに昇格する。b10以降のtitleはtagとcandidateの対応版宣言から作る。
-# 新形式の公開はmanifest互換と対象別PASSの結び付けが完了するまで保留。
+# 新形式は固定Schemaと、同じReleaseの対象別検証recordを必須とする。
 # workflow_dispatchは既存tagでの検証用。dry_run=trueならReleaseを変更しない。
 # tagのCIが成功してからReleaseを公開する。CIが間に合わず失敗した場合は、workflow_dispatchで
 # dry_run=falseを指定して再実行できる。
@@ -40,8 +40,11 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Test release identity script
-        run: python3 -m unittest discover -s scripts -p 'test_release_identity.py'
+      - name: Install release validator
+        run: python3 -m pip install -r scripts/requirements-release.txt
+
+      - name: Test release scripts
+        run: python3 -m unittest discover -s scripts -p 'test_*release*.py'
 
       - name: Resolve tag commit
         id: commit
@@ -81,37 +84,55 @@ jobs:
           sha256sum -c SHA256SUMS
           stat -c '%s %n' "${JAR}"
 
-      - name: Require completed b10 publication contract
-        run: |
-          if [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?(\.post[0-9]+)?$ && "${DRY_RUN}" != "true" ]]; then
-            echo "MC-free release publication waits for manifest compatibility and per-target PASS verification." >&2
-            exit 1
-          fi
-
-      - name: Verify bundled target declaration
+      - name: Download per-target verification records from this Release
         if: steps.identity.outputs.mc_target == ''
-        env:
-          JAR: ${{ steps.identity.outputs.jar }}
         run: |
           python3 - <<'PY'
           import os
+          import subprocess
+          import sys
+          sys.path.insert(0, "scripts")
+          from release_identity import load_targets
+          from release_manifest_v2 import verification_filename
           from pathlib import Path
-          from zipfile import ZipFile
-          declaration = Path("candidate/minecraft-targets.json").read_bytes()
-          with ZipFile(Path("candidate") / os.environ["JAR"]) as jar:
-              if jar.read("minecraft-targets.json") != declaration:
-                  raise SystemExit("candidate declaration differs from the tested JAR")
+          for version in load_targets(Path("candidate/minecraft-targets.json")):
+              subprocess.run(["gh", "release", "download", os.environ["TAG"], "--repo",
+                              os.environ["GITHUB_REPOSITORY"], "--pattern", verification_filename(version),
+                              "--dir", "candidate"], check=True)
           PY
 
-      - name: Create legacy manifest.json
-        if: steps.identity.outputs.mc_target != ''
+      - name: Create and verify manifest.json
         env:
           JAR: ${{ steps.identity.outputs.jar }}
           SHA: ${{ steps.commit.outputs.sha }}
+          MC_TARGET: ${{ steps.identity.outputs.mc_target }}
         run: |
+          ARGS=()
+          if [ -z "${MC_TARGET}" ]; then
+            ARGS=(--schema-version 2 --declaration candidate/minecraft-targets.json)
+            while IFS= read -r RECORD; do
+              ARGS+=(--verification-record "candidate/${RECORD}")
+            done < <(python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, "scripts")
+          from release_identity import load_targets
+          from release_manifest_v2 import verification_filename
+          for version in load_targets(Path("candidate/minecraft-targets.json")):
+              print(verification_filename(version))
+          PY
+            )
+          fi
           python3 scripts/create_release_manifest.py --release-tag "${TAG}" --source-commit "${SHA}" \
-            --jar "candidate/${JAR}" --output candidate/manifest.json
+            --jar "candidate/${JAR}" --output candidate/manifest.json "${ARGS[@]}"
           cat candidate/manifest.json
+
+      - name: Prepare release body from the same declaration
+        if: steps.identity.outputs.mc_target == ''
+        run: |
+          gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json body -q '.body // ""' > candidate/release-body-original.md
+          python3 scripts/prepare_release_body.py --body candidate/release-body-original.md \
+            --section candidate/minecraft-section.md --output candidate/release-body.md
 
       - name: Set title and pre-release, attach assets
         env:
@@ -124,16 +145,21 @@ jobs:
           else
             FLAGS=(--prerelease=false)
           fi
+          ASSETS=("candidate/${JAR}" candidate/manifest.json)
+          if [ -f candidate/release-body.md ]; then
+            FLAGS+=(--notes-file candidate/release-body.md)
+            ASSETS+=(candidate/minecraft-targets.json)
+          fi
           echo "title: ${TITLE}"
           echo "flags: ${FLAGS[*]}"
           if [ "${DRY_RUN}" = "true" ]; then
             echo "dry run: would run gh release edit ${TAG} --title \"${TITLE}\" ${FLAGS[*]}"
-            echo "dry run: would upload candidate/${JAR} candidate/manifest.json"
+            echo "dry run: would upload ${ASSETS[*]} (verification records already present on this Release)"
             gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json name,isPrerelease,assets \
               -q '"current title: \(.name), prerelease: \(.isPrerelease), assets: \([.assets[].name] | join(", "))"'
             exit 0
           fi
           gh release edit "${TAG}" --repo "${GITHUB_REPOSITORY}" --title "${TITLE}" "${FLAGS[@]}"
-          gh release upload "${TAG}" --repo "${GITHUB_REPOSITORY}" "candidate/${JAR}" candidate/manifest.json
+          gh release upload "${TAG}" --repo "${GITHUB_REPOSITORY}" "${ASSETS[@]}"
           gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json name,isPrerelease,assets \
             -q '"title: \(.name), prerelease: \(.isPrerelease), assets: \([.assets[].name] | join(", "))"'
