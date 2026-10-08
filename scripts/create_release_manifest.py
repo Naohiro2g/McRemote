@@ -13,7 +13,7 @@ from typing import Any
 
 from release_manifest_v2 import (DECLARATION_PATH, load_json,
                                  read_verification_record, validate_candidate_files,
-                                 validate_locked_schema, validate_v2)
+                                 validate_locked_schema, validate_v2, target_versions)
 
 SCHEMA = "mc-remote.release-manifest"
 SCHEMA_VERSION = 1
@@ -70,19 +70,18 @@ def create_manifest(
     manifest["artifacts"][0]["bytes"] = jar_path.stat().st_size
     declaration_hash = sha256_file(declaration_path)
     declaration = load_json(declaration_path)
-    if not isinstance(declaration, dict):
-        raise ValueError("target declaration must be an object")
+    declared_versions = target_versions(declaration)
     verifications = []
     for path in verification_records:
         measured = read_verification_record(path, source_commit.lower(), declaration_hash)
         verifications.append({**measured, "record": {"file": path.name, "sha256": sha256_file(path)}})
     manifest["minecraft_compatibility"] = {
         "declaration": {"path": DECLARATION_PATH, "sha256": declaration_hash,
-                        "minecraft_versions": declaration.get("minecraft_versions")},
+                        "minecraft_versions": declared_versions},
         "verifications": verifications,
     }
     validate_v2(manifest)
-    order = {version: index for index, version in enumerate(declaration["minecraft_versions"])}
+    order = {version: index for index, version in enumerate(declared_versions)}
     verifications.sort(key=lambda check: order[check["minecraft_version"]])
     if any(path.parent != verification_records[0].parent for path in verification_records):
         raise ValueError("verification records must be staged in the same Release asset directory")

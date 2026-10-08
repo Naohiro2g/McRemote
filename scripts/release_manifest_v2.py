@@ -102,7 +102,7 @@ def require_semantics(manifest: dict) -> None:
 
 
 def check_manifest_contents(manifest: dict, contents: dict, jar_declaration: bytes | str | None = None) -> dict:
-    """Check raw reference bytes; McRemote also retains its existing object declaration."""
+    """Check raw reference bytes and the canonical targets v1 object."""
     def rejected(reason):
         return {"valid": False, "reason": reason, "stage": "content"}
 
@@ -130,15 +130,9 @@ def check_manifest_contents(manifest: dict, contents: dict, jar_declaration: byt
     if digest(body) != declaration["sha256"]:
         return rejected("declaration_sha256_mismatch")
     try:
-        declared = decode_json(body)
+        declared = target_versions(decode_json(body))
     except (ValueError, UnicodeError):
         return rejected("declaration_content_invalid")
-    # The issued fixtures use a bare array. The actual McRemote declaration is
-    # mc-remote.minecraft-targets v1; do not rewrite these already-bundled bytes.
-    if isinstance(declared, dict) and declared.get("schema") == "mc-remote.minecraft-targets" and type(declared.get("schema_version")) is int and declared["schema_version"] == 1:
-        declared = declared.get("minecraft_versions")
-    if not isinstance(declared, list) or any(not isinstance(v, str) for v in declared):
-        return rejected("declaration_versions_mismatch")
     expected = declaration["minecraft_versions"]
     if len(declared) != len(expected) or len(set(declared)) != len(declared) or set(declared) != set(expected):
         return rejected("declaration_versions_mismatch")
@@ -190,6 +184,15 @@ def versions(value, label):
         string(version, label)
     if len(set(value)) != len(value):
         raise ValueError(f"{label} must not contain duplicate versions")
+
+
+def target_versions(declaration: Any) -> list[str]:
+    """The declaration root is an exact mc-remote.minecraft-targets v1 object."""
+    fields(declaration, ("schema", "schema_version", "minecraft_versions"), label="target declaration")
+    if declaration["schema"] != "mc-remote.minecraft-targets" or type(declaration["schema_version"]) is not int or declaration["schema_version"] != 1:
+        raise ValueError("invalid target declaration schema")
+    versions(declaration["minecraft_versions"], "target declaration.minecraft_versions")
+    return declaration["minecraft_versions"]
 
 
 def verification_filename(version: str) -> str:
@@ -298,10 +301,7 @@ def validate_candidate_files(manifest: dict, jar_path: Path, declaration_path: P
     if hashlib.sha256(raw).hexdigest() != declaration["sha256"]:
         raise ValueError("declaration file digest differs")
     data = load_json(declaration_path)
-    fields(data, ("schema", "schema_version", "minecraft_versions"), label="target declaration")
-    if data["schema"] != "mc-remote.minecraft-targets" or type(data["schema_version"]) is not int or data["schema_version"] != 1:
-        raise ValueError("invalid target declaration schema")
-    if data["minecraft_versions"] != declaration["minecraft_versions"]:
+    if target_versions(data) != declaration["minecraft_versions"]:
         raise ValueError("declaration file versions differ")
     try:
         with ZipFile(jar_path) as jar_file:

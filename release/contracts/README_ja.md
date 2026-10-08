@@ -1,7 +1,7 @@
 # Release manifest契約の固定コピー
 
-正本は[`Naohiro2g/minecraft-remote-tooling`](https://github.com/Naohiro2g/minecraft-remote-tooling/tree/fb6880b192a0063241f95c44a5fa6b836f5e7394/schemas)の
-`fb6880b192a0063241f95c44a5fa6b836f5e7394`です。Schemaとfixtureは編集せず、
+正本は[`Naohiro2g/minecraft-remote-tooling`](https://github.com/Naohiro2g/minecraft-remote-tooling/tree/5f567f14adaa24603e9dee3c0ec9909d428b7c4b/schemas)の
+`5f567f14adaa24603e9dee3c0ec9909d428b7c4b`です。Schemaとfixtureは編集せず、
 同じcommitのraw bytesを収容しています。参照元path、bytes、SHA-256は
 [`../release-manifest-lock.json`](../release-manifest-lock.json)に記録しています。
 

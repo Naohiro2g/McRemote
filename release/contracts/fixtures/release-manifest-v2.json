@@ -2,12 +2,12 @@
   "schema": "mc-remote.release-manifest.fixtures",
   "schema_version": 1,
   "knowledge_contract": {
-    "commit": "6dbb9f1ee192c6c46d8dd58fdd91f8e6c3f46de5",
+    "commit": "6a7020d5199a6aa957c5ce43904916f2166a6b95",
     "path": "00-hub/release-gate-notes_ja.md",
     "section": "b10 / release manifest v2の形",
     "decision": "2026-10-07-09"
   },
-  "description": "Synthetic manifests and UTF-8 content; no live verification claims. Validate version/schema, then semantic invariants, then optional supplied contents.",
+  "description": "Synthetic manifests and UTF-8 content, except the pinned McRemote declaration file; no live verification claims. Validate version/schema, then semantic invariants, then optional supplied contents.",
   "legacy_v1_schema_source": {
     "repository": "Naohiro2g/mc-remote-stack",
     "commit": "f9b558769375cf704e3bf55c6aa3db93bb2aa3cf",
@@ -324,7 +324,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -380,7 +380,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -417,11 +417,11 @@
         "stage": null
       },
       "contents": {
-        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n",
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
         "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
         "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
       },
-      "jar_declaration": "[\"1.21.11\",\"26.2\"]\n"
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n"
     },
     {
       "id": "unknown-schema-version",
@@ -1625,7 +1625,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -1682,7 +1682,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": []
           },
           "verifications": [
@@ -1738,7 +1738,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2", "26.2"]
           },
           "verifications": [
@@ -1794,7 +1794,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -1838,7 +1838,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -1894,7 +1894,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -1962,7 +1962,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2018,7 +2018,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2074,7 +2074,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2130,7 +2130,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2186,7 +2186,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2242,7 +2242,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2298,7 +2298,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2354,7 +2354,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2410,7 +2410,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2466,7 +2466,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2522,7 +2522,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2578,7 +2578,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2641,7 +2641,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2697,7 +2697,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "/targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2753,7 +2753,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "../targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2809,7 +2809,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2846,7 +2846,7 @@
         "stage": "content"
       },
       "contents": {
-        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n ",
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n ",
         "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
         "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
       }
@@ -2870,7 +2870,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2907,7 +2907,7 @@
         "stage": "content"
       },
       "contents": {
-        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n",
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
         "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n ",
         "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
       }
@@ -2931,7 +2931,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "66c4d8c551eb2bef48d17438f7664e5dc5f6e335126aae3109c1d87b3566d34c",
+            "sha256": "ba0368143798207b84fab64bcc96f81137eb744fdb463da980838b756111dbbf",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -2968,7 +2968,7 @@
         "stage": "content"
       },
       "contents": {
-        "release/minecraft-targets.json": "[\"1.21.11\"]\n",
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\"]}\n",
         "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
         "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
       }
@@ -2992,7 +2992,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -3029,11 +3029,11 @@
         "stage": "content"
       },
       "contents": {
-        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n",
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
         "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
         "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
       },
-      "jar_declaration": "[\"1.21.11\",\"26.2\"]\n "
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n "
     },
     {
       "id": "record-content-missing",
@@ -3054,7 +3054,7 @@
         "minecraft_compatibility": {
           "declaration": {
             "path": "release/minecraft-targets.json",
-            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "sha256": "b6426e960ac8b2be7e6db97769913c7cc679e6d1503b34d53c558a9b83803e54",
             "minecraft_versions": ["1.21.11", "26.2"]
           },
           "verifications": [
@@ -3091,7 +3091,7 @@
         "stage": "content"
       },
       "contents": {
-        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n"
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n"
       }
     },
     {
@@ -3145,6 +3145,1192 @@
       "contents": {
         "empty.txt": ""
       }
+    },
+    {
+      "id": "v2.mcremote-actual-declaration",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "a202a11a104767c289266f4baf7692d499ed15b717dd4d5a31eca48abc17ca26",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\n  \"schema\": \"mc-remote.minecraft-targets\",\n  \"schema_version\": 1,\n  \"minecraft_versions\": [\n    \"1.21.11\",\n    \"26.2\"\n  ]\n}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\n  \"schema\": \"mc-remote.minecraft-targets\",\n  \"schema_version\": 1,\n  \"minecraft_versions\": [\n    \"1.21.11\",\n    \"26.2\"\n  ]\n}\n"
+    },
+    {
+      "id": "v2.declaration-reordered-versions",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "bac4c0a35405a4844542ffb6b2241ab4d6cb2357272ccb031a96903b5e2b4755",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"26.2\",\"1.21.11\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"26.2\",\"1.21.11\"]}\n"
+    },
+    {
+      "id": "declaration-bare-array",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "[\"1.21.11\",\"26.2\"]\n"
+    },
+    {
+      "id": "declaration-unknown-field",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "c557b959f35a3214f6e95e1c06e50a07f3cf65bf95f351d1d2ad320d652654a4",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"],\"unknown\":true}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"],\"unknown\":true}\n"
+    },
+    {
+      "id": "declaration-wrong-schema",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "606d1de98e16afa95bc8c840711e612f6a6abac4b2c66cb0c357d67edb7fc2ab",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.release-manifest\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.release-manifest\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n"
+    },
+    {
+      "id": "declaration-wrong-schema-version",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "c4894658c6d0a1eedf29ad7237812d81bfa616c59da34289f24de62c1680de44",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":2,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":2,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n"
+    },
+    {
+      "id": "declaration-wrong-schema-version-string",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "8e27fe4b22ef3c1601210ca00baf5f526967e5bbe890d09c57aeb50effb6c3d3",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":\"1\",\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":\"1\",\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n"
+    },
+    {
+      "id": "declaration-wrong-schema-version-boolean",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "daa24e4bb053bfb208ff3c0b5b8871e94f8cb49a15a67d06811d7ae8f3f0d553",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":true,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":true,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n"
+    },
+    {
+      "id": "declaration-versions-empty",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "159ebcb08169fcf986ac5872a4cf31806e7905de7ee76758f230bc87027d721e",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[]}\n"
+    },
+    {
+      "id": "declaration-versions-duplicate",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "44fc960c9540cc76daf86da688051e413e9804ea81e1f9cef03af10ceac60344",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"1.21.11\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"1.21.11\"]}\n"
+    },
+    {
+      "id": "declaration-versions-not-array",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "1328d0e6fc02f5444d8873dd625b07baa78ffa9a80001e5879b4f62e208c12e0",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":\"1.21.11\"}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":\"1.21.11\"}\n"
+    },
+    {
+      "id": "declaration-versions-not-string",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "b9403f450c83285daf65b7232c731cfa4f40bd1990b88cab769292905e20efad",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[123,\"26.2\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[123,\"26.2\"]}\n"
+    },
+    {
+      "id": "declaration-versions-empty-string",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "c20298f42177cbb47cf229fc10ecc4cac70c660efbf55a75c375427823948a5b",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"\",\"26.2\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1,\"minecraft_versions\":[\"\",\"26.2\"]}\n"
+    },
+    {
+      "id": "declaration-missing-schema",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "5ca12730d81f0442c8c37cfc5c8612a5e66761dae266a08dee0f06f50a9f0836",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema_version\":1,\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n"
+    },
+    {
+      "id": "declaration-missing-schema-version",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "6c9f356dbf530f05694b3c5c85c39a365a6fa741129255ec1ef1e6d803bfc14e",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"minecraft_versions\":[\"1.21.11\",\"26.2\"]}\n"
+    },
+    {
+      "id": "declaration-missing-minecraft-versions",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "633ef7ddeeeb6a08a1e2fd4ab21897ca67729b218df80cc61aba1e39ef6df328",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1}\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\"schema\":\"mc-remote.minecraft-targets\",\"schema_version\":1}\n"
+    },
+    {
+      "id": "declaration-null-root",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "null\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "null\n"
+    },
+    {
+      "id": "declaration-string-root",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "653d160d8be25245debb70c3481255411613da80126a1aa69dfa107c38459e55",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "\"1.21.11\"\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "\"1.21.11\"\n"
+    },
+    {
+      "id": "declaration-invalid-json",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "a6fb08fda1acb957b6116bd37811a1fe41a01611c0631edbf786d6889a27a55c",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_content_invalid",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "{\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "{\n"
     }
-  ]
+  ],
+  "declaration_file_source": {
+    "repository": "Naohiro2g/McRemote",
+    "commit": "bd1ce15d90dc14dc59b23441df8677bed021a897",
+    "path": "release/minecraft-targets.json",
+    "bytes": 126,
+    "sha256": "a202a11a104767c289266f4baf7692d499ed15b717dd4d5a31eca48abc17ca26",
+    "case_id": "v2.mcremote-actual-declaration"
+  }
 }

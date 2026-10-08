@@ -278,6 +278,30 @@ class ReleaseManifestV2Test(unittest.TestCase):
         self.assertEqual("declaration_sha256_mismatch",
                          check_shared_manifest(manifest, contracts, changed)["reason"])
 
+    def test_rejects_noncanonical_declarations_without_reading_them_as_objects(self):
+        contracts = load_locked_contracts(Path(__file__).resolve().parents[1] / "release/release-manifest-lock.json")
+        valid = load_json(self.declaration)
+        invalid = [valid["minecraft_versions"], None,
+                   {**valid, "unknown": "field"}, {**valid, "schema": "other"},
+                   {**valid, "schema_version": 2}, {**valid, "schema_version": "1"},
+                   {**valid, "schema_version": True},
+                   {**valid, "minecraft_versions": []},
+                   {**valid, "minecraft_versions": ["1.21.11", "1.21.11"]},
+                   {**valid, "minecraft_versions": [None]},
+                   {**valid, "minecraft_versions": [""]}]
+        original_manifest = self.manifest()
+        for value in invalid:
+            with self.subTest(declaration=value):
+                raw = (json.dumps(value) + "\n").encode()
+                manifest = deepcopy(original_manifest)
+                manifest["minecraft_compatibility"]["declaration"]["sha256"] = hashlib.sha256(raw).hexdigest()
+                result = check_shared_manifest(manifest, contracts, {"release/minecraft-targets.json": raw}, raw)
+                self.assertEqual({"valid": False, "reason": "declaration_content_invalid", "stage": "content"}, result)
+                self.declaration.write_bytes(raw)
+                with self.assertRaises(ValueError):
+                    self.manifest()
+        self.write_json(self.declaration, valid)
+
     def test_combined_record_preserves_identities_and_redacts_tokens(self):
         meta = load_json(self.records[0])
         pulse = {"schema": "mc-remote.local-compatibility-pulse", "schema_version": 1, "status": "PASS", "restart_only": False,
@@ -323,8 +347,8 @@ class SharedReleaseManifestFixtureTest(unittest.TestCase):
         self.assertEqual(1, fixture["schema_version"])
         cases = fixture["cases"]
         self.assertEqual(len(cases), len({case["id"] for case in cases}))
-        self.assertEqual(66, len(cases))
-        self.assertEqual(8, sum(case["expected"]["valid"] for case in cases))
+        self.assertEqual(85, len(cases))
+        self.assertEqual(10, sum(case["expected"]["valid"] for case in cases))
         for case in cases:
             with self.subTest(case=case["id"]):
                 self.assertEqual(case["expected"],
@@ -336,6 +360,16 @@ class SharedReleaseManifestFixtureTest(unittest.TestCase):
         lock = load_json(self.lock_path)
         self.assertEqual(contracts["fixtures"]["legacy_v1_schema_source"]["sha256"],
                          lock["legacy_v1_schema"]["sha256"])
+
+    def test_actual_declaration_fixture_preserves_source_bytes(self):
+        contracts = load_locked_contracts(self.lock_path)
+        fixture = contracts["fixtures"]
+        source = fixture["declaration_file_source"]
+        case = next(case for case in fixture["cases"] if case["id"] == source["case_id"])
+        raw = case["contents"][source["path"]].encode("utf-8")
+        self.assertEqual(source["bytes"], len(raw))
+        self.assertEqual(source["sha256"], hashlib.sha256(raw).hexdigest())
+        self.assertEqual(raw, case["jar_declaration"].encode("utf-8"))
 
     def test_tampered_schema_fixture_legacy_schema_or_license_blocks_validation(self):
         import shutil

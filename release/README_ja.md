@@ -1,7 +1,7 @@
 # McRemoteのrelease manifest
 
 b10以降のMC版を含まないtagでは、公開manifestをv2で生成します。既存のMC版を含むtagはv1の生成を維持します。
-正式な契約はknowledgeの[release gate notesのb10](https://github.com/Naohiro2g/mc-remote-knowledge/blob/6dbb9f1ee192c6c46d8dd58fdd91f8e6c3f46de5/00-hub/release-gate-notes_ja.md)（DECISIONS `2026-10-07-09`）です。
+正式な契約はknowledgeの[release gate notesのb10](https://github.com/Naohiro2g/mc-remote-knowledge/blob/6a7020d5199a6aa957c5ce43904916f2166a6b95/00-hub/release-gate-notes_ja.md)（DECISIONS `2026-10-07-09`と2026-10-08の宣言fileの形の追記）です。
 
 ## 公開前にそろえるもの
 
@@ -10,6 +10,10 @@ b10以降のMC版を含まないtagでは、公開manifestをv2で生成しま�
 - tooling担当から返された、固定commitのJSON Schemaと共有fixture。Schemaの正本は`minecraft-remote-tooling`です。
 
 tag、Release、shared環境へのdeploy、人間参加試験は、coordinatorが許可した操作に従います。
+
+対応版の宣言fileは、`schema: "mc-remote.minecraft-targets"`、`schema_version: 1`、`minecraft_versions`を持つobjectです。
+版の配列は空・重複を許さず、知らないfieldと裸の配列を拒否します。producer側で配列からobjectへの読み替えは行いません。
+既存の`release/minecraft-targets.json`とJARに同梱した宣言のraw bytesを使用します。
 
 ## 検証recordをまとめる
 
@@ -32,13 +36,13 @@ coordinatorの許可した公開準備で、このrecordを対象Releaseのasset
 ## 固定したSchemaと共有fixture
 
 `release-manifest-lock.json`はtoolingの発行commit
-[`fb6880b192a0063241f95c44a5fa6b836f5e7394`](https://github.com/Naohiro2g/minecraft-remote-tooling/commit/fb6880b192a0063241f95c44a5fa6b836f5e7394)
+[`5f567f14adaa24603e9dee3c0ec9909d428b7c4b`](https://github.com/Naohiro2g/minecraft-remote-tooling/commit/5f567f14adaa24603e9dee3c0ec9909d428b7c4b)
 を固定しています。Bridge／WireScopeのlockとは別です。
 
 | lockの項目 | 同梱file | 用途 |
 | --- | --- | --- |
 | `schema` | `contracts/release-manifest-v2.schema.json` | Draft 2020-12のv2 Schema |
-| `fixtures` | `contracts/fixtures/release-manifest-v2.json` | 共有fixture 66件（受入8件、拒否58件） |
+| `fixtures` | `contracts/fixtures/release-manifest-v2.json` | 共有fixture 85件（受入10件、拒否75件） |
 | `legacy_v1_schema` | `contracts/fixtures/release-manifest-v1.schema.json` | v1回帰試験 |
 | `legacy_v1_license` | `contracts/fixtures/STACK-LICENSE` | v1 Schemaの元のMIT License |
 
@@ -48,7 +52,7 @@ coordinatorの許可した公開準備で、このrecordを対象Releaseのasset
 python3 -m unittest discover -s scripts -p 'test_*release*.py'
 ```
 
-この固定commitの共有fixtureは66件とも一致しています。ただしtoolingの参照検査とfixtureの宣言fileは配列形式を想定し、実際のMcRemoteの`mc-remote.minecraft-targets` v1オブジェクトを拒否します。McRemoteは既存のオブジェクト形式とJARに同梱したbytesを維持しています。tooling／Stack側との宣言形式の照合が済むまで、このfixture一致だけでb10の公開可とは判断しません。
+この固定commitの共有fixtureは85件とも一致しています。実際のMcRemote宣言・manifestも、McRemoteの検査とtoolingの参照検査の両方で一致を確認しています。宣言のraw bytesとJAR同梱宣言は維持しています。fixtureのMinecraft版やverificationは合成値であり、公開candidateの動作確認はcoordinatorのgateで扱います。
 
 ## manifestを生成する
 
