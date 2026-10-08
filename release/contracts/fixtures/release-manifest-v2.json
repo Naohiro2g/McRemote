@@ -1,0 +1,3150 @@
+{
+  "schema": "mc-remote.release-manifest.fixtures",
+  "schema_version": 1,
+  "knowledge_contract": {
+    "commit": "6dbb9f1ee192c6c46d8dd58fdd91f8e6c3f46de5",
+    "path": "00-hub/release-gate-notes_ja.md",
+    "section": "b10 / release manifest v2の形",
+    "decision": "2026-10-07-09"
+  },
+  "description": "Synthetic manifests and UTF-8 content; no live verification claims. Validate version/schema, then semantic invariants, then optional supplied contents.",
+  "legacy_v1_schema_source": {
+    "repository": "Naohiro2g/mc-remote-stack",
+    "commit": "f9b558769375cf704e3bf55c6aa3db93bb2aa3cf",
+    "path": "src/mc_remote_stack/data/schemas/release-manifest.schema.json",
+    "sha256": "686682be9299524d73962348f76056787c4e1fd0c9123a0af0f0da2e264453b7"
+  },
+  "cases": [
+    {
+      "id": "v1.basic",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 1,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559"
+          }
+        ]
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "v1.optional-fields",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 1,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041",
+            "artifact_version": "2320.0.0b9"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121",
+            "artifact_version": "2320.0.0b9"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559",
+            "artifact_version": "2320.0.0b9"
+          }
+        ],
+        "bundled_wirescope_source_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "v1.reject-new-field",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 1,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559",
+            "bytes": 10
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "v1.reject-duplicate-role",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 1,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559"
+          },
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "duplicate_role",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "v2.scratch-local-three",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "v2.nonvariant-roles",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "bytes": 10,
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559"
+          }
+        ]
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "v2.optional-fields",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041",
+            "artifact_version": "2320.0.0b9"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121",
+            "artifact_version": "2320.0.0b9"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "bytes": 10,
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559",
+            "artifact_version": "2320.0.0b9"
+          }
+        ],
+        "bundled_wirescope_source_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "v2.zero-bytes",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "empty-example",
+            "kind": "https-file",
+            "file": "empty.txt",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ]
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      },
+      "contents": {
+        "empty.txt": ""
+      }
+    },
+    {
+      "id": "v2.mcremote",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "v2.mcremote-content-digests",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": true,
+        "reason": null,
+        "stage": null
+      },
+      "contents": {
+        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "[\"1.21.11\",\"26.2\"]\n"
+    },
+    {
+      "id": "unknown-schema-version",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 3,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "unsupported_schema_version",
+        "stage": "version"
+      }
+    },
+    {
+      "id": "string-schema-version",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": "2",
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "unsupported_schema_version",
+        "stage": "version"
+      }
+    },
+    {
+      "id": "wrong-schema-name",
+      "manifest": {
+        "schema": "different",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "unknown-top-level",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ],
+        "unknown": true
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "unknown-artifact-field",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa",
+            "unknown": true
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "invalid-source-commit",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "main",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "empty-release-tag",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "missing-bytes",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "bytes-null",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": null,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "bytes-string",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": "100",
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "bytes-negative",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": -1,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "bytes-fraction",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 1.5,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "bytes-boolean",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": true,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "os-only",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "arch-only",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "os-None",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": null,
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "arch-None",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": null,
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "os-",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "arch-",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "os-darwin",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "darwin",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "arch-amd64",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "amd64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "invalid-file-sha",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "oci-reject-os-arch",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041",
+            "os": "linux",
+            "arch": "x64"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "bytes": 10,
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "oci-missing-digest",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "bytes": 10,
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "duplicate-tuple-different-file-hash",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "other.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "9d6f965ac832e40a5df6c06afe983e3b449c07b843ff51ce76204de05c690d11"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "duplicate_artifact_key",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "mixed-variant-and-generic",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-windows-x64.zip",
+            "os": "windows",
+            "arch": "x64",
+            "bytes": 100,
+            "sha256": "a08c29e9d4da1a3623c5c27a80641d5a032922929d09991f113a84a6e53019fa"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-macos-arm64.zip",
+            "os": "macos",
+            "arch": "arm64",
+            "bytes": 101,
+            "sha256": "d396a556400b986aa95dce87c314d23c8094701e74d5b3cfeed29f7818d54c7e"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "mc-remote-scratch-local-2320.0.0b10-linux-x64.zip",
+            "os": "linux",
+            "arch": "x64",
+            "bytes": 102,
+            "sha256": "20bd1caf0a7683177c1eee00c8602859fc33f5110d7e37ba2ce91cd1e89fba22"
+          },
+          {
+            "role": "scratch-local",
+            "kind": "https-file",
+            "file": "generic.zip",
+            "bytes": 5,
+            "sha256": "3a2e8954befdbd6e7eac2f10d4301a2923cd65a5f38bf80914019b55a03f78c4"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "mixed_artifact_variants",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "duplicate-key-across-kinds",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "scratch",
+            "kind": "oci",
+            "locator": "ghcr.io/example/scratch",
+            "digest": "sha256:5a9cb6b54ea56d52a69891af8c21afb73d3841611bbabb5d7c61312d81e6e041"
+          },
+          {
+            "role": "bridge",
+            "kind": "oci",
+            "locator": "ghcr.io/example/bridge",
+            "digest": "sha256:17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"
+          },
+          {
+            "role": "contracts",
+            "kind": "https-file",
+            "file": "contracts.tar.gz",
+            "bytes": 10,
+            "sha256": "b094db7ce2f99cbcbde7ec178a6754bac666e2192f076807acbd70d49ddd0559"
+          },
+          {
+            "role": "scratch",
+            "kind": "https-file",
+            "file": "scratch.zip",
+            "bytes": 5,
+            "sha256": "d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "duplicate_artifact_key",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "jar-missing-compatibility",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "unknown-compatibility-field",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ],
+          "unknown": true
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "empty-declared-versions",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": []
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "duplicate-declared-version",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "missing-verification-version",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "minecraft_version_set_mismatch",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "unexpected-verification-version",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "other",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "minecraft_version_set_mismatch",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "duplicate-verification-version",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            },
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "duplicate_verification_version",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "jar-sha-mismatch",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "0caac437dbfd558d223e73b092a74ec26e84e4322d61150d7b679d3636c409f8",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "jar_sha256_mismatch",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "verification-result-FAIL",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "FAIL",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "verification-result-SKIP",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "SKIP",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "verification-result-pass",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "pass",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "verification-result-None",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": null,
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "paper-build-zero",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 0,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "java-version-empty",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "record-file-dir/record.json",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "dir/record.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "record-file-dir\\record.json",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "dir\\record.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "record-file-https://example.test/record.json",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "https://example.test/record.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "record-file-..",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "..",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "record-sha-invalid",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "wrong"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "record-listed-as-artifact",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          },
+          {
+            "role": "record",
+            "kind": "https-file",
+            "bytes": 5,
+            "file": "fixture-verification-1.21.11.json",
+            "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "record_listed_as_artifact",
+        "stage": "semantic"
+      }
+    },
+    {
+      "id": "declaration-absolute-path",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "/targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "declaration-traversal-path",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "../targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "schema_invalid",
+        "stage": "schema"
+      }
+    },
+    {
+      "id": "declaration-digest-mismatch",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_sha256_mismatch",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n ",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      }
+    },
+    {
+      "id": "record-digest-mismatch",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "record_sha256_mismatch",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n ",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      }
+    },
+    {
+      "id": "declaration-file-versions-mismatch",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "66c4d8c551eb2bef48d17438f7664e5dc5f6e335126aae3109c1d87b3566d34c",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "declaration_versions_mismatch",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "[\"1.21.11\"]\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      }
+    },
+    {
+      "id": "jar-declaration-bytes-mismatch",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "jar_declaration_bytes_mismatch",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n",
+        "fixture-verification-1.21.11.json": "{\"fixture\":true,\"minecraft_version\":\"1.21.11\"}\n",
+        "fixture-verification-26.2.json": "{\"fixture\":true,\"minecraft_version\":\"26.2\"}\n"
+      },
+      "jar_declaration": "[\"1.21.11\",\"26.2\"]\n "
+    },
+    {
+      "id": "record-content-missing",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "jar",
+            "kind": "https-file",
+            "file": "mc-remote-2320.0.0b10.jar",
+            "bytes": 16,
+            "sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27"
+          }
+        ],
+        "minecraft_compatibility": {
+          "declaration": {
+            "path": "release/minecraft-targets.json",
+            "sha256": "9b8f725435786ebd0ca718f6ff920bfc6e89f41160067adb050cd19c5957b145",
+            "minecraft_versions": ["1.21.11", "26.2"]
+          },
+          "verifications": [
+            {
+              "minecraft_version": "1.21.11",
+              "paper_build": 130,
+              "server_sha256": "47cac7b58016acc3574b076a7c9aac23db577816da7c8572e252ac7d4179f379",
+              "java_version": "21.0.12.1+1-1-24.04.4-Ubuntu",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-1.21.11.json",
+                "sha256": "66783f6b43ac1050932dd7a5c2ed0ca12d87f3d530df51ce31686e7c07896763"
+              }
+            },
+            {
+              "minecraft_version": "26.2",
+              "paper_build": 132,
+              "server_sha256": "b7bac5e372555b9ae8bbce36273400c845ae2be90b7b82e8a1703db49cc9467a",
+              "java_version": "25+36",
+              "jar_sha256": "dff36338b37dbf74a5d42d674e01a2cc2732bf8388e9135ff9a0a37ec90a1a27",
+              "result": "PASS",
+              "record": {
+                "file": "fixture-verification-26.2.json",
+                "sha256": "d020e1fe6fe94e89fb0b962654914677408ac42bbc5ed4ad368f66b502bccfc7"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "valid": false,
+        "reason": "reference_content_missing",
+        "stage": "content"
+      },
+      "contents": {
+        "release/minecraft-targets.json": "[\"1.21.11\",\"26.2\"]\n"
+      }
+    },
+    {
+      "id": "artifact-content-size-mismatch",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "empty-example",
+            "kind": "https-file",
+            "file": "empty.txt",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "artifact_bytes_mismatch",
+        "stage": "content"
+      },
+      "contents": {
+        "empty.txt": "x"
+      }
+    },
+    {
+      "id": "artifact-content-digest-mismatch",
+      "manifest": {
+        "schema": "mc-remote.release-manifest",
+        "schema_version": 2,
+        "release_tag": "v2320.0.0b10",
+        "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifacts": [
+          {
+            "role": "empty-example",
+            "kind": "https-file",
+            "file": "empty.txt",
+            "bytes": 0,
+            "sha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
+          }
+        ]
+      },
+      "expected": {
+        "valid": false,
+        "reason": "artifact_sha256_mismatch",
+        "stage": "content"
+      },
+      "contents": {
+        "empty.txt": ""
+      }
+    }
+  ]
+}

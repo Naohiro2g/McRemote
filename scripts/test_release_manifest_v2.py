@@ -13,7 +13,8 @@ from prepare_minecraft_verification import prepare_record
 from prepare_release_body import update_body, BEGIN, END
 from release_manifest_v2 import (load_json, sha256_file, validate_candidate_files,
                                  validate_locked_schema, validate_v2,
-                                 verification_filename)
+                                 verification_filename, load_locked_contracts,
+                                 check_shared_manifest)
 
 
 class ReleaseManifestV2Test(unittest.TestCase):
@@ -235,7 +236,7 @@ class ReleaseManifestV2Test(unittest.TestCase):
             validate_locked_schema(self.manifest(), self.root / "missing.json")
 
     def test_pinned_schema_engine_and_digest_are_both_required(self):
-        # This miniature schema tests the loader, not the unavailable shared contract.
+        # This miniature schema isolates the loader from the shared contract.
         lock, schema = self.locked_schema({"$schema": "https://json-schema.org/draft/2020-12/schema",
                                           "type": "object", "properties": {"schema_version": {"const": 2}}})
         validate_locked_schema(self.manifest(), lock)
@@ -263,6 +264,19 @@ class ReleaseManifestV2Test(unittest.TestCase):
         self.write_json(lock, changed)
         with self.assertRaisesRegex(ValueError, "escapes"):
             validate_locked_schema(self.manifest(), lock)
+
+    def test_actual_object_declaration_passes_pinned_schema_and_reference_bytes(self):
+        contracts = load_locked_contracts(Path(__file__).resolve().parents[1] / "release/release-manifest-lock.json")
+        manifest = self.manifest()
+        contents = {"release/minecraft-targets.json": self.declaration.read_bytes(),
+                    self.jar.name: self.jar.read_bytes()}
+        contents.update({path.name: path.read_bytes() for path in self.records})
+        self.assertEqual({"valid": True, "reason": None, "stage": None},
+                         check_shared_manifest(manifest, contracts, contents, self.declaration.read_bytes()))
+        changed = dict(contents)
+        changed["release/minecraft-targets.json"] += b" "
+        self.assertEqual("declaration_sha256_mismatch",
+                         check_shared_manifest(manifest, contracts, changed)["reason"])
 
     def test_combined_record_preserves_identities_and_redacts_tokens(self):
         meta = load_json(self.records[0])
@@ -297,6 +311,48 @@ class ReleaseBodyTest(unittest.TestCase):
         for body in (BEGIN, END, END + BEGIN, section * 2):
             with self.subTest(body=body), self.assertRaises(ValueError):
                 update_body(body, section)
+
+
+class SharedReleaseManifestFixtureTest(unittest.TestCase):
+    lock_path = Path(__file__).resolve().parents[1] / "release/release-manifest-lock.json"
+
+    def test_all_issued_cases_match_verdict_stage_and_reason(self):
+        contracts = load_locked_contracts(self.lock_path)
+        fixture = contracts["fixtures"]
+        self.assertEqual("mc-remote.release-manifest.fixtures", fixture["schema"])
+        self.assertEqual(1, fixture["schema_version"])
+        cases = fixture["cases"]
+        self.assertEqual(len(cases), len({case["id"] for case in cases}))
+        self.assertEqual(66, len(cases))
+        self.assertEqual(8, sum(case["expected"]["valid"] for case in cases))
+        for case in cases:
+            with self.subTest(case=case["id"]):
+                self.assertEqual(case["expected"],
+                                 check_shared_manifest(case["manifest"], contracts,
+                                                       case.get("contents"), case.get("jar_declaration")))
+
+    def test_legacy_schema_retains_issuer_source_digest(self):
+        contracts = load_locked_contracts(self.lock_path)
+        lock = load_json(self.lock_path)
+        self.assertEqual(contracts["fixtures"]["legacy_v1_schema_source"]["sha256"],
+                         lock["legacy_v1_schema"]["sha256"])
+
+    def test_tampered_schema_fixture_legacy_schema_or_license_blocks_validation(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.lock_path.parent / "contracts", root / "contracts")
+            local_lock = root / self.lock_path.name
+            shutil.copyfile(self.lock_path, local_lock)
+            lock = load_json(local_lock)
+            manifest = load_locked_contracts(local_lock)["fixtures"]["cases"][2]["manifest"]
+            for label in ("schema", "fixtures", "legacy_v1_schema", "legacy_v1_license"):
+                path = root / lock[label]["local_path"]
+                original = path.read_bytes()
+                path.write_bytes(original + b" ")
+                with self.subTest(input=label), self.assertRaisesRegex(ValueError, "bytes/digest"):
+                    validate_locked_schema(manifest, local_lock)
+                path.write_bytes(original)
 
 
 if __name__ == "__main__":

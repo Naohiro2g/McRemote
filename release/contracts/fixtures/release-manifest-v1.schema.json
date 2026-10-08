@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mc-remote.example/schemas/release-manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "release_tag", "source_commit", "artifacts"],
+  "properties": {
+    "schema": {
+      "const": "mc-remote.release-manifest"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "release_tag": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "bundled_wirescope_source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ociArtifact"
+          },
+          {
+            "$ref": "#/$defs/httpsFileArtifact"
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "artifactVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ociArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "kind", "locator", "digest"],
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/role"
+        },
+        "kind": {
+          "const": "oci"
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "artifact_version": {
+          "$ref": "#/$defs/artifactVersion"
+        }
+      }
+    },
+    "httpsFileArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "kind", "file", "sha256"],
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/role"
+        },
+        "kind": {
+          "const": "https-file"
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "artifact_version": {
+          "$ref": "#/$defs/artifactVersion"
+        }
+      }
+    }
+  }
+}

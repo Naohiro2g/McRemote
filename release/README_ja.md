@@ -29,24 +29,26 @@ recordはMcRemote側の素材形式`mc-remote.minecraft-verification` v1です�
 
 coordinatorの許可した公開準備で、このrecordを対象Releaseのassetとして先に添付します。公開workflowは同じReleaseから版ごとのrecordを読み、candidateと照合します。recordはmanifestの`artifacts`に載せず、`verifications[].record`からbasenameとSHA-256で参照します。
 
-## Schemaを固定する
+## 固定したSchemaと共有fixture
 
-Schemaと共有fixtureの搬送後に、`release/release-manifest-lock.json`を置きます。Bridge／WireScopeのlockとは別です。lockの構造は次のとおりです。値は搬送された実値を使い、Schemaのコピーは編集しません。
+`release-manifest-lock.json`はtoolingの発行commit
+[`fb6880b192a0063241f95c44a5fa6b836f5e7394`](https://github.com/Naohiro2g/minecraft-remote-tooling/commit/fb6880b192a0063241f95c44a5fa6b836f5e7394)
+を固定しています。Bridge／WireScopeのlockとは別です。
 
-```json
-{
-  "repository": "Naohiro2g/minecraft-remote-tooling",
-  "source_commit": "<固定commitの40桁SHA>",
-  "schema": {
-    "path": "schemas/release-manifest-v2.schema.json",
-    "local_path": "contracts/release-manifest-v2.schema.json",
-    "bytes": 0,
-    "sha256": "<搬送された64桁SHA-256>"
-  }
-}
+| lockの項目 | 同梱file | 用途 |
+| --- | --- | --- |
+| `schema` | `contracts/release-manifest-v2.schema.json` | Draft 2020-12のv2 Schema |
+| `fixtures` | `contracts/fixtures/release-manifest-v2.json` | 共有fixture 66件（受入8件、拒否58件） |
+| `legacy_v1_schema` | `contracts/fixtures/release-manifest-v1.schema.json` | v1回帰試験 |
+| `legacy_v1_license` | `contracts/fixtures/STACK-LICENSE` | v1 Schemaの元のMIT License |
+
+各項目はupstreamの`path`、lockからの相対`local_path`、`bytes`、`sha256`を持ちます。validatorは全項目のbytesとdigestを確認してからSchemaを使います。実行時にremoteのmainやSchemaの外部参照を取得しません。更新時はownerが発行した同じcommitの素材をbytesのまま取り込み、共有fixtureの受入・拒否、段階、理由まで照合します。
+
+```sh
+python3 -m unittest discover -s scripts -p 'test_*release*.py'
 ```
 
-このJSONは構造の例です。`bytes`も実際のfileの値へ置き換えます。validatorはlocalのbytesとdigestを確認し、Draft 2020-12で検査します。実行時にremoteのmainやSchemaの外部参照を取得しません。共有fixtureとの最終照合も、同じ固定commitの素材で行います。
+この固定commitの共有fixtureは66件とも一致しています。ただしtoolingの参照検査とfixtureの宣言fileは配列形式を想定し、実際のMcRemoteの`mc-remote.minecraft-targets` v1オブジェクトを拒否します。McRemoteは既存のオブジェクト形式とJARに同梱したbytesを維持しています。tooling／Stack側との宣言形式の照合が済むまで、このfixture一致だけでb10の公開可とは判断しません。
 
 ## manifestを生成する
 

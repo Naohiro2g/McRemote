@@ -1,0 +1,28 @@
+{
+  "repository": "Naohiro2g/minecraft-remote-tooling",
+  "source_commit": "fb6880b192a0063241f95c44a5fa6b836f5e7394",
+  "schema": {
+    "path": "schemas/release-manifest-v2.schema.json",
+    "local_path": "contracts/release-manifest-v2.schema.json",
+    "bytes": 5654,
+    "sha256": "537684f063c5604ccb1e99a69fed51a16a73ef6e88c71ee85a410ab6f5ff5b4c"
+  },
+  "fixtures": {
+    "path": "schemas/fixtures/release-manifest-v2.json",
+    "local_path": "contracts/fixtures/release-manifest-v2.json",
+    "bytes": 112472,
+    "sha256": "757d1b7661ca1c65b071253ef95161730b1050df85c4f6be6299905823a15a26"
+  },
+  "legacy_v1_schema": {
+    "path": "schemas/fixtures/release-manifest-v1.schema.json",
+    "local_path": "contracts/fixtures/release-manifest-v1.schema.json",
+    "bytes": 2254,
+    "sha256": "686682be9299524d73962348f76056787c4e1fd0c9123a0af0f0da2e264453b7"
+  },
+  "legacy_v1_license": {
+    "path": "schemas/fixtures/STACK-LICENSE",
+    "local_path": "contracts/fixtures/STACK-LICENSE",
+    "bytes": 1088,
+    "sha256": "56b29b417d90ab02f8f212845885b17a2bcccab647b6a7ff9f43605faafe7689"
+  }
+}
