@@ -70,9 +70,12 @@ public class CredentialService {
         this.store = store;
         this.authority = authority;
         this.activeLimit = Math.max(1, activeLimit);
+        CredentialDiagnostics.Operation startupOperation = CredentialDiagnostics.Operation.VALIDATE_PATHS;
         try {
-            validatePaths();
+            CredentialDiagnostics.run(startupOperation, this::validatePaths);
+            startupOperation = CredentialDiagnostics.Operation.CHECK_SNAPSHOT;
             boolean snapshotPresent = existsOrThrows(store.path());
+            startupOperation = CredentialDiagnostics.Operation.CHECK_MANIFEST;
             boolean manifestPresent = existsOrThrows(authority.manifestPath());
             if (!snapshotPresent || !manifestPresent) {
                 String missing = "snapshot=" + (snapshotPresent ? "present" : "missing")
@@ -82,32 +85,38 @@ public class CredentialService {
                 // A surviving backend is retained as a retired sibling, never reused in the new domain.
                 // An unreadable surviving backend is a failure, not an absence.
                 if (snapshotPresent) {
-                    store.load();
+                    startupOperation = CredentialDiagnostics.Operation.READ_SNAPSHOT;
+                    CredentialDiagnostics.perform(startupOperation, store::load);
                 }
                 if (manifestPresent) {
-                    UUID oldDomain = authority.loadManifest();
-                    authority.loadTombstones(oldDomain);
+                    startupOperation = CredentialDiagnostics.Operation.READ_MANIFEST;
+                    UUID oldDomain = CredentialDiagnostics.perform(startupOperation, authority::loadManifest);
+                    startupOperation = CredentialDiagnostics.Operation.READ_TOMBSTONES;
+                    CredentialDiagnostics.perform(startupOperation, () -> authority.loadTombstones(oldDomain));
                 }
+                startupOperation = CredentialDiagnostics.Operation.BOOTSTRAP;
                 ResetResult initialized = retireAndBootstrap(
                         "Startup initialization after missing credential backend");
                 LOGGER.warning("Credential domain initialized after missing backend: " + missing
-                        + ", new_domain=" + initialized.credentialDomainId()
+                        + ", new_domain=initialized"
                         + ", retired_snapshot=" + describe(initialized.archivedSnapshot())
                         + ", retired_authority=" + describe(initialized.archivedAuthority())
                         + "; previous tokens are invalid and clients must pair again.");
             } else {
-                loadCurrentState();
+                startupOperation = CredentialDiagnostics.Operation.LOAD_STATE;
+                CredentialDiagnostics.run(startupOperation, this::loadCurrentState);
             }
         } catch (IOException | RuntimeException e) {
             // retireAndBootstrap が記録した失敗の文脈を上書きしない。
             if (health != Health.UNHEALTHY) {
-                markUnhealthy("Credential domain could not be trusted", e);
+                markUnhealthy("Credential domain could not be trusted; operation="
+                        + startupOperation.label(), e);
             }
         }
     }
 
     private static String describe(java.nio.file.Path path) {
-        return path == null ? "none" : path.toString();
+        return path == null ? "none" : "retained";
     }
 
     private static boolean existsOrThrows(java.nio.file.Path path) throws IOException {
@@ -138,7 +147,7 @@ public class CredentialService {
 
     /** 空の domain を作る。通常起動時の欠落初期化と明示管理操作で使う。 */
     public synchronized UUID bootstrap() throws IOException {
-        validatePaths();
+        CredentialDiagnostics.run(CredentialDiagnostics.Operation.VALIDATE_PATHS, this::validatePaths);
         if (health == Health.HEALTHY || health == Health.DEGRADED) {
             throw new IOException("Credential domain is already initialized");
         }
@@ -148,17 +157,21 @@ public class CredentialService {
             throw new IOException("Snapshot exists without revocation authority; refusing bootstrap");
         }
 
-        UUID domain = authority.beginBootstrap();
+        UUID domain = CredentialDiagnostics.perform(
+                CredentialDiagnostics.Operation.BEGIN_BOOTSTRAP, authority::beginBootstrap);
         if (snapshotExists) {
-            CredentialStore.LoadedSnapshot loaded = store.load();
+            CredentialStore.LoadedSnapshot loaded = CredentialDiagnostics.perform(
+                    CredentialDiagnostics.Operation.READ_SNAPSHOT, store::load);
             if (!domain.equals(loaded.credentialDomainId()) || !loaded.records().isEmpty()) {
                 throw new IOException("Existing snapshot is not a safe empty bootstrap continuation");
             }
         } else {
-            store.initialize(domain);
+            CredentialDiagnostics.run(CredentialDiagnostics.Operation.INITIALIZE_SNAPSHOT,
+                    () -> store.initialize(domain));
         }
-        authority.completeBootstrap(domain);
-        loadCurrentState();
+        CredentialDiagnostics.run(CredentialDiagnostics.Operation.COMPLETE_BOOTSTRAP,
+                () -> authority.completeBootstrap(domain));
+        CredentialDiagnostics.run(CredentialDiagnostics.Operation.LOAD_STATE, this::loadCurrentState);
         if (health != Health.HEALTHY) {
             throw new IOException("Credential bootstrap did not produce a healthy domain: " + healthDetail);
         }
@@ -176,12 +189,15 @@ public class CredentialService {
         java.nio.file.Path archivedAuthority = null;
         java.nio.file.Path archivedSnapshot = null;
         try {
-            archivedAuthority = authority.archive(suffix);
-            archivedSnapshot = store.archive(suffix);
+            archivedAuthority = CredentialDiagnostics.perform(
+                    CredentialDiagnostics.Operation.ARCHIVE_AUTHORITY, () -> authority.archive(suffix));
+            archivedSnapshot = CredentialDiagnostics.perform(
+                    CredentialDiagnostics.Operation.ARCHIVE_SNAPSHOT, () -> store.archive(suffix));
             clearMemory();
             health = Health.UNINITIALIZED;
             healthDetail = operation + " is creating a new credential domain";
-            UUID newDomain = bootstrap();
+            UUID newDomain = CredentialDiagnostics.perform(
+                    CredentialDiagnostics.Operation.BOOTSTRAP, this::bootstrap);
             return new ResetResult(newDomain, archivedSnapshot, archivedAuthority);
         } catch (IOException e) {
             markUnhealthy(operation + " stopped in a fail-closed intermediate state", e);
@@ -355,7 +371,8 @@ public class CredentialService {
         } catch (IOException e) {
             // 線形化後なので成功を取り消さない。authority overlay は既に有効。
             health = Health.DEGRADED;
-            healthDetail = "Revocation committed; snapshot projection needs reconcile: " + e.getMessage();
+            healthDetail = "Revocation committed; snapshot projection needs reconcile; "
+                    + CredentialDiagnostics.summary(e);
             LOGGER.warning(healthDetail);
             return new RevokeResult(credentialId, false);
         }
@@ -383,7 +400,7 @@ public class CredentialService {
             LOGGER.info("Credential snapshot reconcile completed");
             return true;
         } catch (IOException e) {
-            healthDetail = "Credential snapshot reconcile still failing: " + e.getMessage();
+            healthDetail = "Credential snapshot reconcile still failing; " + CredentialDiagnostics.summary(e);
             return false;
         }
     }
@@ -558,7 +575,7 @@ public class CredentialService {
     private void markUnhealthy(String message, Throwable cause) {
         clearMemory();
         health = Health.UNHEALTHY;
-        healthDetail = cause == null ? message : message + ": " + cause.getMessage();
+        healthDetail = cause == null ? message : message + "; " + CredentialDiagnostics.summary(cause);
         LOGGER.severe(healthDetail);
     }
 

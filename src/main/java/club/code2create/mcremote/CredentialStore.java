@@ -126,7 +126,8 @@ class CredentialStore {
         if (parent == null) {
             throw new IOException("Credential snapshot has no parent directory: " + path);
         }
-        Files.createDirectories(parent);
+        CredentialDiagnostics.run(CredentialDiagnostics.Operation.CREATE_DIRECTORY,
+                () -> Files.createDirectories(parent));
         if (Files.isSymbolicLink(parent)) {
             throw new IOException("Credential snapshot parent must not be a symlink: " + parent);
         }
@@ -145,11 +146,13 @@ class CredentialStore {
         Path temp = parent.resolve("." + path.getFileName() + ".tmp-" + UUID.randomUUID());
         try {
             writeNewAndForce(temp, bytes);
-            try {
-                Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (AtomicMoveNotSupportedException e) {
-                throw new IOException("Credential snapshot filesystem does not support atomic replace", e);
-            }
+            CredentialDiagnostics.run(CredentialDiagnostics.Operation.PUBLISH_SNAPSHOT, () -> {
+                try {
+                    Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                } catch (AtomicMoveNotSupportedException e) {
+                    throw new IOException("Credential snapshot filesystem does not support atomic replace", e);
+                }
+            });
             forceDirectory(parent);
         } finally {
             Files.deleteIfExists(temp);
@@ -168,19 +171,34 @@ class CredentialStore {
     }
 
     static void writeNewAndForce(Path target, byte[] bytes) throws IOException {
-        try (FileChannel channel = FileChannel.open(target,
-                StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+        FileChannel opened = CredentialDiagnostics.perform(CredentialDiagnostics.Operation.OPEN_FILE,
+                () -> FileChannel.open(target, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE));
+        try (FileChannel channel = opened) {
             ByteBuffer buffer = ByteBuffer.wrap(bytes);
-            while (buffer.hasRemaining()) {
-                channel.write(buffer);
+            CredentialDiagnostics.run(CredentialDiagnostics.Operation.WRITE_FILE, () -> {
+                while (buffer.hasRemaining()) {
+                    channel.write(buffer);
+                }
+            });
+            CredentialDiagnostics.run(CredentialDiagnostics.Operation.SYNC_FILE, () -> channel.force(true));
+        } catch (IOException failure) {
+            if (failure instanceof CredentialDiagnostics.Failure) {
+                throw failure;
             }
-            channel.force(true);
+            throw new CredentialDiagnostics.Failure(CredentialDiagnostics.Operation.CLOSE_FILE, failure);
         }
     }
 
     static void forceDirectory(Path directory) throws IOException {
-        try (FileChannel channel = FileChannel.open(directory, StandardOpenOption.READ)) {
-            channel.force(true);
+        FileChannel opened = CredentialDiagnostics.perform(CredentialDiagnostics.Operation.OPEN_DIRECTORY,
+                () -> FileChannel.open(directory, StandardOpenOption.READ));
+        try (FileChannel channel = opened) {
+            CredentialDiagnostics.run(CredentialDiagnostics.Operation.SYNC_DIRECTORY, () -> channel.force(true));
+        } catch (IOException failure) {
+            if (failure instanceof CredentialDiagnostics.Failure) {
+                throw failure;
+            }
+            throw new CredentialDiagnostics.Failure(CredentialDiagnostics.Operation.CLOSE_DIRECTORY, failure);
         }
     }
 

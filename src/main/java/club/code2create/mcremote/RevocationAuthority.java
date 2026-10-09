@@ -128,7 +128,8 @@ class RevocationAuthority {
      */
     UUID beginBootstrap() throws IOException {
         if (!directoryExists()) {
-            Files.createDirectories(directory);
+            CredentialDiagnostics.run(CredentialDiagnostics.Operation.CREATE_DIRECTORY,
+                    () -> Files.createDirectories(directory));
             CredentialStore.forceDirectory(directory.getParent());
         }
         requireDirectory();
@@ -219,8 +220,8 @@ class RevocationAuthority {
             try {
                 Files.deleteIfExists(temp);
             } catch (IOException cleanupError) {
-                LOGGER.warning("Could not remove interrupted revoke temp file " + temp
-                        + ": " + cleanupError.getMessage());
+                LOGGER.warning("Could not remove interrupted revoke temp file; "
+                        + CredentialDiagnostics.summary(cleanupError));
             }
         }
         return committed;
