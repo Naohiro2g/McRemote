@@ -30,7 +30,15 @@ final class CredentialDiagnostics {
         PUBLISH_SNAPSHOT("snapshot.atomic-publish"),
         OPEN_DIRECTORY("directory.open-read"),
         SYNC_DIRECTORY("directory.sync"),
-        CLOSE_DIRECTORY("directory.close");
+        CLOSE_DIRECTORY("directory.close"),
+        OPEN_DATABASE("sqlite.open"),
+        CONFIGURE_DATABASE("sqlite.configure-and-readback"),
+        VALIDATE_DATABASE("sqlite.validate"),
+        READ_DATABASE("sqlite.read"),
+        BEGIN_DATABASE_WRITE("sqlite.begin-immediate"),
+        WRITE_DATABASE("sqlite.write"),
+        COMMIT_DATABASE("sqlite.commit"),
+        CLOSE_DATABASE("sqlite.close");
 
         private final String label;
 

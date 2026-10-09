@@ -135,6 +135,13 @@ tokenに束縛されない明示的な認証bypassではこのplayer metaを適�
 | `auth.revocation_authority_path` | `credential-revocations` | 失効記録の保存先。上と入れ子にしないでください |
 | `auth.max_long_lived_credentials_per_uuid` | `16` | player ごとの長期 credential の上限。同時接続数とは別です |
 
+Windowsの認証情報はSQLiteへ保存します。既存configの `auth.credential_store_path` に `.sqlite` を付けたDB（既定 `credential-store/snapshot.json.sqlite`）と、`auth.revocation_authority_path` に `-sqlite` を付けた別directory内の `authority.sqlite`（既定 `credential-revocations-sqlite/authority.sqlite`）を使います。旧JSONは読み取り・移行・退避しません。Linux／macOSは既存の保存先を使います。
+
+Java 25ではSQLite native libraryの読み込み時に警告が出ることがあります。読み込みは追加flagなしでも可能で、`java --enable-native-access=ALL-UNNAMED ... -jar paper.jar` とするとこの警告を抑えられます。
+
+各DBとその `-wal` は一組の復旧単位です。稼働中のDBだけをコピーせず、整合したバックアップを取ってください。snapshotだけを復元する際にauthorityを書き戻さないことが、失効したtokenを再び有効にしないための条件です。明示resetでは旧SQLite stateを各DB内へ保持して、新しいdomainを作ります。
+
+
 実行時の上限: プラグインが一度に抱える量の上限です。protocol の定数ではありません。サーバーの負荷を見て調整します。
 
 認証前にも接続・受信・pairing の上限を適用します。接続数や頻度、入力サイズ、待ち時間、
@@ -295,3 +302,7 @@ python3 scripts/player_test.py --host 127.0.0.1 --port 25575
 issue と contribution は [GitHub repository](https://github.com/Naohiro2g/McRemote) で受け付けます。
 ライセンスは [LICENSE](LICENSE) を参照してください。本 project は
 [wensheng/JuicyRaspberryPie](https://github.com/wensheng/JuicyRaspberryPie) を起点にしています。
+
+## 同梱ライブラリ
+
+Windowsの認証情報の保存に [Xerial SQLite JDBC](https://github.com/xerial/sqlite-jdbc) を同梱しています（Apache License 2.0）。SQLite本体は [public domain](https://www.sqlite.org/copyright.html) です。ライセンスとnoticeはJARの `META-INF/licenses/sqlite-jdbc/`、同梱情報は `META-INF/THIRD-PARTY-NOTICES_ja.md` にあります。起動時のダウンロードは不要です。

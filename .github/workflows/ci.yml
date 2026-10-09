@@ -9,7 +9,70 @@ on:
   workflow_dispatch:
 
 jobs:
+  credential-contract:
+    name: Credentials (${{ matrix.os }}, Java ${{ matrix.java }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        java: ['21', '25']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup test runtime
+        id: test-runtime
+        uses: actions/setup-java@v4.7.1
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+      - name: Setup Java 21 compiler and Gradle runtime
+        id: compiler
+        uses: actions/setup-java@v4.7.1
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Windows SQLite contract
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          ./gradlew.bat test -PtestJavaVersion=${{ matrix.java }}
+          "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}"
+          --tests club.code2create.mcremote.SqliteCredentialBackendTest
+      - name: Linux and macOS file and SQLite contracts
+        if: runner.os != 'Windows'
+        shell: bash
+        run: >-
+          ./gradlew test -PtestJavaVersion=${{ matrix.java }}
+          "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}"
+          --tests club.code2create.mcremote.SqliteCredentialBackendTest
+          --tests club.code2create.mcremote.CredentialServiceTest
+          --tests club.code2create.mcremote.CredentialDiagnosticsTest
+          --tests club.code2create.mcremote.PairingManagerTest
+      - name: Windows packaged native engine and parent-driver isolation
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./gradlew.bat sqlitePackagingProbe -PtestJavaVersion=${{ matrix.java }} "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" 2>&1 | Tee-Object -FilePath build/sqlite-packaging-probe.log
+          exit $LASTEXITCODE
+      - name: Linux and macOS packaged native engine and parent-driver isolation
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ./gradlew sqlitePackagingProbe -PtestJavaVersion=${{ matrix.java }} "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" 2>&1 | tee build/sqlite-packaging-probe.log
+      - name: Upload credential test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: credential-tests-${{ matrix.os }}-java-${{ matrix.java }}
+          path: |
+            build/test-results/test/
+            build/reports/tests/test/
+            build/sqlite-packaging-probe.log
+          if-no-files-found: error
+
   build-only:
+    needs: credential-contract
     runs-on: ubuntu-latest
 
     steps:

@@ -70,11 +70,11 @@ class RevocationAuthority {
         return Files.exists(directory, LinkOption.NOFOLLOW_LINKS);
     }
 
-    boolean manifestExists() {
+    boolean manifestExists() throws IOException {
         return Files.exists(manifestPath(), LinkOption.NOFOLLOW_LINKS);
     }
 
-    boolean bootstrapPendingExists() {
+    boolean bootstrapPendingExists() throws IOException {
         return Files.exists(directory.resolve(BOOTSTRAP_MARKER), LinkOption.NOFOLLOW_LINKS);
     }
 
@@ -334,7 +334,7 @@ class RevocationAuthority {
         return doc;
     }
 
-    private static UUID parseUuid(String value, String field) throws IOException {
+    static UUID parseUuid(String value, String field) throws IOException {
         try {
             UUID parsed = UUID.fromString(value);
             if (!parsed.toString().equals(value)) {

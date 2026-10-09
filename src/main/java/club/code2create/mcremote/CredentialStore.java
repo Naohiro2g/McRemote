@@ -73,15 +73,19 @@ class CredentialStore {
         return path;
     }
 
-    boolean exists() {
+    boolean exists() throws IOException {
         return Files.exists(path, LinkOption.NOFOLLOW_LINKS);
     }
 
     LoadedSnapshot load() throws IOException {
         requireRegularFile(path, "credential snapshot");
+        return decode(Files.readString(path, StandardCharsets.UTF_8));
+    }
+
+    static LoadedSnapshot decode(String json) throws IOException {
         SnapshotDocument doc;
         try {
-            doc = GSON.fromJson(Files.readString(path, StandardCharsets.UTF_8), SnapshotDocument.class);
+            doc = GSON.fromJson(json, SnapshotDocument.class);
         } catch (JsonParseException e) {
             throw new IOException("Credential snapshot is not valid JSON", e);
         }
@@ -138,11 +142,7 @@ class CredentialStore {
             requireRegularFile(path, "credential snapshot");
         }
 
-        SnapshotDocument doc = new SnapshotDocument();
-        doc.schema_version = SCHEMA_VERSION;
-        doc.credential_domain_id = domainId.toString();
-        doc.records = records.stream().map(CredentialStore::toDocument).toList();
-        byte[] bytes = (GSON.toJson(doc) + "\n").getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = encode(domainId, records).getBytes(StandardCharsets.UTF_8);
         Path temp = parent.resolve("." + path.getFileName() + ".tmp-" + UUID.randomUUID());
         try {
             writeNewAndForce(temp, bytes);
@@ -157,6 +157,14 @@ class CredentialStore {
         } finally {
             Files.deleteIfExists(temp);
         }
+    }
+
+    static String encode(UUID domainId, List<CredentialRecord> records) {
+        SnapshotDocument doc = new SnapshotDocument();
+        doc.schema_version = SCHEMA_VERSION;
+        doc.credential_domain_id = domainId.toString();
+        doc.records = records.stream().map(CredentialStore::toDocument).toList();
+        return GSON.toJson(doc) + "\n";
     }
 
     Path archive(String suffix) throws IOException {

@@ -63,13 +63,44 @@ public class CredentialService {
 
     public CredentialService(java.nio.file.Path snapshotPath, java.nio.file.Path authorityPath,
                              int activeLimit) {
-        this(new CredentialStore(snapshotPath), new RevocationAuthority(authorityPath), activeLimit);
+        this(snapshotBackend(snapshotPath), authorityBackend(authorityPath), activeLimit);
+    }
+
+    static CredentialService forOperatingSystem(java.nio.file.Path snapshotPath,
+            java.nio.file.Path authorityPath, int activeLimit, String osName) {
+        return new CredentialService(snapshotBackend(snapshotPath, osName),
+                authorityBackend(authorityPath, osName), activeLimit);
+    }
+
+    private static boolean isWindows(String osName) {
+        return osName.toLowerCase(java.util.Locale.ROOT).startsWith("windows");
+    }
+
+    private static CredentialStore snapshotBackend(java.nio.file.Path path) {
+        return snapshotBackend(path, System.getProperty("os.name"));
+    }
+
+    private static CredentialStore snapshotBackend(java.nio.file.Path path, String osName) {
+        return isWindows(osName) ? new SqliteCredentialStore(
+                path.resolveSibling(path.getFileName() + ".sqlite")) : new CredentialStore(path);
+    }
+
+    private static RevocationAuthority authorityBackend(java.nio.file.Path path) {
+        return authorityBackend(path, System.getProperty("os.name"));
+    }
+
+    private static RevocationAuthority authorityBackend(java.nio.file.Path path, String osName) {
+        return isWindows(osName) ? new SqliteRevocationAuthority(
+                path.resolveSibling(path.getFileName() + "-sqlite").resolve("authority.sqlite"))
+                : new RevocationAuthority(path);
     }
 
     CredentialService(CredentialStore store, RevocationAuthority authority, int activeLimit) {
         this.store = store;
         this.authority = authority;
         this.activeLimit = Math.max(1, activeLimit);
+        LOGGER.info("Credential persistence backend: "
+                + (store instanceof SqliteCredentialStore ? "sqlite-wal-full" : "file"));
         CredentialDiagnostics.Operation startupOperation = CredentialDiagnostics.Operation.VALIDATE_PATHS;
         try {
             CredentialDiagnostics.run(startupOperation, this::validatePaths);
@@ -354,7 +385,8 @@ public class CredentialService {
         RevocationAuthority.Tombstone tombstone = new RevocationAuthority.Tombstone(
                 domainId, record.credentialId(), record.tokenHash(), record.playerUuid(), revokedAt);
         try {
-            // directory fsync completion inside commit is the revoke linearization point.
+            // backend durable commit completion is the revoke linearization point.
+            // file: directory fsync; Windows SQLite: WAL/FULL write transaction commit.
             authority.commit(tombstone);
         } catch (IOException e) {
             markUnhealthy("Revocation authority commit result could not be established", e);
