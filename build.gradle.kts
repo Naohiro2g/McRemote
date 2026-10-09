@@ -71,7 +71,8 @@ dependencies {
     compileOnly("net.luckperms:api:5.4")  // LuckPerms API
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testImplementation("com.google.code.gson:gson:2.11.0")
-    testImplementation("org.mockito:mockito-core:5.14.2")
+    // Byte Buddy 1.17.7 supports Java 25 without experimental mode.
+    testImplementation("org.mockito:mockito-core:5.24.0")
     testImplementation("io.papermc.paper:paper-api:$paperApiVersion")
     testImplementation("net.luckperms:api:5.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
