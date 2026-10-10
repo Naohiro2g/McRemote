@@ -32,34 +32,38 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Windows SQLite contract
+      - name: Windows SQLite and credential contracts
         if: runner.os == 'Windows'
         shell: pwsh
         run: >-
           ./gradlew.bat test -PtestJavaVersion=${{ matrix.java }}
           "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}"
           --tests club.code2create.mcremote.SqliteCredentialBackendTest
-      - name: Linux and macOS file and SQLite contracts
+          --tests club.code2create.mcremote.SqliteCredentialLifecycleTest
+          --tests club.code2create.mcremote.CredentialDiagnosticsTest
+          --tests club.code2create.mcremote.PairingManagerTest
+      - name: Linux and macOS credential contracts
         if: runner.os != 'Windows'
         shell: bash
         run: >-
           ./gradlew test -PtestJavaVersion=${{ matrix.java }}
           "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}"
           --tests club.code2create.mcremote.SqliteCredentialBackendTest
+          --tests club.code2create.mcremote.SqliteCredentialLifecycleTest
           --tests club.code2create.mcremote.CredentialServiceTest
           --tests club.code2create.mcremote.CredentialDiagnosticsTest
           --tests club.code2create.mcremote.PairingManagerTest
-      - name: Windows packaged native engine and parent-driver isolation
+      - name: Windows packaged Paper driver and missing-provider checks
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          ./gradlew.bat sqlitePackagingProbe -PtestJavaVersion=${{ matrix.java }} "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" 2>&1 | Tee-Object -FilePath build/sqlite-packaging-probe.log
+          ./gradlew.bat sqlitePackagingProbe sqliteMissingProviderProbe -PtestJavaVersion=${{ matrix.java }} "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" 2>&1 | Tee-Object -FilePath build/sqlite-packaging-probe.log
           exit $LASTEXITCODE
-      - name: Linux and macOS packaged native engine and parent-driver isolation
+      - name: Linux and macOS packaged Paper driver and missing-provider checks
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          ./gradlew sqlitePackagingProbe -PtestJavaVersion=${{ matrix.java }} "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" 2>&1 | tee build/sqlite-packaging-probe.log
+          ./gradlew sqlitePackagingProbe sqliteMissingProviderProbe -PtestJavaVersion=${{ matrix.java }} "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" 2>&1 | tee build/sqlite-packaging-probe.log
       - name: Upload credential test results
         if: always()
         uses: actions/upload-artifact@v4

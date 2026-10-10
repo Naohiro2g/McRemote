@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+// Legacy file-backend contract/fault fixtures; the production default is tested by SqliteCredentialBackendTest.
+@org.junit.jupiter.api.condition.EnabledOnOs({org.junit.jupiter.api.condition.OS.LINUX, org.junit.jupiter.api.condition.OS.MAC})
 class CredentialServiceTest {
     @TempDir
     Path temp;
@@ -32,7 +34,7 @@ class CredentialServiceTest {
     @Test
     void longLivedCredentialSurvivesRestartAndNeverStoresRawToken() throws Exception {
         Paths paths = paths();
-        CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        CredentialService service = fileService(paths, 16);
         assertEquals(CredentialService.Health.HEALTHY, service.health());
 
         UUID player = UUID.randomUUID();
@@ -40,7 +42,7 @@ class CredentialServiceTest {
         assertTrue(issued.token().startsWith("mcrl_"));
         assertFalse(Files.readString(paths.snapshot()).contains(issued.token()));
 
-        CredentialService restarted = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        CredentialService restarted = fileService(paths, 16);
         CredentialService.ResolveResult resolved = restarted.resolveAndTouch(issued.token());
         assertEquals(CredentialService.ResolveStatus.ACTIVE, resolved.status());
         assertEquals(player, resolved.record().playerUuid());
@@ -62,7 +64,7 @@ class CredentialServiceTest {
         assertFalse(snapshot.contains("\"expires_at\": null"));
 
         TokenStore restarted = new TokenStore(
-                new CredentialService(paths.snapshot(), paths.authority(), 16));
+                fileService(paths, 16));
         TokenStore.ResolveResult resolved = restarted.resolve(token);
         assertEquals(TokenStore.ResolveStatus.ACTIVE, resolved.status());
         assertEquals(player, resolved.record().uuid());
@@ -83,20 +85,20 @@ class CredentialServiceTest {
         Files.writeString(paths.snapshot(), snapshot.toString(), StandardCharsets.UTF_8);
 
         TokenStore restarted = new TokenStore(
-                new CredentialService(paths.snapshot(), paths.authority(), 16));
+                fileService(paths, 16));
         assertEquals(TokenStore.ResolveStatus.EXPIRED, restarted.resolve(token).status());
 
         byte[] expiredSnapshot = Files.readAllBytes(paths.snapshot());
         Files.write(paths.snapshot(), expiredSnapshot);
         TokenStore rolledBack = new TokenStore(
-                new CredentialService(paths.snapshot(), paths.authority(), 16));
+                fileService(paths, 16));
         assertEquals(TokenStore.ResolveStatus.EXPIRED, rolledBack.resolve(token).status());
     }
 
     @Test
     void sessionRecordsStayOutsideLongLivedManagementAndLimit() throws Exception {
         Paths paths = paths("session-management");
-        CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 1);
+        CredentialService service = fileService(paths, 1);
         UUID player = UUID.randomUUID();
         CredentialService.IssueResult firstSession = service.issueSession(player, null, 7200);
         service.issueSession(player, null, 7200);
@@ -134,7 +136,7 @@ class CredentialServiceTest {
         Files.writeString(paths.snapshot(), snapshot.toString(), StandardCharsets.UTF_8);
 
         assertEquals(CredentialService.Health.UNHEALTHY,
-                new CredentialService(paths.snapshot(), paths.authority(), 16).health());
+                fileService(paths, 16).health());
     }
 
     @Test
@@ -154,7 +156,7 @@ class CredentialServiceTest {
                 unavailable.operation());
 
         TokenStore recovered = new TokenStore(
-                new CredentialService(paths.snapshot(), paths.authority(), 16));
+                fileService(paths, 16));
         assertEquals(TokenStore.ResolveStatus.ACTIVE, recovered.resolve(token).status());
     }
 
@@ -170,7 +172,7 @@ class CredentialServiceTest {
         assertTrue(revoked.projectionUpdated());
         Files.write(paths.snapshot(), beforeRevoke);
 
-        CredentialService restarted = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        CredentialService restarted = fileService(paths, 16);
         assertEquals(CredentialService.Health.HEALTHY, restarted.health());
         assertEquals(CredentialService.ResolveStatus.REVOKED,
                 restarted.resolveAndTouch(issued.token()).status());
@@ -233,8 +235,7 @@ class CredentialServiceTest {
         CredentialService.IssueResult old = service.issue(UUID.randomUUID(), "old");
         UUID oldDomain = service.credentialDomainId();
         Files.delete(missing.authority().resolve("manifest.json"));
-        CredentialService withoutAuthority = new CredentialService(
-                missing.snapshot(), missing.authority(), 16);
+        CredentialService withoutAuthority = fileService(missing, 16);
         assertEquals(CredentialService.Health.HEALTHY, withoutAuthority.health());
         assertFalse(oldDomain.equals(withoutAuthority.credentialDomainId()));
         assertEquals(CredentialService.ResolveStatus.NOT_FOUND,
@@ -257,8 +258,7 @@ class CredentialServiceTest {
         String currentDomain = extractDomain(manifest);
         Files.writeString(mismatch.authority().resolve("manifest.json"),
                 manifest.replace(currentDomain, UUID.randomUUID().toString()), StandardCharsets.UTF_8);
-        CredentialService mismatched = new CredentialService(
-                mismatch.snapshot(), mismatch.authority(), 16);
+        CredentialService mismatched = fileService(mismatch, 16);
         assertEquals(CredentialService.Health.UNHEALTHY, mismatched.health());
     }
 
@@ -270,7 +270,7 @@ class CredentialServiceTest {
         String oldToken = original.issueSession(UUID.randomUUID(), null, 7200).token();
         Files.delete(paths.snapshot());
 
-        CredentialService restarted = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        CredentialService restarted = fileService(paths, 16);
         assertEquals(CredentialService.Health.HEALTHY, restarted.health());
         assertFalse(oldDomain.equals(restarted.credentialDomainId()));
         assertEquals(CredentialService.ResolveStatus.NOT_FOUND,
@@ -287,7 +287,7 @@ class CredentialServiceTest {
         Paths paths = paths("empty-authority-dir");
         Files.createDirectories(paths.authority());
 
-        CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        CredentialService service = fileService(paths, 16);
         assertEquals(CredentialService.Health.HEALTHY, service.health());
         assertTrue(Files.exists(paths.authority().resolve("manifest.json")));
         assertTrue(Files.exists(paths.snapshot()));
@@ -304,7 +304,7 @@ class CredentialServiceTest {
         Files.writeString(paths.snapshot(), "broken JSON", StandardCharsets.UTF_8);
         Files.delete(paths.authority().resolve("manifest.json"));
 
-        CredentialService restarted = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        CredentialService restarted = fileService(paths, 16);
         assertEquals(CredentialService.Health.UNHEALTHY, restarted.health());
         assertFalse(Files.exists(paths.authority().resolve("manifest.json")));
         assertEquals("broken JSON", Files.readString(paths.snapshot()));
@@ -316,7 +316,7 @@ class CredentialServiceTest {
         Files.writeString(blockedParent, "not a directory");
         Path snapshot = temp.resolve("blocked-path-store/snapshot.json");
         CredentialService service = new CredentialService(
-                snapshot, blockedParent.resolve("manifest-parent"), 16);
+                new CredentialStore(snapshot), new RevocationAuthority(blockedParent.resolve("manifest-parent")), 16);
 
         assertEquals(CredentialService.Health.UNHEALTHY, service.health());
         assertFalse(Files.exists(snapshot));
@@ -410,7 +410,7 @@ class CredentialServiceTest {
     @Test
     void activeCredentialLimitDoesNotAutoRevokeOldCredential() throws Exception {
         Paths paths = paths("limit");
-        CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 1);
+        CredentialService service = fileService(paths, 1);
         UUID player = UUID.randomUUID();
         CredentialService.IssueResult first = service.issue(player, "first");
         CredentialLimitReachedException error = assertThrows(
@@ -433,7 +433,7 @@ class CredentialServiceTest {
                 snapshot.getAsJsonArray("records").get(0).deepCopy());
         Files.writeString(duplicate.snapshot(), snapshot.toString(), StandardCharsets.UTF_8);
         assertEquals(CredentialService.Health.UNHEALTHY,
-                new CredentialService(duplicate.snapshot(), duplicate.authority(), 16).health());
+                fileService(duplicate, 16).health());
 
         Paths pending = paths("pending");
         CredentialStore store = new CredentialStore(pending.snapshot());
@@ -441,7 +441,7 @@ class CredentialServiceTest {
         UUID domain = authority.beginBootstrap();
         store.initialize(domain);
         assertEquals(CredentialService.Health.UNHEALTHY,
-                new CredentialService(pending.snapshot(), pending.authority(), 16).health());
+                fileService(pending, 16).health());
     }
 
     @Test
@@ -460,7 +460,7 @@ class CredentialServiceTest {
     @Test
     void oldPrefixIsNotMigratedAndUnknownTokenTypeIsRejected() throws Exception {
         Paths paths = paths("prefix");
-        CredentialService service = new CredentialService(paths.snapshot(), paths.authority(), 16);
+        CredentialService service = fileService(paths, 16);
         TokenStore tokens = new TokenStore(service);
         assertEquals(TokenStore.ResolveStatus.NOT_FOUND,
                 tokens.resolve("mcrp_legacy-client-value").status());
@@ -496,8 +496,13 @@ class CredentialServiceTest {
                 service.resolveAndTouch(issued.token()).status());
     }
 
+    private static CredentialService fileService(Paths paths, int activeLimit) {
+        return new CredentialService(new CredentialStore(paths.snapshot()),
+                new RevocationAuthority(paths.authority()), activeLimit);
+    }
+
     private CredentialService initialized(Paths paths) throws Exception {
-        return new CredentialService(paths.snapshot(), paths.authority(), 16);
+        return fileService(paths, 16);
     }
 
     private Paths paths() {

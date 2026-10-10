@@ -32,6 +32,7 @@ final class CredentialDiagnostics {
         SYNC_DIRECTORY("directory.sync"),
         CLOSE_DIRECTORY("directory.close"),
         OPEN_DATABASE("sqlite.open"),
+        SQLITE_PROVIDER("sqlite.driver-provider"),
         CONFIGURE_DATABASE("sqlite.configure-and-readback"),
         VALIDATE_DATABASE("sqlite.validate"),
         READ_DATABASE("sqlite.read"),

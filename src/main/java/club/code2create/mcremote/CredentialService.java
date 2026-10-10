@@ -18,7 +18,7 @@ import java.util.logging.Logger;
  * session token と long-lived credential の永続 lifecycle。
  * long-lived credential だけは snapshot と authority を常に重ねて判断する。
  */
-public class CredentialService {
+public class CredentialService implements AutoCloseable {
     private static final Logger LOGGER = Logger.getLogger("McR_CredentialService");
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int TOKEN_BYTES = 32;
@@ -60,39 +60,20 @@ public class CredentialService {
     private UUID domainId;
     private Health health;
     private String healthDetail;
+    private boolean closed;
 
     public CredentialService(java.nio.file.Path snapshotPath, java.nio.file.Path authorityPath,
                              int activeLimit) {
         this(snapshotBackend(snapshotPath), authorityBackend(authorityPath), activeLimit);
     }
 
-    static CredentialService forOperatingSystem(java.nio.file.Path snapshotPath,
-            java.nio.file.Path authorityPath, int activeLimit, String osName) {
-        return new CredentialService(snapshotBackend(snapshotPath, osName),
-                authorityBackend(authorityPath, osName), activeLimit);
-    }
-
-    private static boolean isWindows(String osName) {
-        return osName.toLowerCase(java.util.Locale.ROOT).startsWith("windows");
-    }
-
     private static CredentialStore snapshotBackend(java.nio.file.Path path) {
-        return snapshotBackend(path, System.getProperty("os.name"));
-    }
-
-    private static CredentialStore snapshotBackend(java.nio.file.Path path, String osName) {
-        return isWindows(osName) ? new SqliteCredentialStore(
-                path.resolveSibling(path.getFileName() + ".sqlite")) : new CredentialStore(path);
+        return new SqliteCredentialStore(path.resolveSibling(path.getFileName() + ".sqlite"));
     }
 
     private static RevocationAuthority authorityBackend(java.nio.file.Path path) {
-        return authorityBackend(path, System.getProperty("os.name"));
-    }
-
-    private static RevocationAuthority authorityBackend(java.nio.file.Path path, String osName) {
-        return isWindows(osName) ? new SqliteRevocationAuthority(
-                path.resolveSibling(path.getFileName() + "-sqlite").resolve("authority.sqlite"))
-                : new RevocationAuthority(path);
+        return new SqliteRevocationAuthority(
+                path.resolveSibling(path.getFileName() + "-sqlite").resolve("authority.sqlite"));
     }
 
     CredentialService(CredentialStore store, RevocationAuthority authority, int activeLimit) {
@@ -164,6 +145,14 @@ public class CredentialService {
         return health;
     }
 
+    /** Waits for an in-flight synchronized operation; no DB connection survives an operation. */
+    @Override public synchronized void close() {
+        closed = true;
+        clearMemory();
+        health = Health.UNHEALTHY;
+        healthDetail = "Credential service is stopped";
+    }
+
     public synchronized String healthDetail() {
         return healthDetail;
     }
@@ -178,6 +167,7 @@ public class CredentialService {
 
     /** 空の domain を作る。通常起動時の欠落初期化と明示管理操作で使う。 */
     public synchronized UUID bootstrap() throws IOException {
+        if (closed) { throw new IOException("Credential service is stopped"); }
         CredentialDiagnostics.run(CredentialDiagnostics.Operation.VALIDATE_PATHS, this::validatePaths);
         if (health == Health.HEALTHY || health == Health.DEGRADED) {
             throw new IOException("Credential domain is already initialized");
@@ -211,6 +201,7 @@ public class CredentialService {
 
     /** 全 credential を失効させる明示 reset。旧 state は削除せず sibling archive へ退避する。 */
     public synchronized ResetResult reset() throws IOException {
+        if (closed) { throw new IOException("Credential service is stopped"); }
         return retireAndBootstrap("Explicit credential reset");
     }
 
@@ -386,7 +377,7 @@ public class CredentialService {
                 domainId, record.credentialId(), record.tokenHash(), record.playerUuid(), revokedAt);
         try {
             // backend durable commit completion is the revoke linearization point.
-            // file: directory fsync; Windows SQLite: WAL/FULL write transaction commit.
+            // SQLite: WAL/FULL write transaction commit; legacy file fixtures: directory fsync.
             authority.commit(tombstone);
         } catch (IOException e) {
             markUnhealthy("Revocation authority commit result could not be established", e);
@@ -412,6 +403,7 @@ public class CredentialService {
 
     /** degraded snapshot を authority overlay から再投影する。失敗時も authority は維持する。 */
     public synchronized boolean reconcileIfNeeded() {
+        if (closed) { return false; }
         if (health != Health.DEGRADED) {
             return health == Health.HEALTHY;
         }
@@ -504,7 +496,7 @@ public class CredentialService {
 
     private void requireUsable(CredentialStoreUnavailableException.Operation operation)
             throws CredentialStoreUnavailableException {
-        if (health == Health.UNINITIALIZED || health == Health.UNHEALTHY || domainId == null) {
+        if (closed || health == Health.UNINITIALIZED || health == Health.UNHEALTHY || domainId == null) {
             throw unavailable(operation, healthDetail, null);
         }
         try {

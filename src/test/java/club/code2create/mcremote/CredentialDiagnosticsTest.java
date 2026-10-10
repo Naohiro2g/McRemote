@@ -78,7 +78,7 @@ class CredentialDiagnosticsTest {
         Path snapshot = temp.resolve("operator-private").resolve("snapshot.json");
         Path authority = temp.resolve("operator-private-authority");
         CredentialService initial = new CredentialService(snapshot, authority, 16);
-        java.nio.file.Files.delete(snapshot);
+        java.nio.file.Files.delete(snapshot.resolveSibling("snapshot.json.sqlite"));
         try (CapturedLogs logs = new CapturedLogs()) {
             CredentialService recovered = new CredentialService(snapshot, authority, 16);
             assertEquals(CredentialService.Health.HEALTHY, recovered.health());

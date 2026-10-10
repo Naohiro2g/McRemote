@@ -2,55 +2,56 @@ package club.code2create.mcremote;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.sql.DriverManager;
 import java.util.UUID;
+import java.util.jar.JarFile;
 
-/** Paper相当の旧JDBCを親classpathの先頭、配布JARを続けて置いてnative/loaderを検証する。 */
+/** Release JAR beside Paper's dependency fixture, or without a JDBC provider. */
 public final class SqlitePackagingProbe {
     public static void main(String[] args) throws Exception {
+        Path jar = Path.of(CredentialService.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        try (JarFile contents = new JarFile(jar.toFile())) {
+            if (contents.stream().anyMatch(entry -> entry.getName().contains("org/sqlite/"))) {
+                throw new AssertionError("SQLite classes/native must not be embedded");
+            }
+        }
         Path root = Files.createTempDirectory("mcremote-sqlite-packaging-");
         try {
-            Class.forName("org.sqlite.JDBC");
-            String parent;
-            try (var connection = DriverManager.getConnection("jdbc:sqlite:" + root.resolve("parent.sqlite"));
-                 var statement = connection.createStatement();
-                 var result = statement.executeQuery("SELECT sqlite_version()")) {
-                if (!result.next()) { throw new AssertionError("parent version missing"); }
-                parent = result.getString(1);
-            }
-            if (!"3.49.1".equals(parent)) { throw new AssertionError("parent fixture is not Paper's old engine"); }
-            Path snapshot = root.resolve("snapshot.json");
-            Path authority = root.resolve("authority");
-            CredentialService service = CredentialService.forOperatingSystem(snapshot, authority, 16, "Windows 11");
-            if (service.health() != CredentialService.Health.HEALTHY) {
-                throw new AssertionError("packaged SQLite backend failed: " + service.healthDetail());
-            }
-            Path snapshotDb = root.resolve("snapshot.json.sqlite");
-            String bundled = new SqliteCredentialDatabase(snapshotDb, "snapshot").read(connection -> {
-                try (var statement = connection.createStatement();
-                     var result = statement.executeQuery("SELECT sqlite_version()")) {
-                    if (!result.next()) { throw new AssertionError("bundled version missing"); }
-                    return result.getString(1);
+            Path snapshot = root.resolve("snapshot.json"), authority = root.resolve("authority");
+            try (CredentialService service = new CredentialService(snapshot, authority, 16)) {
+                if (args.length != 0 && args[0].equals("--missing-provider")) {
+                    if (service.health() != CredentialService.Health.UNHEALTHY
+                            || !service.healthDetail().contains("sqlite.driver-provider")
+                            || !service.healthDetail().contains("ClassNotFoundException")) {
+                        throw new AssertionError("missing provider must fail closed with cause identity");
+                    }
+                    try { service.issueSession(UUID.randomUUID(), null, 7200); }
+                    catch (CredentialStoreUnavailableException expected) {
+                        System.out.println("missing_provider=FAIL_CLOSED status=PASS"); return;
+                    }
+                    throw new AssertionError("missing provider authenticated a client");
                 }
-            });
-            if (!"3.53.4".equals(bundled)) { throw new AssertionError("bundled engine identity mismatch"); }
-            UUID player = UUID.randomUUID();
-            var issued = service.issue(player, "packaging probe");
-            service.resolveAndTouch(issued.token());
-            service.revoke(player, issued.credentialId());
-            CredentialService restarted = CredentialService.forOperatingSystem(snapshot, authority, 16, "Windows 11");
-            if (restarted.resolveAndTouch(issued.token()).status() != CredentialService.ResolveStatus.REVOKED) {
-                throw new AssertionError("packaged durable revoke did not survive restart");
+                if (service.health() != CredentialService.Health.HEALTHY) {
+                    throw new AssertionError("Paper SQLite failed: " + service.healthDetail());
+                }
+                Class<?> jdbc = Class.forName("org.sqlite.JDBC");
+                Path provider = Path.of(jdbc.getProtectionDomain().getCodeSource().getLocation().toURI());
+                if (provider.equals(jar) || !provider.getFileName().toString().equals("sqlite-jdbc-3.49.1.0.jar")) {
+                    throw new AssertionError("driver is not the Paper dependency fixture");
+                }
+                UUID player = UUID.randomUUID();
+                var issued = service.issue(player, "packaging probe");
+                service.resolveAndTouch(issued.token()); service.revoke(player, issued.credentialId());
+                try (CredentialService restarted = new CredentialService(snapshot, authority, 16)) {
+                    if (restarted.resolveAndTouch(issued.token()).status() != CredentialService.ResolveStatus.REVOKED) {
+                        throw new AssertionError("durable revoke did not survive restart");
+                    }
+                }
+                System.out.println("provider_source=" + provider.getFileName());
+                System.out.println("embedded_sqlite_entries=0 status=PASS");
             }
-            System.out.println("parent_sqlite_version=" + parent);
-            System.out.println("bundled_sqlite_version=" + bundled);
-            System.out.println("status=PASS");
         } finally {
-            // All DB connections have closed, so removal includes every native WAL sidecar.
             try (var files = Files.walk(root)) {
-                for (Path path : files.sorted(java.util.Comparator.reverseOrder()).toList()) {
-                    Files.delete(path);
-                }
+                for (Path path : files.sorted(java.util.Comparator.reverseOrder()).toList()) Files.delete(path);
             }
         }
     }

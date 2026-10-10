@@ -26,9 +26,9 @@ auth:
   # Connection/pairing budgets are selected internally from Paper's max-players.
   # long-lived credential lifecycle (platform-design §9). Relative paths are under
   # plugins/McRemote. They are independently mountable; do not nest one in the other.
-  # Windows uses <credential_store_path>.sqlite and a separate
+  # All OSes use Paper-provided SQLite: <credential_store_path>.sqlite and a separate
   # <revocation_authority_path>-sqlite/authority.sqlite DB, each with its WAL.
-  # Legacy Windows JSON is not read or migrated. Linux/macOS keep file storage.
+  # Legacy JSON is not read, migrated, removed or archived. Pair again after upgrading.
   credential_store_path: "credential-store/snapshot.json"
   revocation_authority_path: "credential-revocations"
   max_long_lived_credentials_per_uuid: 16  # distinct from concurrent session limit

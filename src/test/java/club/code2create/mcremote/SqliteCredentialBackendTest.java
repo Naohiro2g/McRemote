@@ -42,7 +42,7 @@ class SqliteCredentialBackendTest {
                 try (var statement = connection.createStatement()) {
                     try (var result = statement.executeQuery("SELECT sqlite_version()")) {
                         assertTrue(result.next());
-                        assertEquals("3.53.4", result.getString(1), "must use the fixed bundled engine");
+                        assertEquals("3.49.1", result.getString(1), "Paper's test engine must be accepted");
                     }
                     try (var result = statement.executeQuery("PRAGMA journal_mode")) {
                         assertTrue(result.next());
@@ -466,7 +466,7 @@ class SqliteCredentialBackendTest {
     }
 
     @Test
-    void osSelectionUsesDistinctSqliteNamesAndNeverReadsOrModifiesLegacyWindowsFiles() throws Exception {
+    void defaultBackendIgnoresLegacyFilesAndContinuesExistingSqliteDomain() throws Exception {
         Path root = temp.resolve("selection");
         Files.createDirectories(root);
         Path snapshot = root.resolve("snapshot.json");
@@ -474,28 +474,27 @@ class SqliteCredentialBackendTest {
         Files.writeString(snapshot, "broken legacy snapshot");
         Files.createDirectories(authority);
         Files.writeString(authority.resolve("manifest.json"), "broken legacy authority");
-        var windows = CredentialService.forOperatingSystem(snapshot, authority, 16, "Windows 11");
-        assertEquals(CredentialService.Health.HEALTHY, windows.health());
+        var service = new CredentialService(snapshot, authority, 16);
+        assertEquals(CredentialService.Health.HEALTHY, service.health());
         assertEquals("broken legacy snapshot", Files.readString(snapshot));
         assertEquals("broken legacy authority", Files.readString(authority.resolve("manifest.json")));
         assertTrue(Files.isRegularFile(root.resolve("snapshot.json.sqlite")));
         assertTrue(Files.isRegularFile(root.resolve("authority-sqlite/authority.sqlite")));
-        for (String os : List.of("Linux", "Mac OS X")) {
-            Path osRoot = temp.resolve(os);
-            var file = CredentialService.forOperatingSystem(osRoot.resolve("snapshot.json"),
-                    osRoot.resolve("authority"), 16, os);
-            if (!System.getProperty("os.name").startsWith("Windows")) {
-                assertEquals(CredentialService.Health.HEALTHY, file.health());
-                assertEquals(1, JsonParser.parseString(Files.readString(osRoot.resolve("snapshot.json")))
-                        .getAsJsonObject().get("schema_version").getAsInt());
-                assertTrue(Files.exists(osRoot.resolve("authority/manifest.json")));
-            } else {
-                // Windowsにfile backendを強制すれば既知のdirectory-open問題になる。
-                assertEquals(CredentialService.Health.UNHEALTHY, file.health());
-                assertTrue(Files.isDirectory(osRoot.resolve("authority")));
-            }
-            assertFalse(Files.exists(osRoot.resolve("snapshot.json.sqlite")));
-        }
+        UUID domain = service.credentialDomainId();
+        var issued = service.issueSession(UUID.randomUUID(), null, 7200);
+        service.close();
+        var restarted = new CredentialService(snapshot, authority, 16);
+        assertEquals(domain, restarted.credentialDomainId());
+        assertEquals(CredentialService.ResolveStatus.ACTIVE,
+                restarted.resolveAndTouch(issued.token()).status());
+        restarted.reset();
+        assertThrows(CredentialStoreUnavailableException.class,
+                () -> service.resolveAndTouch(issued.token()));
+        assertThrows(IOException.class, service::bootstrap);
+        assertThrows(IOException.class, service::reset);
+        assertFalse(service.reconcileIfNeeded());
+        assertEquals("broken legacy snapshot", Files.readString(snapshot));
+        assertEquals("broken legacy authority", Files.readString(authority.resolve("manifest.json")));
     }
 
     @Test
@@ -565,7 +564,7 @@ class SqliteCredentialBackendTest {
     }
 
     private static Connection connection(Path path) throws Exception {
-        return BundledSqliteDriver.connect("jdbc:sqlite:" + path.toAbsolutePath());
+        return PaperSqliteDriver.connect("jdbc:sqlite:" + path.toAbsolutePath());
     }
     private static void sql(Path path, String sql) throws Exception {
         try (var connection = connection(path); var statement = connection.createStatement()) {

@@ -232,6 +232,7 @@ public class McRemote extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable(){
+        if (credentialService != null) { credentialService.close(); }
         getServer().getScheduler().cancelTasks(this);
         for (RemoteSession session: sessions) {
             try {

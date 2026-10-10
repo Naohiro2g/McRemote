@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** 一つの復旧単位（DB＋WAL）。connection を他 backend と共有しない。 */
 final class SqliteCredentialDatabase {
@@ -23,12 +24,16 @@ final class SqliteCredentialDatabase {
     }
 
     private static final CommitObserver NO_OBSERVER = new CommitObserver() {};
+    // Shared by backend objects/service reinitializations; hold through Connection.close().
+    private static final ConcurrentHashMap<Path, Object> CONNECTION_LOCKS = new ConcurrentHashMap<>();
+    private final Object connectionLock;
     private final Path path;
     private final String role;
     private final String[] schema;
 
     SqliteCredentialDatabase(Path path, String role, String... schema) {
         this.path = path.toAbsolutePath().normalize();
+        connectionLock = CONNECTION_LOCKS.computeIfAbsent(this.path, ignored -> new Object());
         this.role = role;
         this.schema = schema.clone();
     }
@@ -50,6 +55,10 @@ final class SqliteCredentialDatabase {
     }
 
     <T> T read(SqlAction<T> action) throws IOException {
+        synchronized (connectionLock) { return readLocked(action); }
+    }
+
+    private <T> T readLocked(SqlAction<T> action) throws IOException {
         try (Connection connection = open(false)) {
             validate(connection);
             return invoke(CredentialDiagnostics.Operation.READ_DATABASE, () -> action.run(connection));
@@ -71,6 +80,11 @@ final class SqliteCredentialDatabase {
     }
 
     private <T> T transaction(boolean create, SqlAction<T> action, CommitObserver observer)
+            throws IOException {
+        synchronized (connectionLock) { return transactionLocked(create, action, observer); }
+    }
+
+    private <T> T transactionLocked(boolean create, SqlAction<T> action, CommitObserver observer)
             throws IOException {
         boolean fresh = false;
         if (create && !exists()) {
@@ -134,16 +148,15 @@ final class SqliteCredentialDatabase {
             }
         }
         Connection connection = invoke(CredentialDiagnostics.Operation.OPEN_DATABASE, () -> {
-            return BundledSqliteDriver.connect("jdbc:sqlite:" + path.toUri().toASCIIString() + "?mode=rw");
+            return PaperSqliteDriver.connect("jdbc:sqlite:" + path.toUri().toASCIIString() + "?mode=rw");
         });
         try {
             invoke(CredentialDiagnostics.Operation.CONFIGURE_DATABASE, () -> {
                 try (Statement statement = connection.createStatement()) {
-                    // Detect unexpected dependency/classloader substitution before touching state.
+                    String engine;
                     try (ResultSet result = statement.executeQuery("SELECT sqlite_version()")) {
-                        if (!result.next() || !supportedEngine(result.getString(1))) {
-                            throw new IOException("SQLite engine lacks required WAL-reset fix");
-                        }
+                        if (!result.next()) { throw new IOException("SQLite engine identity is unavailable"); }
+                        engine = result.getString(1);
                     }
                     statement.execute("PRAGMA busy_timeout=1000");
                     if (fresh) {
@@ -164,6 +177,7 @@ final class SqliteCredentialDatabase {
                             throw new IOException("SQLite synchronous is not FULL");
                         }
                     }
+                    PaperSqliteDriver.reportProvider(connection, engine);
                 }
                 return null;
             });
@@ -172,15 +186,6 @@ final class SqliteCredentialDatabase {
             try { connection.close(); } catch (SQLException closeFailure) { e.addSuppressed(closeFailure); }
             throw e;
         }
-    }
-
-    private static boolean supportedEngine(String version) {
-        try {
-            String[] parts = version.split("\\.");
-            int major = Integer.parseInt(parts[0]), minor = Integer.parseInt(parts[1]);
-            int patch = Integer.parseInt(parts[2]);
-            return major > 3 || (major == 3 && (minor > 51 || (minor == 51 && patch >= 3)));
-        } catch (RuntimeException e) { return false; }
     }
 
     private void validate(Connection connection) throws IOException {

@@ -14,13 +14,9 @@ val mcJavaVersion: Int = providers.gradleProperty("mcJavaVersion").map(String::t
 val paperApiVersion: String = providers.gradleProperty("paperApiVersion").get()
 val pluginApiVersion: String = providers.gradleProperty("pluginApiVersion").get()
 val pluginVersion: String = providers.gradleProperty("pluginVersion").get()
-// SQLite 3.53.4 includes the WAL-reset fix (upstream 3.51.3 and later).
-// Keep this exact: the native libraries are bundled in the release JAR.
-val sqliteJdbcVersion = "3.53.4.0"
-val embeddedSqlite by configurations.creating
-configurations.implementation.get().extendsFrom(embeddedSqlite)
-// Only the packaged-JAR probe uses Paper's older driver on its parent classpath.
-val oldSqliteProbe by configurations.creating
+// Test fixture matching the target Paper builds. Production uses Paper's driver.
+val paperSqliteProbe by configurations.creating
+configurations.testImplementation.get().extendsFrom(paperSqliteProbe)
 // ──────── Local Minecraft Server for development ──────────────────────── //
 val homeDir: String = System.getenv("HOME") ?: System.getProperty("user.home")
 val mcDir = file("$homeDir/MINECRAFT_SERVERS/PaperMC")  // Minecraft server directory
@@ -61,12 +57,9 @@ repositories {
 }
 
 dependencies {
-    embeddedSqlite("org.xerial:sqlite-jdbc:$sqliteJdbcVersion") {
-        isTransitive = false
-    }
-    oldSqliteProbe("org.xerial:sqlite-jdbc:3.49.1.0") { isTransitive = false }
-    oldSqliteProbe("com.google.code.gson:gson:2.11.0") { isTransitive = false }
-    oldSqliteProbe("org.slf4j:slf4j-api:2.0.16") { isTransitive = false }
+    paperSqliteProbe("org.xerial:sqlite-jdbc:3.49.1.0") { isTransitive = false }
+    paperSqliteProbe("com.google.code.gson:gson:2.11.0") { isTransitive = false }
+    paperSqliteProbe("org.slf4j:slf4j-api:2.0.16") { isTransitive = false }
     compileOnly("io.papermc.paper:paper-api:$paperApiVersion")  // Paper API
     compileOnly("net.luckperms:api:5.4")  // LuckPerms API
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
@@ -96,11 +89,10 @@ tasks.register<JavaExec>("localCompatibilityFixture") {
 
 tasks.register<JavaExec>("sqlitePackagingProbe") {
     group = "verification"
-    description = "Load the packaged JAR beside Paper's old SQLite and verify the isolated native engine."
+    description = "Verify the packaged JAR uses Paper's SQLite without embedding classes or native resources."
     dependsOn(tasks.jar, tasks.testClasses)
-    // The old driver must come first to model Paper's parent classloader.
-    // Do not add main outputs or testRuntimeClasspath (which contain the new driver).
-    classpath = files(oldSqliteProbe, tasks.jar.flatMap { it.archiveFile }, sourceSets.test.get().output)
+    // Only the actual packaged main classes, beside Paper's dependency fixture.
+    classpath = files(paperSqliteProbe, tasks.jar.flatMap { it.archiveFile }, sourceSets.test.get().output)
     mainClass.set("club.code2create.mcremote.SqlitePackagingProbe")
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(
@@ -111,6 +103,19 @@ tasks.register<JavaExec>("sqlitePackagingProbe") {
 
 val isWindows: Boolean = System.getProperty("os.name").lowercase(Locale.getDefault()).contains("windows")
 
+tasks.register<JavaExec>("sqliteMissingProviderProbe") {
+    group = "verification"
+    dependsOn(tasks.jar, tasks.testClasses)
+    classpath = files(paperSqliteProbe.filter { !it.name.startsWith("sqlite-jdbc-") },
+        tasks.jar.flatMap { it.archiveFile }, sourceSets.test.get().output)
+    mainClass.set("club.code2create.mcremote.SqlitePackagingProbe")
+    args("--missing-provider")
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(
+            providers.gradleProperty("testJavaVersion").map(String::toInt).getOrElse(mcJavaVersion)))
+    })
+}
+
 tasks.jar {
     archiveBaseName.set("mc-remote")
     archiveVersion.set(version.toString())
@@ -120,12 +125,6 @@ tasks.jar {
     filePermissions { unix("0644") }
     dirPermissions { unix("0755") }
     duplicatesStrategy = DuplicatesStrategy.FAIL
-    // Preserve org/sqlite/native resources: the loader extracts the matching
-    // bundled library locally, without a startup network download.
-    from({ embeddedSqlite.map { zipTree(it) } }) {
-        exclude("META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "module-info.class", "META-INF/versions/*/module-info.class")
-    }
-    manifest.attributes["Multi-Release"] = "true"
     from("LICENSE") {
         into("META-INF/licenses/mc-remote")
     }

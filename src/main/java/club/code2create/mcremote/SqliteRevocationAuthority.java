@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-/** Windows authority。snapshot とは別 DB／WAL の durable commit が revoke の確定点。 */
+/** 全OSのauthority。snapshotとは別DB／WALのdurable commitがrevokeの確定点。 */
 final class SqliteRevocationAuthority extends RevocationAuthority {
     private final SqliteCredentialDatabase database;
     private final SqliteCredentialDatabase.CommitObserver observer;

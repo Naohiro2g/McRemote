@@ -135,7 +135,9 @@ tokenに束縛されない明示的な認証bypassではこのplayer metaを適�
 | `auth.revocation_authority_path` | `credential-revocations` | 失効記録の保存先。上と入れ子にしないでください |
 | `auth.max_long_lived_credentials_per_uuid` | `16` | player ごとの長期 credential の上限。同時接続数とは別です |
 
-Windowsの認証情報はSQLiteへ保存します。既存configの `auth.credential_store_path` に `.sqlite` を付けたDB（既定 `credential-store/snapshot.json.sqlite`）と、`auth.revocation_authority_path` に `-sqlite` を付けた別directory内の `authority.sqlite`（既定 `credential-revocations-sqlite/authority.sqlite`）を使います。旧JSONは読み取り・移行・退避しません。Linux／macOSは既存の保存先を使います。
+認証情報は、すべてのOSでPaperが提供するSQLite JDBCを使って保存します。既存configの `auth.credential_store_path` に `.sqlite` を付けたDB（既定 `credential-store/snapshot.json.sqlite`）と、`auth.revocation_authority_path` に `-sqlite` を付けた別directory内の `authority.sqlite`（既定 `credential-revocations-sqlite/authority.sqlite`）を使います。旧JSONは読み取り・移行・削除・退避しません。旧ファイル方式からの更新時は、新しい認証domainが作られるため、ペアリングし直してください。既存の有効なSQLite DBは引き続き使います。
+
+Minecraftサーバーのフォルダーは、OneDriveなどのクラウド同期の対象に置かないでください。
 
 Java 25ではSQLite native libraryの読み込み時に警告が出ることがあります。読み込みは追加flagなしでも可能で、`java --enable-native-access=ALL-UNNAMED ... -jar paper.jar` とするとこの警告を抑えられます。
 
@@ -304,4 +306,4 @@ issue と contribution は [GitHub repository](https://github.com/Naohiro2g/McRe
 
 ## 同梱ライブラリ
 
-Windowsの認証情報の保存に [Xerial SQLite JDBC](https://github.com/xerial/sqlite-jdbc) を同梱しています（Apache License 2.0）。SQLite本体は [public domain](https://www.sqlite.org/copyright.html) です。ライセンスとnoticeはJARの `META-INF/licenses/sqlite-jdbc/`、同梱情報は `META-INF/THIRD-PARTY-NOTICES_ja.md` にあります。起動時のダウンロードは不要です。
+認証情報の保存には、Paperが提供する [SQLite JDBC](https://github.com/xerial/sqlite-jdbc) を使います。McRemoteのJARにはSQLite JDBCやnative libraryを同梱しません。

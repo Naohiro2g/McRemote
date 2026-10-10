@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
-/** Windows snapshot。JSON codec は file backend と共通、publish は一つの SQL transaction。 */
+/** 全OSのsnapshot。JSON codecは共通、publishは一つのSQL transaction。 */
 final class SqliteCredentialStore extends CredentialStore {
     private final SqliteCredentialDatabase database;
 
