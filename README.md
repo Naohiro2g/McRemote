@@ -55,6 +55,18 @@ Python なら、[minecraft-remote-api の最短クイックスタート](https:/
 
 ---
 
+## サーバーのJavaを選ぶ
+
+Paper 1.21.11はJava 21、Paper 26.3はJava 25で起動します。[mise](https://mise.jdx.dev/lang/java.html)で、サーバーのフォルダーごとにJavaの版を固定してください。miseの導入・シェル設定後、そのフォルダーで次を実行すると`mise.toml`に設定が保存されます。
+
+```sh
+mise use --path mise.toml --pin java@25  # Paper 26.3。Paper 1.21.11のフォルダーでは java@21
+mise exec -- java -version
+mise exec -- java -jar paper.jar nogui
+```
+
+`--pin`でインストールした具体的な版を記録します。以後は、そのフォルダーで`mise exec --`を使うと、記録したJavaで起動できます。
+
 ## 設定
 
 設定ファイルは `plugins/McRemote/config.yml` です。初回起動時に既定値で作られます。変更したらサーバーを再起動します。
