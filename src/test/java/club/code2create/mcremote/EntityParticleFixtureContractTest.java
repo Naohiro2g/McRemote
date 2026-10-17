@@ -58,7 +58,8 @@ class EntityParticleFixtureContractTest {
         assertEquals(OWNER_SHA256, sha256(bytes));
         JsonObject root = root();
         assertEquals("mcremote.entity-particle.v23.2", root.get("schema").getAsString());
-        assertEquals(ProtocolInfo.PROTOCOL, root.get("protocol").getAsString());
+        assertEquals("23.2.0", root.get("protocol").getAsString());
+        assertTrue(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
         assertEquals(19, root.getAsJsonObject("nearby").getAsJsonArray("cases").size());
         assertEquals(7, root.getAsJsonObject("nearby").getAsJsonArray("handle_transaction_cases").size());
         assertEquals(7, root.getAsJsonObject("entity_lifecycle").getAsJsonArray("cases").size());

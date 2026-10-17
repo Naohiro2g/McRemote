@@ -8,18 +8,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProtocolInfoTest {
     @Test
-    void b8AdvertisesProtocol232AndAcceptsEarlierMinor() {
-        assertEquals("23.2.0", ProtocolInfo.PROTOCOL);
+    void rc1AdvertisesProtocol2321AndAcceptsEarlierMinorAndPatch() {
+        assertEquals("23.2.1", ProtocolInfo.PROTOCOL);
         assertTrue(ProtocolInfo.isCompatible("23.0.0"));
         assertTrue(ProtocolInfo.isCompatible("23.1.0"));
         assertTrue(ProtocolInfo.isCompatible("23.2.0"));
+        assertTrue(ProtocolInfo.isCompatible("23.2.1"));
         assertTrue(ProtocolInfo.isCompatible("23.2.9"));
     }
 
     @Test
-    void rejectsProtocol22AndUnsupported23Minor() {
+    void rejectsOtherMajorUnsupportedMinorAndMalformedVersion() {
         assertFalse(ProtocolInfo.isCompatible("22.0.0"));
         assertFalse(ProtocolInfo.isCompatible("24.0.0"));
         assertFalse(ProtocolInfo.isCompatible("23.3.0"));
+        assertFalse(ProtocolInfo.isCompatible(null));
+        assertFalse(ProtocolInfo.isCompatible("23.2"));
+        assertFalse(ProtocolInfo.isCompatible("invalid"));
     }
 }

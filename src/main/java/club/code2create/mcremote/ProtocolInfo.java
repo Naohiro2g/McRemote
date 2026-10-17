@@ -20,7 +20,7 @@ public final class ProtocolInfo {
      * 本プラグインが hello で名乗る protocol semver（wire-format-design §6.2）。
      * パッケージ版は gradle.properties の pluginVersion＝こことは別レイヤ。
      */
-    public static final String PROTOCOL = "23.2.0";
+    public static final String PROTOCOL = "23.2.1";
 
     // leading な major.minor.patch（万一接尾辞が付いても捨てる）
     private static final Pattern SEMVER = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)");

@@ -41,7 +41,8 @@ class ChatEventCompatibilityFixtureContractTest {
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));
         JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
         assertEquals("mcremote.chat-event-compat.v23.2", root.get("schema").getAsString());
-        assertEquals(ProtocolInfo.PROTOCOL, root.get("protocol").getAsString());
+        assertEquals("23.2.0", root.get("protocol").getAsString());
+        assertTrue(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
         assertEquals(7, root.getAsJsonObject("chat_post").getAsJsonArray("cases").size());
         assertEquals(22, root.getAsJsonObject("event_batches").getAsJsonArray("cases").size());
         assertEquals(4, root.getAsJsonObject("event_batches").getAsJsonArray("stateful_rejections").size());
