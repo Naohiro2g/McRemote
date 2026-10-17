@@ -21,12 +21,12 @@ import static org.mockito.Mockito.mockStatic;
 
 /**
  * Exact shared fixture from Naohiro2g/minecraft-remote-tooling at
- * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
- * {@code packages/protocol/test/fixtures/chat-event-compat-v23.2.json}.
+ * {@code 6447f6e8cbfbeeb9d229990b5c4f6e82a5875666},
+ * {@code packages/protocol/test/fixtures/chat-event-compat-v23.2.1.json}.
  * Tests the server's producer paths; client/observer rejection cases belong to their consumers.
  */
 class ChatEventCompatibilityFixtureContractTest {
-    private static final String FIXTURE = "/fixtures/chat-event-compat-v23.2.json";
+    private static final String FIXTURE = "/fixtures/chat-event-compat-v23.2.1.json";
     private static final Gson GSON = new Gson();
 
     @Test
@@ -36,12 +36,12 @@ class ChatEventCompatibilityFixtureContractTest {
             assertNotNull(input);
             bytes = input.readAllBytes();
         }
-        assertEquals(32_382, bytes.length);
-        assertEquals("670b0a86df1956c0e44c6986a0a2598caab32c7328804f9c703190e62e9dd727",
+        assertEquals(32_384, bytes.length);
+        assertEquals("eead244a7340c315cb63e1e77ede0fe9cf48162c06fedbeef36d941950d5000d",
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));
         JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
-        assertEquals("mcremote.chat-event-compat.v23.2", root.get("schema").getAsString());
-        assertEquals("23.2.0", root.get("protocol").getAsString());
+        assertEquals("mcremote.chat-event-compat.v23.2.1", root.get("schema").getAsString());
+        assertEquals(ProtocolInfo.PROTOCOL, root.get("protocol").getAsString());
         assertTrue(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
         assertEquals(7, root.getAsJsonObject("chat_post").getAsJsonArray("cases").size());
         assertEquals(22, root.getAsJsonObject("event_batches").getAsJsonArray("cases").size());

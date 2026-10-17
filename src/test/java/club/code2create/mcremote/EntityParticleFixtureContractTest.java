@@ -41,24 +41,25 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Direct consumer of Naohiro2g/minecraft-remote-tooling
- * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
- * {@code packages/protocol/test/fixtures/entity-particle-v23.2.json}.
+ * {@code 6447f6e8cbfbeeb9d229990b5c4f6e82a5875666},
+ * {@code packages/protocol/test/fixtures/entity-particle-v23.2.1.json}.
  * Every case is mapped to the production handler or registry path.
  */
 class EntityParticleFixtureContractTest {
-    private static final String FIXTURE = "/fixtures/entity-particle-v23.2.json";
+    private static final String FIXTURE = "/fixtures/entity-particle-v23.2.1.json";
     private static final String OWNER_SHA256 =
-            "ca636b4a2685ea67f24d8e7931e3d30a84e7cec872bb5c5d2eadd178cdac39f2";
+            "0319ff8373a96798cf5e9e421a804729fd33a0fa53e96adc12c93ed7994777ae";
     private static final World OVERWORLD = world("overworld");
     private static final World NETHER = world("the_nether");
 
     @Test
     void exactOwnerBytesAndCaseCounts() throws Exception {
         byte[] bytes = fixtureBytes();
+        assertEquals(36_483, bytes.length);
         assertEquals(OWNER_SHA256, sha256(bytes));
         JsonObject root = root();
-        assertEquals("mcremote.entity-particle.v23.2", root.get("schema").getAsString());
-        assertEquals("23.2.0", root.get("protocol").getAsString());
+        assertEquals("mcremote.entity-particle.v23.2.1", root.get("schema").getAsString());
+        assertEquals(ProtocolInfo.PROTOCOL, root.get("protocol").getAsString());
         assertTrue(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
         assertEquals(19, root.getAsJsonObject("nearby").getAsJsonArray("cases").size());
         assertEquals(7, root.getAsJsonObject("nearby").getAsJsonArray("handle_transaction_cases").size());
