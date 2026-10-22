@@ -59,6 +59,6 @@ record RuntimePolicy(
     }
 
     private static int read(ConfigurationSection config, String path, int fallback) {
-        return Math.max(1, LegacyConfigKeys.getInt(config, path, fallback));
+        return Math.max(1, config.contains(path, true) ? config.getInt(path, fallback) : fallback);
     }
 }

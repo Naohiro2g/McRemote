@@ -34,8 +34,8 @@ auth:
   max_long_lived_credentials_per_uuid: 16  # distinct from concurrent session limit
 
 # Runtime limits below are implementation limits, not protocol constants.
-# Older configs grouped them under "b5:" / "b7:". On startup those values are moved to the
-# keys below (an existing new key wins) and the old keys are removed; the server log lists both.
+# Older configs grouped them under "b5:" / "b7:". Those keys now stop the entire Paper server.
+# Move their values to the keys below and remove the old sections before starting Paper.
 
 # Connection admission uses internal 16/24/32-player profiles selected at startup
 # from Paper's max-players. Input byte limits and pre-hello timeouts are internal.

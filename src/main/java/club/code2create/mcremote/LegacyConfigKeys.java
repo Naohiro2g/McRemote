@@ -7,17 +7,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * 意味別 category の config key と、旧 release 番号 category（{@code b5:}／{@code b7:}）の対応
- * （DECISIONS 2026-09-03-02）。起動時の {@link #migrate} が旧 key の値を新 key へ移して旧 key を
- * 消すので、運用者が変えていた値は既定値に戻らない。読み込み時の読み替えは、移行を保存できなかった
- * 場合の保険として残す。どちらも初回 stable release の前に外す。
+ * （DECISIONS 2026-10-22-01）。旧 key は読み替え・移行せず、起動を止めるために検出する。
+ * 対応表は運用者への修正案内にだけ使う。
  */
 final class LegacyConfigKeys {
-    private static final Logger LOGGER = Logger.getLogger("McRemote");
-
     /** new path → legacy path. */
     static final Map<String, String> LEGACY_PATHS = legacyPaths();
 
@@ -45,64 +41,46 @@ final class LegacyConfigKeys {
         return java.util.Collections.unmodifiableMap(paths);
     }
 
-    /** operator が書いた値だけを見る。同梱 config の既定値は「書かれていない」として扱う。 */
-    static int getInt(ConfigurationSection config, String path, int fallback) {
-        if (config.contains(path, true)) {
-            return config.getInt(path, fallback);
+    /** Lists operator-written obsolete keys, including unknown keys and empty sections. No mutation. */
+    static List<String> errors(ConfigurationSection config) {
+        List<String> errors = new ArrayList<>();
+        for (String path : config.getKeys(true).stream().sorted().toList()) {
+            if (!(path.equals("b5") || path.startsWith("b5.")
+                    || path.equals("b7") || path.startsWith("b7.")) || !config.contains(path, true)) {
+                continue;
+            }
+            ConfigurationSection section = config.getConfigurationSection(path);
+            if (section != null && !section.getKeys(false).isEmpty()) {
+                continue;
+            }
+            String replacement = LEGACY_PATHS.entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(path))
+                    .map(Map.Entry::getKey).findFirst().orElse(null);
+            errors.add("config.yml: unsupported legacy key '" + path + "'. "
+                    + (replacement == null ? "Remove this obsolete key/section."
+                    : "Use '" + replacement + "' instead, then remove '" + path + "'."));
         }
-        String legacyPath = LEGACY_PATHS.get(path);
-        if (legacyPath != null && config.contains(legacyPath, true)) {
-            LOGGER.warning("config.yml: '" + legacyPath + "' is deprecated; move it to '" + path
-                    + "'. The old key is still read for now but will be ignored from the stable release.");
-            return config.getInt(legacyPath, fallback);
-        }
-        return fallback;
+        return List.copyOf(errors);
     }
 
-    /** What {@link #migrate} changed, for logging. */
-    record Migration(List<String> added, List<String> moved, List<String> removed) {
+    /** Ordinary default insertion and retired connection-profile cleanup, unrelated to b5/b7. */
+    record Update(List<String> added, List<String> removed) {
         boolean changed() {
-            return !added.isEmpty() || !moved.isEmpty() || !removed.isEmpty();
+            return !added.isEmpty() || !removed.isEmpty();
         }
     }
 
-    /**
-     * Adds missing keys from the packaged defaults. A missing new key with a legacy counterpart takes
-     * the legacy value instead of the default. Legacy keys are then removed: moved ones, and ones
-     * whose new key the operator already set (the new key wins). Empty b5／b7 sections go too.
-     */
-    static Migration migrate(ConfigurationSection config, Configuration defaults) {
+    /** Adds missing packaged defaults, preserving explicitly set values. No b5/b7 migration. */
+    static Update addMissingDefaults(ConfigurationSection config, Configuration defaults) {
         List<String> added = new ArrayList<>();
-        List<String> moved = new ArrayList<>();
         List<String> removed = new ArrayList<>();
         if (defaults != null) {
             for (String path : defaults.getKeys(true)) {
                 if (defaults.isConfigurationSection(path) || config.contains(path, true)) {
                     continue;
                 }
-                String legacyPath = LEGACY_PATHS.get(path);
-                if (legacyPath != null && config.contains(legacyPath, true)) {
-                    config.set(path, config.get(legacyPath));
-                    moved.add(legacyPath + " -> " + path);
-                } else {
-                    config.set(path, defaults.get(path));
-                    added.add(path);
-                }
-            }
-        }
-        for (Map.Entry<String, String> entry : LEGACY_PATHS.entrySet()) {
-            String legacyPath = entry.getValue();
-            if (config.contains(legacyPath, true) && config.contains(entry.getKey(), true)) {
-                if (!moved.contains(legacyPath + " -> " + entry.getKey())) {
-                    removed.add(legacyPath + " (ignored; " + entry.getKey() + " is set)");
-                }
-                config.set(legacyPath, null);
-            }
-        }
-        for (String section : List.of("b7.lightning", "b7", "b5")) {
-            ConfigurationSection legacy = config.getConfigurationSection(section);
-            if (legacy != null && legacy.getKeys(false).isEmpty()) {
-                config.set(section, null);
+                config.set(path, defaults.get(path));
+                added.add(path);
             }
         }
         for (String path : PreAuthPolicy.RETIRED_CONFIG_KEYS) {
@@ -111,6 +89,6 @@ final class LegacyConfigKeys {
                 removed.add(path + " (replaced by the max-players connection profile)");
             }
         }
-        return new Migration(added, moved, removed);
+        return new Update(added, removed);
     }
 }

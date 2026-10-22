@@ -72,6 +72,15 @@ public class McRemote extends JavaPlugin implements Listener {
         instance = this;
         this.saveDefaultConfig();
         FileConfiguration config = this.getConfig();
+        List<String> legacyErrors = LegacyConfigKeys.errors(config);
+        if (!legacyErrors.isEmpty()) {
+            logger.severe("Unsupported legacy keys in plugins/McRemote/config.yml. Stopping the entire Paper server.");
+            legacyErrors.forEach(logger::severe);
+            logger.severe("Keep the intended values under the new keys, remove the b5: and b7: sections, "
+                    + "then restart Paper. No config values have been migrated or saved.");
+            getServer().shutdown();
+            return;
+        }
         migrateMissingConfigDefaults(config);
         removeDeprecatedCredentialConfig(config);
         removeDeprecatedLightningPermissionConfig(config);
@@ -185,21 +194,15 @@ public class McRemote extends JavaPlugin implements Listener {
                 : getDataFolder().toPath().resolve(value).toAbsolutePath().normalize();
     }
 
-    /**
-     * Adds missing packaged defaults and moves legacy b5:／b7: values to their meaning categories so
-     * an operator's changed value never falls back to the default (DECISIONS 2026-09-03-02).
-     */
+    /** Adds missing packaged defaults without overwriting operator values. */
     private void migrateMissingConfigDefaults(FileConfiguration config) {
-        LegacyConfigKeys.Migration migration = LegacyConfigKeys.migrate(config, config.getDefaults());
+        LegacyConfigKeys.Update migration = LegacyConfigKeys.addMissingDefaults(config, config.getDefaults());
         if (!migration.changed()) {
             return;
         }
         saveConfig();
         if (!migration.added().isEmpty()) {
             logger.info("Added missing config defaults: " + String.join(", ", migration.added()));
-        }
-        if (!migration.moved().isEmpty()) {
-            logger.warning("Moved legacy config values: " + String.join(", ", migration.moved()));
         }
         if (!migration.removed().isEmpty()) {
             logger.warning("Removed legacy config keys: " + String.join(", ", migration.removed()));

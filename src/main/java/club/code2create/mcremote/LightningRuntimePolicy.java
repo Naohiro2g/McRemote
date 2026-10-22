@@ -33,6 +33,7 @@ record LightningRuntimePolicy(
     }
 
     private static int positive(ConfigurationSection config, String key, int fallback) {
-        return Math.max(1, LegacyConfigKeys.getInt(config, "lightning." + key, fallback));
+        String path = "lightning." + key;
+        return Math.max(1, config.contains(path, true) ? config.getInt(path, fallback) : fallback);
     }
 }

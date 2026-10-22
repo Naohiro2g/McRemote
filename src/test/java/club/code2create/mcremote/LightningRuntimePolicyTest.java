@@ -36,7 +36,7 @@ class LightningRuntimePolicyTest {
     }
 
     @Test
-    void legacyB7KeysAreReadOnlyWhenTheNewKeyIsAbsent() {
+    void policyReadsOnlyMeaningCategoriesAfterStartupValidation() {
         YamlConfiguration config = new YamlConfiguration();
         config.set("b7.lightning.connection_cooldown_ticks", 9);
         config.set("b7.lightning.player_cooldown_ticks", 11);
@@ -44,7 +44,7 @@ class LightningRuntimePolicyTest {
 
         LightningRuntimePolicy policy = LightningRuntimePolicy.from(config);
 
-        assertEquals(9, policy.connectionCooldownTicks());
-        assertEquals(13, policy.playerCooldownTicks(), "new key wins over the legacy key");
+        assertEquals(20, policy.connectionCooldownTicks());
+        assertEquals(13, policy.playerCooldownTicks());
     }
 }

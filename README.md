@@ -190,7 +190,7 @@ hello前の入力待ちは30秒、hello成功までの絶対期限は180秒で�
 
 既存の `config.yml` に指定した `work.per_request` の値は維持します。既定値32768を使うには、この項目が未設定であるか、設定値を32768へ変更する必要があります。
 
-以前の `config.yml` にある `b5:`／`b7:` の項目は、起動時に同じ意味の新しい項目へ値を移して削除します。変えていた値は引き継がれ、移した項目と削除した項目はサーバーログに出ます。新しい項目がすでにある場合は新しい項目が優先され、旧項目は削除されます。
+以前の `config.yml` に `b5:`／`b7:` の項目が残っていると、**McRemoteはエラーをログに出してPaperサーバー全体を停止します**。自動移行や旧項目の読み替えは行いません。b7以前から更新する場合は、[旧設定の直し方](#旧b5b7設定からの更新)を確認してください。
 
 ## 主な API
 
@@ -212,7 +212,33 @@ params、result、error の詳しい契約は [protocol SSOT](https://github.com
 
 更新前にサーバーを停止し、使用中の JAR と `plugins/McRemote/config.yml` を控え、world をバックアップします。新しい JAR へ置き換えるときは、`plugins/` に McRemote の JAR が1つだけある状態にして起動してください。クライアントも対象リリースに対応する版へ揃えます。認証情報の保存領域は保持します。
 
-beta の問題は通常、次の beta で修正します。前の版へ戻す必要がある場合は、同じ Minecraft の版の中で、控えておいた JAR とその版の設定を使い、クライアントの版も合わせてください。設定には上記の起動時移行があるので、以前の JAR だけに戻しても、設定値が引き継がれるとは限りません。world の変更は JAR の交換では元に戻りません。版を戻した後は、起動・認証・代表操作を確認します。release ごとの検証状況は [release gate の記録](https://github.com/Naohiro2g/mc-remote-knowledge/blob/main/00-hub/release-gate-notes_ja.md)を参照してください。
+beta の問題は通常、次の beta で修正します。前の版へ戻す必要がある場合は、同じ Minecraft の版の中で、控えておいた JAR とその版の設定を使い、クライアントの版も合わせてください。JARだけを戻しても設定は元に戻りません。world の変更は JAR の交換では元に戻りません。版を戻した後は、起動・認証・代表操作を確認します。release ごとの検証状況は [release gate の記録](https://github.com/Naohiro2g/mc-remote-knowledge/blob/main/00-hub/release-gate-notes_ja.md)を参照してください。
+
+### 旧b5／b7設定からの更新
+
+`2321.0.0rc2`以降は、旧設定が残っているとPaper全体が停止します。起動ログに残っているキーと新しいキー名を出します。サーバーを停止した状態で、`plugins/McRemote/config.yml`を控えてから、旧項目の値を次の項目へ移し、`b5:`／`b7:`のセクションを削除してください。新しい項目も既にある場合は、使いたい値を確認して新しい項目に設定します。
+
+| 旧項目 | 新しい項目 |
+| --- | --- |
+| `b5.connection_queue_capacity` | `connection.command_queue_capacity` |
+| `b5.connection_response_queue_capacity` | `connection.response_queue_capacity` |
+| `b5.event_ring_capacity` | `events.ring_capacity` |
+| `b5.event_ring_bytes` | `events.ring_bytes` |
+| `b5.event_poll_default` | `events.poll_default` |
+| `b5.event_poll_limit` | `events.poll_limit` |
+| `b5.entity_handle_capacity` | `entities.handle_capacity` |
+| `b5.max_particle_count` | `particles.max_count` |
+| `b5.max_work_per_request` | `work.per_request` |
+| `b5.session_work_per_tick` | `work.per_session_tick` |
+| `b5.player_work_per_tick` | `work.per_player_tick` |
+| `b5.global_work_per_tick` | `work.global_per_tick` |
+| `b7.lightning.connection_cooldown_ticks` | `lightning.connection_cooldown_ticks` |
+| `b7.lightning.player_cooldown_ticks` | `lightning.player_cooldown_ticks` |
+| `b7.lightning.global_per_tick` | `lightning.global_per_tick` |
+| `b7.lightning.rolling_window_ticks` | `lightning.rolling_window_ticks` |
+| `b7.lightning.global_per_window` | `lightning.global_per_window` |
+
+空の`b5:`／`b7:`セクションや、表に無い旧セクション内の項目が残っていても停止します。rc1までの版で移行が済み、旧セクションが残っていない設定はそのまま使えます。修正後にPaperを起動し、McRemoteの有効化・接続・代表の読み書きを確認してください。
 
 ## 制約と安全
 

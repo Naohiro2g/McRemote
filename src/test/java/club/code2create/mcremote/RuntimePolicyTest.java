@@ -50,19 +50,19 @@ class RuntimePolicyTest {
     }
 
     @Test
-    void existingOperatorAndLegacyRequestLimitsArePreserved() {
+    void existingOperatorRequestLimitIsPreservedAndLegacyAliasIsNotRead() {
         YamlConfiguration config = new YamlConfiguration();
         config.set("work.per_request", 4096);
         assertEquals(4096, RuntimePolicy.from(config).maxWorkPerRequest());
         config.set("work.per_request", null);
         config.set("b5.max_work_per_request", 2048);
-        assertEquals(2048, RuntimePolicy.from(config).maxWorkPerRequest());
+        assertEquals(32768, RuntimePolicy.from(config).maxWorkPerRequest());
         config.set("b5.max_work_per_request", null);
         assertEquals(32768, RuntimePolicy.from(config).maxWorkPerRequest());
     }
 
     @Test
-    void legacyB5KeysAreReadOnlyWhenTheNewKeyIsAbsent() {
+    void policyReadsOnlyMeaningCategoriesAfterStartupValidation() {
         YamlConfiguration config = new YamlConfiguration();
         config.set("b5.event_ring_capacity", 99);
         config.set("b5.connection_queue_capacity", 77);
@@ -70,8 +70,8 @@ class RuntimePolicyTest {
 
         RuntimePolicy policy = RuntimePolicy.from(config);
 
-        assertEquals(99, policy.eventRingCapacity());
-        assertEquals(55, policy.connectionQueueCapacity(), "new key wins over the legacy key");
+        assertEquals(DEFAULTS.eventRingCapacity(), policy.eventRingCapacity());
+        assertEquals(55, policy.connectionQueueCapacity());
         assertEquals(DEFAULTS.maxParticleCount(), policy.maxParticleCount());
     }
 
