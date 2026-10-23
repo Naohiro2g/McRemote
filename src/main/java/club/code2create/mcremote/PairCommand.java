@@ -10,6 +10,7 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import net.kyori.adventure.text.Component;
 
@@ -28,21 +29,31 @@ import net.kyori.adventure.text.Component;
 @NullMarked
 public class PairCommand implements TabExecutor {
     private static final String USAGE =
-            "Usage: /mcremote pair <code> | credential status|bootstrap|reset CONFIRM-RESET-ALL-CREDENTIALS";
+            "Usage: /mcremote pair <code> | hud on|off|toggle|body|target|status | credential status|bootstrap|reset CONFIRM-RESET-ALL-CREDENTIALS";
 
     private final McRemote plugin;
     private final PairingManager pairingManager;
     private final CredentialService credentialService;
+    private final @Nullable CoordinateHud hud;
 
     public PairCommand(McRemote plugin, PairingManager pairingManager,
                        CredentialService credentialService) {
+        this(plugin, pairingManager, credentialService, null);
+    }
+
+    PairCommand(McRemote plugin, PairingManager pairingManager,
+                CredentialService credentialService, @Nullable CoordinateHud hud) {
         this.plugin = plugin;
         this.pairingManager = pairingManager;
         this.credentialService = credentialService;
+        this.hud = hud;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length >= 1 && "hud".equalsIgnoreCase(args[0])) {
+            return HudCommand.execute(hud, sender, args);
+        }
         if (args.length >= 1 && "credential".equalsIgnoreCase(args[0])) {
             return handleCredentialAdmin(sender, args);
         }
@@ -84,8 +95,11 @@ public class PairCommand implements TabExecutor {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
             List<String> roots = sender.hasPermission("mcremote.admin")
-                    ? List.of("pair", "credential") : List.of("pair");
+                    ? List.of("pair", "hud", "credential") : List.of("pair", "hud");
             return StringUtil.copyPartialMatches(args[0], roots, new ArrayList<>());
+        }
+        if (args.length >= 1 && "hud".equalsIgnoreCase(args[0])) {
+            return HudCommand.complete(args);
         }
         if (args.length == 2 && "credential".equalsIgnoreCase(args[0])
                 && sender.hasPermission("mcremote.admin")) {

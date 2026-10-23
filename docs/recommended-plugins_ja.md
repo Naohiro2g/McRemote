@@ -9,7 +9,7 @@
 | [LuckPerms](#luckperms) | プレイヤーやグループごとに、使える機能や建築範囲を決める |
 | [ViaVersion / ViaBackwards](#viaversion--viabackwards) | Java版のマイクラアプリとサーバーのバージョンの違いを吸収する |
 | [Geyser / Floodgate](#geyser--floodgate) | 統合版のマイクラアプリからJava版のサーバーへ参加できるようにする |
-| [DirectionHUD](#directionhud) | 座標や向きを画面に表示し、位置を把握しやすくする |
+| [DirectionHUD](#directionhud) | 保存した目的地への案内やプレイヤー追跡などを使う |
 | [WorldEdit](#worldedit) | 整地や建築物のコピーなど、世界をまとめて編集する |
 | [DiscordSRV](#discordsrv) | ゲーム内のチャットとDiscordをつなぐ |
 | [BlueMap](#bluemap) | ブラウザで世界を3D地図として見られるようにする |
@@ -74,7 +74,9 @@ ViaVersion / ViaBackwardsと組み合わせると、Java版のバージョンの
 
 ## DirectionHUD
 
-DirectionHUDは、座標や向きなどをゲーム画面に表示するプラグインです。マイクラリモコンで「どこにブロックを置いたか」「自分はどちらを向いているか」を確かめるとき、座標の変化を見ながら試せます。[Modrinth](https://modrinth.com/plugin/directionhud)・[公式ガイド](https://directionhud.docs.oth3r.one/)
+McRemoteには[座標・時刻HUD](../README.md#座標時刻hud)があり、絶対／相対座標、world内の時刻、照準先ブロックをゲーム画面で確認できます。
+
+DirectionHUDは、座標や向きの表示に加え、保存した目的地への案内やプレイヤー追跡などを使うプラグインです。[Modrinth](https://modrinth.com/plugin/directionhud)・[公式ガイド](https://directionhud.docs.oth3r.one/)
 
 座標を保存して目的地にしたり、ほかのプレイヤーの位置を追ったりする機能もあります。みんなで同じ場所へ集まるときや、建築場所へ戻るときにも便利です。表示項目は`/hud`、目的地は`/destination`から設定できます。
 

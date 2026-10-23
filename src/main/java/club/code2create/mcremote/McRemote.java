@@ -14,6 +14,7 @@ import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -63,6 +64,8 @@ public class McRemote extends JavaPlugin implements Listener {
     private PreAuthAdmission preAuthAdmission;
     private ConnectionLimitStats connectionLimitStats;
     private long nextConnectionLimitLog;
+    private CoordinateHud coordinateHud;
+    private boolean hudSneakSwapToggle;
 
     PreAuthPolicy preAuthPolicy() { return preAuthPolicy; }
     PreAuthAdmission preAuthAdmission() { return preAuthAdmission; }
@@ -132,8 +135,10 @@ public class McRemote extends JavaPlugin implements Listener {
                 + " bytes=" + catalogService.getSerializedBytes()
                 + " hash=" + catalogService.getCatalogHash());
         PluginCommand mcremoteCommand = getCommand("mcremote");
+        coordinateHud = config.getBoolean("hud.enabled", true) ? new CoordinateHud(this::sessionsFor) : null;
+        hudSneakSwapToggle = config.getBoolean("hud.toggle_on_sneak_swap", false);
         if (mcremoteCommand != null) {
-            PairCommand command = new PairCommand(this, pairingManager, credentialService);
+            PairCommand command = new PairCommand(this, pairingManager, credentialService, coordinateHud);
             mcremoteCommand.setExecutor(command);
             mcremoteCommand.setTabCompleter(command);
         } else {
@@ -185,6 +190,10 @@ public class McRemote extends JavaPlugin implements Listener {
         getServer().getScheduler().scheduleSyncRepeatingTask(this, new TickHandler(), 1, 1);
         getServer().getScheduler().runTaskTimerAsynchronously(
                 this, credentialService::reconcileIfNeeded, 200L, 200L);
+        if (coordinateHud != null) {
+            getServer().getScheduler().runTaskTimer(this,
+                    () -> coordinateHud.tick(getServer().getOnlinePlayers()), 1L, CoordinateHud.UPDATE_INTERVAL_TICKS);
+        }
         saveResources();
     }
 
@@ -235,6 +244,7 @@ public class McRemote extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable(){
+        if (coordinateHud != null) coordinateHud.close();
         if (credentialService != null) { credentialService.close(); }
         getServer().getScheduler().cancelTasks(this);
         for (RemoteSession session: sessions) {
@@ -528,6 +538,7 @@ public class McRemote extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event){
+        if (coordinateHud != null) coordinateHud.playerQuit(event.getPlayer());
         for (RemoteSession session: sessions) {
             session.handlePlayerQuitEvent(event.getPlayer().getUniqueId());
         }
@@ -537,6 +548,15 @@ public class McRemote extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event){
         for (RemoteSession session: sessions) {
             session.handlePlayerJoinEvent(event.getPlayer().getUniqueId());
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onHudSwapHand(PlayerSwapHandItemsEvent event) {
+        if (coordinateHud != null && hudSneakSwapToggle && event.getPlayer().isSneaking()
+                && coordinateHud.isVisible(event.getPlayer())) {
+            event.setCancelled(true);
+            coordinateHud.togglePoint(event.getPlayer());
         }
     }
 
