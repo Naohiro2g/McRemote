@@ -21,6 +21,6 @@ final class HudSampler {
             RayTraceResult hit = player.rayTraceBlocks(TARGET_DISTANCE, FluidCollisionMode.NEVER);
             location = hit == null || hit.getHitBlock() == null ? null : hit.getHitBlock().getLocation();
         }
-        return HudFrame.sample(location, origin, player.getWorld().getTime());
+        return HudFrame.sample(location, origin, player.getWorld().getTime(), point);
     }
 }

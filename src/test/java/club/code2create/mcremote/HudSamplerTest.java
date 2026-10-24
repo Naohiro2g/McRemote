@@ -41,6 +41,8 @@ class HudSamplerTest {
         HudFrame frame = HudSampler.sample(player, new Location(world, 0, 5, 0), HudSampler.Point.TARGET);
         assertEquals(new HudFrame.Coordinates(4, 65, -2), frame.absolute());
         assertEquals(new HudFrame.Coordinates(4, 60, -2), frame.relative());
+        assertEquals(HudSampler.Point.TARGET, frame.point());
+        assertEquals(0xd8d6d5, frame.render().color().value());
     }
 
     @Test
@@ -52,7 +54,7 @@ class HudSamplerTest {
         when(world.getTime()).thenReturn(100L);
         when(block.getLocation()).thenReturn(new Location(world, 4, 65, -2));
         when(player.rayTraceBlocks(8, FluidCollisionMode.NEVER))
-                .thenReturn(new RayTraceResult(new Vector(4, 65, -2), block, null), null);
+                .thenReturn(new RayTraceResult(new Vector(4, 65, -2), block, null), (RayTraceResult) null);
         assertNotNull(HudSampler.sample(player, null, HudSampler.Point.TARGET).absolute());
         HudFrame missing = HudSampler.sample(player, null, HudSampler.Point.TARGET);
         assertNull(missing.absolute());

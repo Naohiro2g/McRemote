@@ -18,13 +18,10 @@ class HudInputTest {
     }
 
     @Test
-    void normalSwapOrHiddenHudKeepsTheOriginalMinecraftOperation() throws Exception {
+    void hiddenHudKeepsTheOriginalMinecraftOperation() throws Exception {
         CoordinateHud hud = mock(CoordinateHud.class);
         McRemote plugin = plugin(hud, true);
-        PlayerSwapHandItemsEvent normal = event(false);
-        plugin.onHudSwapHand(normal);
-        verify(normal, never()).setCancelled(anyBoolean());
-        PlayerSwapHandItemsEvent hidden = event(true);
+        PlayerSwapHandItemsEvent hidden = event(false);
         when(hud.isVisible(hidden.getPlayer())).thenReturn(false);
         plugin.onHudSwapHand(hidden);
         verify(hidden, never()).setCancelled(anyBoolean());
@@ -32,15 +29,16 @@ class HudInputTest {
     }
 
     @Test
-    void explicitlyEnabledSneakingSwapTogglesThePointAndCancelsOnlyThatSwap() throws Exception {
+    void explicitlyEnabledSwapTogglesWithoutCheckingSneakAndCancelsOnlyThatSwap() throws Exception {
         CoordinateHud hud = mock(CoordinateHud.class);
         McRemote plugin = plugin(hud, true);
-        PlayerSwapHandItemsEvent event = event(true);
+        PlayerSwapHandItemsEvent event = event(false);
         Player player = event.getPlayer();
         when(hud.isVisible(player)).thenReturn(true);
         plugin.onHudSwapHand(event);
         verify(event).setCancelled(true);
         verify(hud).togglePoint(player);
+        verify(player, never()).isSneaking();
     }
 
     private static McRemote plugin(CoordinateHud hud, boolean enabled) throws Exception {
@@ -48,7 +46,7 @@ class HudInputTest {
         var display = McRemote.class.getDeclaredField("coordinateHud");
         display.setAccessible(true);
         display.set(plugin, hud);
-        var option = McRemote.class.getDeclaredField("hudSneakSwapToggle");
+        var option = McRemote.class.getDeclaredField("hudSwapToggle");
         option.setAccessible(true);
         option.setBoolean(plugin, enabled);
         doCallRealMethod().when(plugin).onHudSwapHand(any());

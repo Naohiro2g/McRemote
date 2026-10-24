@@ -65,7 +65,7 @@ public class McRemote extends JavaPlugin implements Listener {
     private ConnectionLimitStats connectionLimitStats;
     private long nextConnectionLimitLog;
     private CoordinateHud coordinateHud;
-    private boolean hudSneakSwapToggle;
+    private boolean hudSwapToggle;
 
     PreAuthPolicy preAuthPolicy() { return preAuthPolicy; }
     PreAuthAdmission preAuthAdmission() { return preAuthAdmission; }
@@ -136,7 +136,7 @@ public class McRemote extends JavaPlugin implements Listener {
                 + " hash=" + catalogService.getCatalogHash());
         PluginCommand mcremoteCommand = getCommand("mcremote");
         coordinateHud = config.getBoolean("hud.enabled", true) ? new CoordinateHud(this::sessionsFor) : null;
-        hudSneakSwapToggle = config.getBoolean("hud.toggle_on_sneak_swap", false);
+        hudSwapToggle = config.getBoolean("hud.toggle_on_swap", false);
         if (mcremoteCommand != null) {
             PairCommand command = new PairCommand(this, pairingManager, credentialService, coordinateHud);
             mcremoteCommand.setExecutor(command);
@@ -553,7 +553,7 @@ public class McRemote extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onHudSwapHand(PlayerSwapHandItemsEvent event) {
-        if (coordinateHud != null && hudSneakSwapToggle && event.getPlayer().isSneaking()
+        if (coordinateHud != null && hudSwapToggle
                 && coordinateHud.isVisible(event.getPlayer())) {
             event.setCancelled(true);
             coordinateHud.togglePoint(event.getPlayer());

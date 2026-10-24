@@ -12,6 +12,17 @@ class HudFrameTest {
     private final World world = mock(World.class);
 
     @Test
+    void bodyAndTargetUseTheSpecifiedAbsoluteRelativeAndTimeColorsEvenWithoutCoordinates() {
+        for (HudSampler.Point mode : HudSampler.Point.values()) {
+            var rendered = HudFrame.sample(null, null, 1234, mode).render();
+            boolean target = mode == HudSampler.Point.TARGET;
+            assertEquals(target ? 0xd8d6d5 : 0xa89b94, rendered.color().value());
+            assertEquals(target ? 0xf9c7e5 : 0xf15fb6, rendered.children().get(1).color().value());
+            assertEquals(0x55c01b, rendered.children().get(3).color().value());
+        }
+    }
+
+    @Test
     void relativeCoordinatesSubtractAllAxesFromTheSelectedOrigin() {
         HudFrame frame = HudFrame.sample(new Location(world, 1122.8, 120.9, 1133.2),
                 new Location(world, 1100, 100, 1100), 23999);

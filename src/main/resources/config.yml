@@ -4,9 +4,10 @@ api_port: 25575
 # Game-only coordinate/time HUD. No client changes or new protocol methods are required.
 hud:
   enabled: true
-  # Opt in to sneaking + swap-hand input (default Java key binding: Shift+F).
-  # Only cancels that swap while this player's HUD is visible; normal swap is unaffected.
-  toggle_on_sneak_swap: false
+  # Opt in to swap-hand input, without a sneak modifier.
+  # Bind Minecraft's "Swap Item With Offhand" action to Z in the client controls.
+  # While HUD is visible, this action toggles the target instead of swapping items.
+  toggle_on_swap: false
 # permission nodes and meta key of LuckPerms
 luckperm_permissions:
   online: "mcr.online"  # permission node for online players
