@@ -68,15 +68,24 @@ Scratchで使う場合は、[LAN版Scratchの案内](https://mc-remote.com/lan/s
 
 ## サーバーのJavaを選ぶ
 
-Paper 1.21.11はJava 21、Paper 26.3はJava 25で起動します。[mise](https://mise.jdx.dev/lang/java.html)で、サーバーのフォルダーごとにJavaの版を固定してください。miseの導入・シェル設定後、そのフォルダーで次を実行すると`mise.toml`に設定が保存されます。
+Javaの配布元は**Eclipse Temurin**を使い、各系列の最新パッチを推奨します。[mise](https://mise.jdx.dev/lang/java.html)の最新版で、サーバーのフォルダーごとに必要なJavaの系列を設定してください。
+
+| Paper | Java |
+| --- | --- |
+| 1.21.11 | Temurin Java 21 |
+| 26.3 | Temurin Java 25 |
+
+miseの導入・シェル設定後、サーバーのフォルダーで次を実行します。
 
 ```sh
-mise use --path mise.toml --pin java@25  # Paper 26.3。Paper 1.21.11のフォルダーでは java@21
+mise use java@25  # Paper 26.3。Paper 1.21.11のフォルダーでは java@21
 mise exec -- java -version
 mise exec -- java -jar paper.jar nogui
 ```
 
-`--pin`でインストールした具体的な版を記録します。以後は、そのフォルダーで`mise exec --`を使うと、記録したJavaで起動できます。
+`mise.toml`には`java = "25"`（または`"21"`）が保存されます。パッチの更新は月1回ほど確認し、サーバーを停止した保守時に`mise upgrade java`で明示的に更新して再起動します。`mise use`の繰り返しでは、導入済みの版が使われることがあります。
+
+導入、`mise ls java`での確認、Bashの補完、既存環境の整理は、[Java・miseガイド](docs/java-mise_ja.md)を参照してください。
 
 ## 設定
 
