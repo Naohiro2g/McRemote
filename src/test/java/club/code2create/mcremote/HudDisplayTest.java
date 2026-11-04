@@ -10,18 +10,23 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class HudDisplayTest {
+    private static HudFrame frame(long tick) {
+        return HudFrame.sample(null, null, tick, HudSampler.Point.LEGS,
+                new org.bukkit.Location(null, 0, 64, 0), java.util.Locale.ENGLISH);
+    }
+
     @Test
     void repeatedUpdatesKeepOneBossBarAndMutateItsTextInPlace() {
         Player player = mock(Player.class);
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
         HudDisplay display = new HudDisplay();
-        HudFrame first = HudFrame.sample(null, null, 100);
+        HudFrame first = frame(100);
         display.update(player, first);
         display.update(player, first);
         ArgumentCaptor<BossBar> bar = ArgumentCaptor.forClass(BossBar.class);
         verify(player).showBossBar(bar.capture());
         assertEquals(first.render(), bar.getValue().name());
-        HudFrame next = HudFrame.sample(null, null, 101);
+        HudFrame next = frame(110);
         display.update(player, next);
         assertEquals(next.render(), bar.getValue().name());
         verify(player, times(1)).showBossBar(any(BossBar.class));
@@ -37,7 +42,7 @@ class HudDisplayTest {
         when(previous.getUniqueId()).thenReturn(id);
         when(current.getUniqueId()).thenReturn(id);
         HudDisplay display = new HudDisplay();
-        HudFrame frame = HudFrame.sample(null, null, 0);
+        HudFrame frame = frame(0);
         display.update(previous, frame);
         display.update(current, frame);
         verify(previous).hideBossBar(any(BossBar.class));

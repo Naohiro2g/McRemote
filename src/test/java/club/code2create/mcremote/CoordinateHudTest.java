@@ -14,6 +14,28 @@ import static org.mockito.Mockito.*;
 
 class CoordinateHudTest {
     @Test
+    void swapPreferenceBelongsToThePlayerAndResetsToTheConfiguredDefaultOnQuit() {
+        Player first = player(mock(World.class), 0, 64, 0);
+        Player second = player(mock(World.class), 0, 64, 0);
+        CoordinateHud hud = new CoordinateHud(ignored -> List.of(), mock(HudDisplay.class), false);
+        assertFalse(hud.isToggleOnSwapEnabled(first));
+        hud.setToggleOnSwap(first, true);
+        assertTrue(hud.isToggleOnSwapEnabled(first));
+        assertFalse(hud.isToggleOnSwapEnabled(second));
+        assertTrue(hud.status(first).contains("toggle-on-swap: ON"));
+        hud.playerQuit(first);
+        assertFalse(hud.isToggleOnSwapEnabled(first));
+
+        CoordinateHud enabled = new CoordinateHud(ignored -> List.of(), mock(HudDisplay.class), true);
+        assertTrue(enabled.isToggleOnSwapEnabled(first));
+        enabled.setToggleOnSwap(first, false);
+        assertFalse(enabled.isToggleOnSwapEnabled(first));
+        assertTrue(enabled.isToggleOnSwapEnabled(second));
+        enabled.tick(List.of());
+        assertTrue(enabled.isToggleOnSwapEnabled(first));
+    }
+
+    @Test
     void originChangesAndDisconnectFallbackUseOnlyLiveAuthenticatedConnectionsForThisPlayer() {
         World world = mock(World.class);
         Player player = player(world, 222, 80, 233);
@@ -52,7 +74,7 @@ class CoordinateHudTest {
         HudDisplay display = mock(HudDisplay.class);
         CoordinateHud hud = new CoordinateHud(ignored -> active, display);
         hud.setPoint(player, HudSampler.Point.TARGET);
-        verify(player).rayTraceBlocks(8, org.bukkit.FluidCollisionMode.NEVER);
+        verify(player).rayTraceBlocks(16, org.bukkit.FluidCollisionMode.NEVER);
         hud.setVisible(player, false);
         clearInvocations(display, player);
         active.clear();
@@ -61,7 +83,7 @@ class CoordinateHudTest {
         verify(display, never()).update(any(), any());
         verify(player, never()).rayTraceBlocks(anyDouble(), any());
         hud.setVisible(player, true);
-        verify(player).rayTraceBlocks(8, org.bukkit.FluidCollisionMode.NEVER);
+        verify(player).rayTraceBlocks(16, org.bukkit.FluidCollisionMode.NEVER);
         assertTrue(hud.status(player).contains("照準先"));
     }
 

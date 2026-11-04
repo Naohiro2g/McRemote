@@ -13,25 +13,36 @@ import org.bukkit.entity.Player;
 
 /** Game-only first slice of the coordinate/time HUD. No wire methods or observer IDs. */
 final class CoordinateHud implements AutoCloseable {
-    static final long UPDATE_INTERVAL_TICKS = 5;
+    static final long UPDATE_INTERVAL_TICKS = 10;
 
     private static final class State {
         boolean visible = true;
-        HudSampler.Point point = HudSampler.Point.BODY;
+        HudSampler.Point point = HudSampler.Point.LEGS;
+        boolean toggleOnSwap;
         final HudSelection selection = new HudSelection();
+
+        State(boolean toggleOnSwap) {
+            this.toggleOnSwap = toggleOnSwap;
+        }
     }
 
     private final Function<Player, List<RemoteSession>> sessionsFor;
     private final HudDisplay display;
+    private final boolean defaultToggleOnSwap;
     private final Map<UUID, State> states = new HashMap<>();
 
-    CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor) {
-        this(sessionsFor, new HudDisplay());
+    CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor, boolean defaultToggleOnSwap) {
+        this(sessionsFor, new HudDisplay(), defaultToggleOnSwap);
     }
 
     CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor, HudDisplay display) {
+        this(sessionsFor, display, false);
+    }
+
+    CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor, HudDisplay display, boolean defaultToggleOnSwap) {
         this.sessionsFor = sessionsFor;
         this.display = display;
+        this.defaultToggleOnSwap = defaultToggleOnSwap;
     }
 
     void tick(Collection<? extends Player> onlinePlayers) {
@@ -48,7 +59,7 @@ final class CoordinateHud implements AutoCloseable {
     }
 
     private State state(Player player) {
-        return states.computeIfAbsent(player.getUniqueId(), ignored -> new State());
+        return states.computeIfAbsent(player.getUniqueId(), ignored -> new State(defaultToggleOnSwap));
     }
 
     private void refresh(Player player) {
@@ -82,14 +93,24 @@ final class CoordinateHud implements AutoCloseable {
     }
 
     void togglePoint(Player player) {
-        setPoint(player, state(player).point == HudSampler.Point.BODY
-                ? HudSampler.Point.TARGET : HudSampler.Point.BODY);
+        setPoint(player, state(player).point == HudSampler.Point.LEGS
+                ? HudSampler.Point.TARGET : HudSampler.Point.LEGS);
+    }
+
+    void setToggleOnSwap(Player player, boolean enabled) {
+        state(player).toggleOnSwap = enabled;
+    }
+
+    boolean isToggleOnSwapEnabled(Player player) {
+        State state = states.get(player.getUniqueId());
+        return state == null ? defaultToggleOnSwap : state.toggleOnSwap;
     }
 
     String status(Player player) {
         State state = state(player);
         return "HUD: " + (state.visible ? "ON" : "OFF") + " / "
-                + (state.point == HudSampler.Point.BODY ? "足元の座標" : "照準先のブロック座標");
+                + (state.point == HudSampler.Point.LEGS ? "足元の座標" : "照準先のブロック座標")
+                + " / toggle-on-swap: " + (state.toggleOnSwap ? "ON" : "OFF");
     }
 
     void playerQuit(Player player) {

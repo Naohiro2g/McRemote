@@ -14,18 +14,18 @@ import static org.mockito.Mockito.*;
 
 class HudSamplerTest {
     @Test
-    void bodyUsesPlayerFeetAndCurrentWorldTimeWithoutRayTracing() {
+    void legsUsesPlayerFeetAndCurrentWorldTimeWithoutRayTracing() {
         World world = mock(World.class);
         Player player = mock(Player.class);
         when(player.getWorld()).thenReturn(world);
         when(player.getLocation()).thenReturn(new Location(world, -0.1, 70, 22.9));
         when(world.getTime()).thenReturn(23999L, 0L);
         Location origin = new Location(world, 200, 5, 200);
-        HudFrame frame = HudSampler.sample(player, origin, HudSampler.Point.BODY);
+        HudFrame frame = HudSampler.sample(player, origin, HudSampler.Point.LEGS);
         assertEquals(new HudFrame.Coordinates(-1, 70, 22), frame.absolute());
         assertEquals(new HudFrame.Coordinates(-201, 65, -178), frame.relative());
-        assertEquals(23999, frame.timeTick());
-        assertEquals(0, HudSampler.sample(player, origin, HudSampler.Point.BODY).timeTick());
+        assertEquals(23990, frame.timeTick());
+        assertEquals(0, HudSampler.sample(player, origin, HudSampler.Point.LEGS).timeTick());
         verify(player, never()).rayTraceBlocks(anyDouble(), any(FluidCollisionMode.class));
     }
 
@@ -35,8 +35,9 @@ class HudSamplerTest {
         Player player = mock(Player.class);
         Block block = mock(Block.class);
         when(player.getWorld()).thenReturn(world);
+        when(player.getLocation()).thenReturn(new Location(world, 0, 64, 0));
         when(block.getLocation()).thenReturn(new Location(world, 4, 65, -2));
-        when(player.rayTraceBlocks(8, FluidCollisionMode.NEVER))
+        when(player.rayTraceBlocks(16, FluidCollisionMode.NEVER))
                 .thenReturn(new RayTraceResult(new Vector(4.9, 65.5, -1), block, org.bukkit.block.BlockFace.SOUTH));
         HudFrame frame = HudSampler.sample(player, new Location(world, 0, 5, 0), HudSampler.Point.TARGET);
         assertEquals(new HudFrame.Coordinates(4, 65, -2), frame.absolute());
@@ -51,9 +52,10 @@ class HudSamplerTest {
         Player player = mock(Player.class);
         Block block = mock(Block.class);
         when(player.getWorld()).thenReturn(world);
+        when(player.getLocation()).thenReturn(new Location(world, 0, 64, 0));
         when(world.getTime()).thenReturn(100L);
         when(block.getLocation()).thenReturn(new Location(world, 4, 65, -2));
-        when(player.rayTraceBlocks(8, FluidCollisionMode.NEVER))
+        when(player.rayTraceBlocks(16, FluidCollisionMode.NEVER))
                 .thenReturn(new RayTraceResult(new Vector(4, 65, -2), block, null), (RayTraceResult) null);
         assertNotNull(HudSampler.sample(player, null, HudSampler.Point.TARGET).absolute());
         HudFrame missing = HudSampler.sample(player, null, HudSampler.Point.TARGET);

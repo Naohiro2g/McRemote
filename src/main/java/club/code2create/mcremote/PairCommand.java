@@ -29,7 +29,7 @@ import net.kyori.adventure.text.Component;
 @NullMarked
 public class PairCommand implements TabExecutor {
     private static final String USAGE =
-            "Usage: /mcremote pair <code> | hud on|off|toggle|body|target|status | credential status|bootstrap|reset CONFIRM-RESET-ALL-CREDENTIALS";
+            "Usage: /mcr pair <code> | hud on|off|toggle|legs|target|status | hud toggle-on-swap on|off | credential status|bootstrap|reset CONFIRM-RESET-ALL-CREDENTIALS";
 
     private final McRemote plugin;
     private final PairingManager pairingManager;

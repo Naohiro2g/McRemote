@@ -65,7 +65,6 @@ public class McRemote extends JavaPlugin implements Listener {
     private ConnectionLimitStats connectionLimitStats;
     private long nextConnectionLimitLog;
     private CoordinateHud coordinateHud;
-    private boolean hudSwapToggle;
 
     PreAuthPolicy preAuthPolicy() { return preAuthPolicy; }
     PreAuthAdmission preAuthAdmission() { return preAuthAdmission; }
@@ -135,8 +134,8 @@ public class McRemote extends JavaPlugin implements Listener {
                 + " bytes=" + catalogService.getSerializedBytes()
                 + " hash=" + catalogService.getCatalogHash());
         PluginCommand mcremoteCommand = getCommand("mcremote");
-        coordinateHud = config.getBoolean("hud.enabled", true) ? new CoordinateHud(this::sessionsFor) : null;
-        hudSwapToggle = config.getBoolean("hud.toggle_on_swap", false);
+        coordinateHud = config.getBoolean("hud.enabled", true)
+                ? new CoordinateHud(this::sessionsFor, config.getBoolean("hud.toggle_on_swap", false)) : null;
         if (mcremoteCommand != null) {
             PairCommand command = new PairCommand(this, pairingManager, credentialService, coordinateHud);
             mcremoteCommand.setExecutor(command);
@@ -553,8 +552,8 @@ public class McRemote extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onHudSwapHand(PlayerSwapHandItemsEvent event) {
-        if (coordinateHud != null && hudSwapToggle
-                && coordinateHud.isVisible(event.getPlayer())) {
+        if (coordinateHud != null && coordinateHud.isVisible(event.getPlayer())
+                && coordinateHud.isToggleOnSwapEnabled(event.getPlayer())) {
             event.setCancelled(true);
             coordinateHud.togglePoint(event.getPlayer());
         }

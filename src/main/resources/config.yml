@@ -4,9 +4,9 @@ api_port: 25575
 # Game-only coordinate/time HUD. No client changes or new protocol methods are required.
 hud:
   enabled: true
-  # Opt in to swap-hand input, without a sneak modifier.
-  # Bind Minecraft's "Swap Item With Offhand" action to Z in the client controls.
-  # While HUD is visible, this action toggles the target instead of swapping items.
+  # Initial swap-hand preference for each player. /mcr hud toggle-on-swap on|off
+  # overrides it until logout. The standard client binding is F; sneak is not required.
+  # While this player's HUD is visible and this preference is on, swap toggles the point.
   toggle_on_swap: false
 # permission nodes and meta key of LuckPerms
 luckperm_permissions:

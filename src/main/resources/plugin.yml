@@ -8,8 +8,9 @@ soft-depend:
   - LuckPerms
 commands:
   mcremote:
+    aliases: [mcr]
     description: McRemote pairing, coordinate HUD and admin
-    usage: /mcremote pair <code>（6桁・区切り不要・半角数字 / ASCII digits, separators optional） | hud on|off|toggle|body|target|status
+    usage: /mcremote pair <code>（6桁・区切り不要・半角数字 / ASCII digits, separators optional） | hud on|off|toggle|legs|target|status|toggle-on-swap on|off
 permissions:
   mcr.online:
     description: Allows paired McRemote clients to act while the player is online.

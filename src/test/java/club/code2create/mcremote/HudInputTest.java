@@ -14,7 +14,7 @@ class HudInputTest {
         PlayerSwapHandItemsEvent event = event(true);
         plugin.onHudSwapHand(event);
         verify(event, never()).setCancelled(anyBoolean());
-        verifyNoInteractions(hud);
+        verify(hud, never()).togglePoint(any());
     }
 
     @Test
@@ -46,9 +46,8 @@ class HudInputTest {
         var display = McRemote.class.getDeclaredField("coordinateHud");
         display.setAccessible(true);
         display.set(plugin, hud);
-        var option = McRemote.class.getDeclaredField("hudSwapToggle");
-        option.setAccessible(true);
-        option.setBoolean(plugin, enabled);
+        when(hud.isVisible(any())).thenReturn(true);
+        when(hud.isToggleOnSwapEnabled(any())).thenReturn(enabled);
         doCallRealMethod().when(plugin).onHudSwapHand(any());
         return plugin;
     }
