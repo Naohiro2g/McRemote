@@ -47,11 +47,17 @@ record HudFrame(HudFrame.Coordinates absolute, HudFrame.Coordinates relative, lo
                 .append(Component.text(" / ", colors.separator()))
                 .append(Component.text(relativeText, target ? colors.relativeTarget() : colors.relativeLegs()))
                 .append(Component.text(" / ", colors.separator()))
-                .append(Component.text("#" + direction.label(locale) + "#", colors.directionColor(yaw))
-                        .decorate(TextDecoration.BOLD))
+                .append(directionText(colors))
                 .append(Component.text(" / ", colors.separator()))
                 .append(Component.text(Long.toString(timeTick), colors.tick()))
                 .append(Component.text(" / ", colors.separator()))
                 .append(Component.text(clockText(), colors.time()));
+    }
+
+    private Component directionText(HudColors colors) {
+        return Component.empty().color(colors.directionColor(yaw))
+                .append(Component.text("#").decorate(TextDecoration.BOLD))
+                .append(Component.text(direction.label(locale)).decoration(TextDecoration.BOLD, false))
+                .append(Component.text("#").decorate(TextDecoration.BOLD));
     }
 }

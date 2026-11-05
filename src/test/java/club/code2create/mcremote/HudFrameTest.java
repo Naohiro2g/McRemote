@@ -32,7 +32,7 @@ class HudFrameTest {
             for (int i : new int[]{0, 2, 4, 6}) assertEquals(0x404040, text.children().get(i).color().value());
             assertNull(text.shadowColor());
             for (var child : text.children()) assertNull(child.shadowColor());
-            assertEquals(net.kyori.adventure.text.format.TextDecoration.State.TRUE,
+            assertEquals(net.kyori.adventure.text.format.TextDecoration.State.NOT_SET,
                     text.children().get(3).decoration(net.kyori.adventure.text.format.TextDecoration.BOLD));
             assertEquals(net.kyori.adventure.text.format.TextDecoration.State.NOT_SET,
                     text.decoration(net.kyori.adventure.text.format.TextDecoration.BOLD));
@@ -54,6 +54,14 @@ class HudFrameTest {
             assertEquals(text(north), text(tilted));
             assertEquals(0xff0000, north.render(HudColors.DEFAULT).children().get(3).color().value());
             assertEquals(0xff2b00, tilted.render(HudColors.DEFAULT).children().get(3).color().value());
+            var parts = north.render(HudColors.DEFAULT).children().get(3).children();
+            assertEquals(3, parts.size());
+            var bold = net.kyori.adventure.text.format.TextDecoration.BOLD;
+            var enabled = net.kyori.adventure.text.format.TextDecoration.State.TRUE;
+            var disabled = net.kyori.adventure.text.format.TextDecoration.State.FALSE;
+            assertEquals(enabled, parts.get(0).decoration(bold));
+            assertEquals(disabled, parts.get(1).decoration(bold));
+            assertEquals(enabled, parts.get(2).decoration(bold));
         }
     }
 
