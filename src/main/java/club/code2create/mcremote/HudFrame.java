@@ -2,6 +2,7 @@ package club.code2create.mcremote;
 
 import java.util.Locale;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 
 /** One sampled coordinate/time view. Sampling never changes a world, player or build origin. */
@@ -46,7 +47,8 @@ record HudFrame(HudFrame.Coordinates absolute, HudFrame.Coordinates relative, lo
                 .append(Component.text(" / ", colors.separator()))
                 .append(Component.text(relativeText, target ? colors.relativeTarget() : colors.relativeLegs()))
                 .append(Component.text(" / ", colors.separator()))
-                .append(Component.text(direction.label(locale), colors.directionColor(yaw)))
+                .append(Component.text("#" + direction.label(locale) + "#", colors.directionColor(yaw))
+                        .decorate(TextDecoration.BOLD))
                 .append(Component.text(" / ", colors.separator()))
                 .append(Component.text(Long.toString(timeTick), colors.tick()))
                 .append(Component.text(" / ", colors.separator()))

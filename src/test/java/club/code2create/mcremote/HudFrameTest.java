@@ -32,6 +32,14 @@ class HudFrameTest {
             for (int i : new int[]{0, 2, 4, 6}) assertEquals(0x404040, text.children().get(i).color().value());
             assertNull(text.shadowColor());
             for (var child : text.children()) assertNull(child.shadowColor());
+            assertEquals(net.kyori.adventure.text.format.TextDecoration.State.TRUE,
+                    text.children().get(3).decoration(net.kyori.adventure.text.format.TextDecoration.BOLD));
+            assertEquals(net.kyori.adventure.text.format.TextDecoration.State.NOT_SET,
+                    text.decoration(net.kyori.adventure.text.format.TextDecoration.BOLD));
+            for (int i : new int[]{0, 1, 2, 4, 5, 6, 7}) {
+                assertEquals(net.kyori.adventure.text.format.TextDecoration.State.NOT_SET,
+                        text.children().get(i).decoration(net.kyori.adventure.text.format.TextDecoration.BOLD));
+            }
         }
     }
 
@@ -66,7 +74,7 @@ class HudFrameTest {
                 new Location(world, 1100, 100, 1100), 23999);
         assertEquals(new HudFrame.Coordinates(1122, 120, 1133), frame.absolute());
         assertEquals(new HudFrame.Coordinates(22, 20, 33), frame.relative());
-        assertEquals("1122 120 1133 / 22 20 33 / S / 23990 / 05:59", text(frame));
+        assertEquals("1122 120 1133 / 22 20 33 / #S# / 23990 / 05:59", text(frame));
     }
 
     @Test
@@ -86,7 +94,7 @@ class HudFrameTest {
 
     @Test
     void noConnectionKeepsAbsolutePositionAndWorldTime() {
-        assertEquals("12 64 34 / [ - - - ] / S / 1230 / 07:13",
+        assertEquals("12 64 34 / [ - - - ] / #S# / 1230 / 07:13",
                 text(sample(new Location(world, 12, 64, 34), null, 1234)));
     }
 
@@ -95,12 +103,12 @@ class HudFrameTest {
         HudFrame frame = sample(new Location(world, 0, 64, 0),
                 new Location(mock(World.class), 200, 0, 200), 1234);
         assertNull(frame.relative());
-        assertEquals("0 64 0 / [ - - - ] / S / 1230 / 07:13", text(frame));
+        assertEquals("0 64 0 / [ - - - ] / #S# / 1230 / 07:13", text(frame));
     }
 
     @Test
     void missingTargetClearsBothCoordinateFieldsButKeepsTime() {
-        assertEquals("[-] / [-] / S / 1230 / 07:13",
+        assertEquals("[-] / [-] / #S# / 1230 / 07:13",
                 text(sample(null, new Location(world, 200, 0, 200), 1234)));
     }
 
@@ -126,10 +134,10 @@ class HudFrameTest {
     void missingOriginTakesPrecedenceOverMissingTargetAndDirectionUsesTheViewer() {
         Location viewer = new Location(world, 0, 64, 0, -135, 80);
         HudFrame frame = HudFrame.sample(null, null, 6000, HudSampler.Point.TARGET, viewer, java.util.Locale.JAPAN);
-        assertEquals("[-] / [ - - - ] / 北東 / 6000 / 12:00", text(frame));
+        assertEquals("[-] / [ - - - ] / #北東# / 6000 / 12:00", text(frame));
         HudFrame differentWorld = HudFrame.sample(null, new Location(mock(World.class), 0, 64, 0),
                 6000, HudSampler.Point.TARGET, viewer, java.util.Locale.ENGLISH);
-        assertEquals("[-] / [ - - - ] / NE / 6000 / 12:00", text(differentWorld));
+        assertEquals("[-] / [ - - - ] / #NE# / 6000 / 12:00", text(differentWorld));
     }
 
     private HudFrame sample(Location point, Location origin, long time) {
