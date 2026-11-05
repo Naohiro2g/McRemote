@@ -11,6 +11,15 @@ import org.bukkit.entity.Player;
 final class HudDisplay implements AutoCloseable {
     private record Shown(Player player, BossBar bar) {}
     private final Map<UUID, Shown> shown = new HashMap<>();
+    private final HudColors colors;
+
+    HudDisplay() {
+        this(HudColors.DEFAULT);
+    }
+
+    HudDisplay(HudColors colors) {
+        this.colors = colors;
+    }
 
     void update(Player player, HudFrame frame) {
         UUID id = player.getUniqueId();
@@ -19,7 +28,7 @@ final class HudDisplay implements AutoCloseable {
             hide(id);
             active = null;
         }
-        Component text = frame.render();
+        Component text = frame.render(colors);
         if (active == null) {
             BossBar bar = BossBar.bossBar(text, 1, BossBar.Color.BLUE, BossBar.Overlay.PROGRESS);
             shown.put(id, new Shown(player, bar));

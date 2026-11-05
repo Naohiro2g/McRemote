@@ -12,9 +12,47 @@ class HudFrameTest {
     private final World world = mock(World.class);
 
     @Test
+    void allSevenConfiguredColorsReachTheirFieldsAndTheFourSeparators() {
+        var config = new org.bukkit.configuration.file.YamlConfiguration();
+        String[] keys = {"absolute_target", "absolute_legs", "relative_target", "relative_legs", "tick", "time"};
+        for (int i = 0; i < keys.length; i++) {
+            config.set("hud.colors." + keys[i] + ".h", i * 60);
+            config.set("hud.colors." + keys[i] + ".s", 100);
+            config.set("hud.colors." + keys[i] + ".b", 100);
+        }
+        config.set("hud.colors.separator.b", 25);
+        HudColors colors = HudColors.load(config, warning -> fail(warning));
+        for (HudSampler.Point mode : HudSampler.Point.values()) {
+            var text = sample(null, null, 0, mode).render(colors);
+            boolean target = mode == HudSampler.Point.TARGET;
+            assertEquals(target ? 0xff0000 : 0xffff00, text.color().value());
+            assertEquals(target ? 0x00ff00 : 0x00ffff, text.children().get(1).color().value());
+            assertEquals(0x0000ff, text.children().get(5).color().value());
+            assertEquals(0xff00ff, text.children().get(7).color().value());
+            for (int i : new int[]{0, 2, 4, 6}) assertEquals(0x404040, text.children().get(i).color().value());
+            assertNull(text.shadowColor());
+            for (var child : text.children()) assertNull(child.shadowColor());
+        }
+    }
+
+    @Test
+    void directionTextStaysInItsSectorWhileItsColorFollowsTheExactViewAngleInEitherLanguage() {
+        for (var locale : new java.util.Locale[]{java.util.Locale.JAPAN, java.util.Locale.ENGLISH}) {
+            HudFrame north = HudFrame.sample(null, null, 0, HudSampler.Point.TARGET,
+                    new Location(world, 0, 64, 0, -180, 0), locale);
+            HudFrame tilted = HudFrame.sample(null, null, 0, HudSampler.Point.TARGET,
+                    new Location(world, 0, 64, 0, -170, 80), locale);
+            assertEquals(north.direction(), tilted.direction());
+            assertEquals(text(north), text(tilted));
+            assertEquals(0xff0000, north.render(HudColors.DEFAULT).children().get(3).color().value());
+            assertEquals(0xff2b00, tilted.render(HudColors.DEFAULT).children().get(3).color().value());
+        }
+    }
+
+    @Test
     void legsAndTargetUseTheSpecifiedAbsoluteRelativeAndTimeColorsEvenWithoutCoordinates() {
         for (HudSampler.Point mode : HudSampler.Point.values()) {
-            var rendered = sample(null, null, 1234, mode).render();
+            var rendered = sample(null, null, 1234, mode).render(HudColors.DEFAULT);
             boolean target = mode == HudSampler.Point.TARGET;
             assertEquals(target ? 0xd8d6d5 : 0xa89b94, rendered.color().value());
             assertEquals(target ? 0xf9c7e5 : 0xf15fb6, rendered.children().get(1).color().value());
@@ -104,6 +142,6 @@ class HudFrameTest {
     }
 
     private static String text(HudFrame frame) {
-        return PlainTextComponentSerializer.plainText().serialize(frame.render());
+        return PlainTextComponentSerializer.plainText().serialize(frame.render(HudColors.DEFAULT));
     }
 }

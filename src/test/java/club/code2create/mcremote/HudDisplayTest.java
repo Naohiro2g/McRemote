@@ -25,10 +25,10 @@ class HudDisplayTest {
         display.update(player, first);
         ArgumentCaptor<BossBar> bar = ArgumentCaptor.forClass(BossBar.class);
         verify(player).showBossBar(bar.capture());
-        assertEquals(first.render(), bar.getValue().name());
+        assertEquals(first.render(HudColors.DEFAULT), bar.getValue().name());
         HudFrame next = frame(110);
         display.update(player, next);
-        assertEquals(next.render(), bar.getValue().name());
+        assertEquals(next.render(HudColors.DEFAULT), bar.getValue().name());
         verify(player, times(1)).showBossBar(any(BossBar.class));
         display.hide(player.getUniqueId());
         display.close();

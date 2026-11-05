@@ -31,8 +31,8 @@ final class CoordinateHud implements AutoCloseable {
     private final boolean defaultToggleOnSwap;
     private final Map<UUID, State> states = new HashMap<>();
 
-    CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor, boolean defaultToggleOnSwap) {
-        this(sessionsFor, new HudDisplay(), defaultToggleOnSwap);
+    CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor, boolean defaultToggleOnSwap, HudColors colors) {
+        this(sessionsFor, new HudDisplay(colors), defaultToggleOnSwap);
     }
 
     CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor, HudDisplay display) {

@@ -8,6 +8,19 @@ hud:
   # overrides it until logout. The standard client binding is F; sneak is not required.
   # While this player's HUD is visible and this preference is on, swap toggles the point.
   toggle_on_swap: false
+  # Loaded once at startup. H: 0..360 degrees (360 = 0); S/B: 0..100 percent.
+  # Decimals are allowed. Missing values use defaults; invalid values warn and
+  # restore the whole affected color to its default. Text shadows are unchanged.
+  colors:
+    absolute_target: {h: 20, s: 1.388889, b: 84.705882}
+    absolute_legs: {h: 21, s: 11.904762, b: 65.882353}
+    relative_target: {h: 324, s: 20.080321, b: 97.647059}
+    relative_legs: {h: 324.246575, s: 60.580913, b: 94.509804}
+    tick: {h: 98.909091, s: 85.9375, b: 75.294118}
+    time: {h: 98.909091, s: 85.9375, b: 75.294118}
+    separator: {h: 0, s: 0, b: 66.666667}
+    # H follows the actual view direction clockwise: N=0, E=90, S=180, W=270.
+    direction: {s: 100, b: 100}
 # permission nodes and meta key of LuckPerms
 luckperm_permissions:
   online: "mcr.online"  # permission node for online players

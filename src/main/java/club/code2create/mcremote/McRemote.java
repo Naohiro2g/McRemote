@@ -83,6 +83,9 @@ public class McRemote extends JavaPlugin implements Listener {
             getServer().shutdown();
             return;
         }
+        boolean hudEnabled = config.getBoolean("hud.enabled", true);
+        // Validate mappings before default insertion can create their child sections.
+        HudColors hudColors = hudEnabled ? HudColors.load(config, logger::warning) : HudColors.DEFAULT;
         migrateMissingConfigDefaults(config);
         removeDeprecatedCredentialConfig(config);
         removeDeprecatedLightningPermissionConfig(config);
@@ -134,8 +137,9 @@ public class McRemote extends JavaPlugin implements Listener {
                 + " bytes=" + catalogService.getSerializedBytes()
                 + " hash=" + catalogService.getCatalogHash());
         PluginCommand mcremoteCommand = getCommand("mcremote");
-        coordinateHud = config.getBoolean("hud.enabled", true)
-                ? new CoordinateHud(this::sessionsFor, config.getBoolean("hud.toggle_on_swap", false)) : null;
+        coordinateHud = hudEnabled
+                ? new CoordinateHud(this::sessionsFor, config.getBoolean("hud.toggle_on_swap", false),
+                        hudColors) : null;
         if (mcremoteCommand != null) {
             PairCommand command = new PairCommand(this, pairingManager, credentialService, coordinateHud);
             mcremoteCommand.setExecutor(command);

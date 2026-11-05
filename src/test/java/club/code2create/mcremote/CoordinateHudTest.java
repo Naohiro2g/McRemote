@@ -14,6 +14,26 @@ import static org.mockito.Mockito.*;
 
 class CoordinateHudTest {
     @Test
+    void startupPaletteReachesTheBossBarAndLaterConfigChangesDoNotAlterIt() {
+        var config = new org.bukkit.configuration.file.YamlConfiguration();
+        config.set("hud.colors.time.h", 0);
+        config.set("hud.colors.time.s", 100);
+        config.set("hud.colors.time.b", 100);
+        HudColors colors = HudColors.load(config, warning -> fail(warning));
+        CoordinateHud hud = new CoordinateHud(ignored -> List.of(), false, colors);
+        Player player = player(mock(World.class), 0, 64, 0);
+        hud.tick(List.of(player));
+        var bar = ArgumentCaptor.forClass(net.kyori.adventure.bossbar.BossBar.class);
+        verify(player).showBossBar(bar.capture());
+        assertEquals(0xff0000, bar.getValue().name().children().get(7).color().value());
+        config.set("hud.colors.time.h", 120);
+        hud.tick(List.of(player));
+        assertEquals(0xff0000, bar.getValue().name().children().get(7).color().value());
+        verify(player, times(1)).showBossBar(any(net.kyori.adventure.bossbar.BossBar.class));
+        hud.close();
+    }
+
+    @Test
     void swapPreferenceBelongsToThePlayerAndResetsToTheConfiguredDefaultOnQuit() {
         Player first = player(mock(World.class), 0, 64, 0);
         Player second = player(mock(World.class), 0, 64, 0);

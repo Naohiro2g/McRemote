@@ -43,7 +43,7 @@ class HudSamplerTest {
         assertEquals(new HudFrame.Coordinates(4, 65, -2), frame.absolute());
         assertEquals(new HudFrame.Coordinates(4, 60, -2), frame.relative());
         assertEquals(HudSampler.Point.TARGET, frame.point());
-        assertEquals(0xd8d6d5, frame.render().color().value());
+        assertEquals(0xd8d6d5, frame.render(HudColors.DEFAULT).color().value());
     }
 
     @Test
