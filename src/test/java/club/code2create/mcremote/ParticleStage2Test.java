@@ -201,13 +201,15 @@ class ParticleStage2Test {
     private static final class Harness {
         final Spawned spawned = new Spawned();
         final Context context;
+        // Location holds World weakly; keep this fixture world alive for the whole test.
+        final World world;
         final BlockData stoneData = proxy(BlockData.class, (p, m, a) -> defaultValue(m.getReturnType()));
         UUID bound = UUID.randomUUID();
         boolean online = true;
         final Player player;
 
         Harness() {
-            World world = proxy(World.class, (p, method, args) -> switch (method.getName()) {
+            world = proxy(World.class, (p, method, args) -> switch (method.getName()) {
                 case "getKey" -> NamespacedKey.minecraft("overworld");
                 case "isChunkLoaded" -> true;
                 case "spawnParticle" -> {
