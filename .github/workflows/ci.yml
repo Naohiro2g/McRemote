@@ -37,7 +37,8 @@ jobs:
         shell: pwsh
         run: >-
           ./gradlew.bat test -PtestJavaVersion=${{ matrix.java }}
-          "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}"
+          "-Porg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}"
+          -Porg.gradle.java.installations.auto-detect=false -Porg.gradle.java.installations.auto-download=false
           --tests club.code2create.mcremote.SqliteCredentialBackendTest
           --tests club.code2create.mcremote.SqliteCredentialLifecycleTest
           --tests club.code2create.mcremote.CredentialDiagnosticsTest
@@ -47,7 +48,8 @@ jobs:
         shell: bash
         run: >-
           ./gradlew test -PtestJavaVersion=${{ matrix.java }}
-          "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}"
+          "-Porg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}"
+          -Porg.gradle.java.installations.auto-detect=false -Porg.gradle.java.installations.auto-download=false
           --tests club.code2create.mcremote.SqliteCredentialBackendTest
           --tests club.code2create.mcremote.SqliteCredentialLifecycleTest
           --tests club.code2create.mcremote.CredentialServiceTest
@@ -57,13 +59,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          ./gradlew.bat sqlitePackagingProbe sqliteMissingProviderProbe -PtestJavaVersion=${{ matrix.java }} "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" 2>&1 | Tee-Object -FilePath build/sqlite-packaging-probe.log
+          ./gradlew.bat sqlitePackagingProbe sqliteMissingProviderProbe -PtestJavaVersion=${{ matrix.java }} "-Porg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" -Porg.gradle.java.installations.auto-detect=false -Porg.gradle.java.installations.auto-download=false 2>&1 | Tee-Object -FilePath build/sqlite-packaging-probe.log
           exit $LASTEXITCODE
       - name: Linux and macOS packaged Paper driver and missing-provider checks
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          ./gradlew sqlitePackagingProbe sqliteMissingProviderProbe -PtestJavaVersion=${{ matrix.java }} "-Dorg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" 2>&1 | tee build/sqlite-packaging-probe.log
+          ./gradlew sqlitePackagingProbe sqliteMissingProviderProbe -PtestJavaVersion=${{ matrix.java }} "-Porg.gradle.java.installations.paths=${{ steps.compiler.outputs.path }},${{ steps.test-runtime.outputs.path }}" -Porg.gradle.java.installations.auto-detect=false -Porg.gradle.java.installations.auto-download=false 2>&1 | tee build/sqlite-packaging-probe.log
       - name: Upload credential test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -87,7 +89,7 @@ jobs:
         uses: actions/setup-java@v4.7.1
         with:
           java-version: '21'
-          distribution: 'corretto'
+          distribution: 'temurin'
 
       - name: Extract versions from Gradle
         id: gradle_versions
