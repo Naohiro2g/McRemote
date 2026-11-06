@@ -42,9 +42,12 @@ class CoordinateHudTest {
         hud.setToggleOnSwap(first, true);
         assertTrue(hud.isToggleOnSwapEnabled(first));
         assertFalse(hud.isToggleOnSwapEnabled(second));
-        assertTrue(hud.status(first).contains("toggle-on-swap: ON"));
+        assertEquals("HUD: on / 足元の座標 / toggle-on-swap: on", hud.status(first));
         hud.playerQuit(first);
         assertFalse(hud.isToggleOnSwapEnabled(first));
+        assertEquals("HUD: on / 足元の座標 / toggle-on-swap: off", hud.status(first));
+        hud.setVisible(first, false);
+        assertEquals("HUD: off / 足元の座標 / toggle-on-swap: off", hud.status(first));
 
         CoordinateHud enabled = new CoordinateHud(ignored -> List.of(), mock(HudDisplay.class), true);
         assertTrue(enabled.isToggleOnSwapEnabled(first));

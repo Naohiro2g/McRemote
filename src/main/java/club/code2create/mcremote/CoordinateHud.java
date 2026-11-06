@@ -109,9 +109,9 @@ final class CoordinateHud implements AutoCloseable {
 
     String status(Player player) {
         State state = state(player);
-        return "HUD: " + (state.visible ? "ON" : "OFF") + " / "
+        return "HUD: " + (state.visible ? "on" : "off") + " / "
                 + (state.point == HudSampler.Point.LEGS ? "足元の座標" : "照準先のブロック座標")
-                + " / toggle-on-swap: " + (state.toggleOnSwap ? "ON" : "OFF");
+                + " / toggle-on-swap: " + (state.toggleOnSwap ? "on" : "off");
     }
 
     void playerQuit(Player player) {

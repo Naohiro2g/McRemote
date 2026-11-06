@@ -56,7 +56,7 @@ class HudCommandTest {
         CredentialService credentials = mock(CredentialService.class);
         CoordinateHud hud = mock(CoordinateHud.class);
         Player player = mock(Player.class);
-        when(hud.status(player)).thenReturn("HUD: OFF");
+        when(hud.status(player)).thenReturn("HUD: off");
         PairCommand root = new PairCommand(mock(McRemote.class), pairing, credentials, hud);
         root.onCommand(player, mock(org.bukkit.command.Command.class), "mcremote", new String[]{"hud", "off"});
         verify(hud).setVisible(player, false);
@@ -79,7 +79,7 @@ class HudCommandTest {
     void toggleChangesTheTargetPointRatherThanVisibilityAndStatusDoesNotChangeIt() {
         CoordinateHud hud = mock(CoordinateHud.class);
         Player player = mock(Player.class);
-        when(hud.status(player)).thenReturn("HUD: ON / 足元の座標");
+        when(hud.status(player)).thenReturn("HUD: on / 足元の座標");
         HudCommand.execute(hud, player, new String[]{"hud", "toggle"});
         verify(hud).togglePoint(player);
         verify(hud, never()).setVisible(any(), anyBoolean());
