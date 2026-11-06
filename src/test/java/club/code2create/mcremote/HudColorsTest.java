@@ -41,6 +41,7 @@ class HudColorsTest {
         int[] rgb = {0xff0000, 0xffbf00, 0x80ff00, 0x00ff40, 0x00ffff, 0x0040ff, 0x8000ff, 0xff00bf};
         for (int i = 0; i < yaw.length; i++) {
             assertEquals(rgb[i], HudColors.DEFAULT.directionColor(yaw[i]).value());
+            assertEquals(rgb[i], HudColors.DEFAULT.directionMarkColor(yaw[i]).value());
             assertEquals(rgb[i], HudColors.DEFAULT.directionColor(yaw[i] + 720).value());
             assertEquals(rgb[i], HudColors.DEFAULT.directionColor(yaw[i] - 720).value());
         }
@@ -91,7 +92,7 @@ class HudColorsTest {
 
     @Test
     void malformedMappingsWarnAndDirectionSettingsValidateWithoutChangingOtherColors() {
-        for (String path : List.of("hud.colors", "hud.colors.time", "hud.colors.direction")) {
+        for (String path : List.of("hud.colors", "hud.colors.time", "hud.colors.direction", "hud.colors.direction_mark")) {
             var config = new YamlConfiguration();
             config.set(path, "red");
             List<String> warnings = new ArrayList<>();
@@ -109,16 +110,38 @@ class HudColorsTest {
     }
 
     @Test
+    void invalidMarkerSettingsFallBackWithoutResettingTheTextSettings() {
+        var config = new YamlConfiguration();
+        config.set("hud.colors.direction.s", 20);
+        config.set("hud.colors.direction.b", 100);
+        config.set("hud.colors.direction_mark.s", 50);
+        config.set("hud.colors.direction_mark.b", 101);
+        List<String> warnings = new ArrayList<>();
+        HudColors colors = HudColors.load(config, warnings::add);
+        assertEquals(0xffcccc, colors.directionColor(180).value());
+        assertEquals(0xff0000, colors.directionMarkColor(180).value());
+        assertEquals(1, warnings.size());
+        assertTrue(warnings.getFirst().contains("hud.colors.direction_mark.b"));
+    }
+
+    @Test
     void directionSaturationAndBrightnessCanProduceMutedOrAchromaticText() {
         var config = new YamlConfiguration();
         config.set("hud.colors.direction.s", 25);
         config.set("hud.colors.direction.b", 80);
         HudColors muted = HudColors.load(config, warning -> fail(warning));
         assertEquals(0xcc9999, muted.directionColor(180).value());
+        assertEquals(0xff0000, muted.directionMarkColor(180).value());
         config.set("hud.colors.direction.s", 0);
         HudColors gray = HudColors.load(config, warning -> fail(warning));
         for (float yaw : new float[]{0, 60, 90, 135, 180, 270}) {
             assertEquals(0xcccccc, gray.directionColor(yaw).value());
         }
+        config.set("hud.colors.direction_mark.s", 50);
+        config.set("hud.colors.direction_mark.b", 40);
+        HudColors separate = HudColors.load(config, warning -> fail(warning));
+        assertEquals(0xcccccc, separate.directionColor(180).value());
+        assertEquals(0x663333, separate.directionMarkColor(180).value());
+        assertEquals(0x336666, separate.directionMarkColor(0).value());
     }
 }

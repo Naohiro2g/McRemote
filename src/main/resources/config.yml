@@ -20,7 +20,9 @@ hud:
     time: {h: 98.909091, s: 85.9375, b: 75.294118}
     separator: {h: 0, s: 0, b: 66.666667}
     # H follows the actual view direction clockwise: N=0, E=90, S=180, W=270.
+    # Text and # markers have independent S/B. Lower direction.s for pale text.
     direction: {s: 100, b: 100}
+    direction_mark: {s: 100, b: 100}
 # permission nodes and meta key of LuckPerms
 luckperm_permissions:
   online: "mcr.online"  # permission node for online players

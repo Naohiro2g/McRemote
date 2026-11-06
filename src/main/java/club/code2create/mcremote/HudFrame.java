@@ -56,8 +56,8 @@ record HudFrame(HudFrame.Coordinates absolute, HudFrame.Coordinates relative, lo
 
     private Component directionText(HudColors colors) {
         return Component.empty().color(colors.directionColor(yaw))
-                .append(Component.text("#").decorate(TextDecoration.BOLD))
+                .append(Component.text("#", colors.directionMarkColor(yaw)).decorate(TextDecoration.BOLD))
                 .append(Component.text(direction.label(locale)).decoration(TextDecoration.BOLD, false))
-                .append(Component.text("#").decorate(TextDecoration.BOLD));
+                .append(Component.text("#", colors.directionMarkColor(yaw)).decorate(TextDecoration.BOLD));
     }
 }

@@ -12,6 +12,28 @@ class HudFrameTest {
     private final World world = mock(World.class);
 
     @Test
+    void directionTextCanRemainPaleWhileTheMarkersKeepTheirSaturatedHue() {
+        var config = new org.bukkit.configuration.file.YamlConfiguration();
+        config.set("hud.colors.direction.s", 20);
+        config.set("hud.colors.direction.b", 100);
+        config.set("hud.colors.direction_mark.s", 100);
+        config.set("hud.colors.direction_mark.b", 100);
+        HudColors colors = HudColors.load(config, warning -> fail(warning));
+        for (var locale : new java.util.Locale[]{java.util.Locale.JAPAN, java.util.Locale.ENGLISH}) {
+            for (var heading : new int[][]{{-180, 0xffcccc, 0xff0000}, {-90, 0xe6ffcc, 0x80ff00}}) {
+                var frame = HudFrame.sample(null, null, 0, HudSampler.Point.LEGS,
+                        new Location(world, 0, 64, 0, heading[0], 0), locale);
+                var text = frame.render(colors).children().get(3);
+                assertEquals(heading[1], text.color().value());
+                assertEquals(heading[2], text.children().get(0).color().value());
+                assertEquals(heading[2], text.children().get(2).color().value());
+                assertEquals("#" + frame.direction().label(locale) + "#",
+                        PlainTextComponentSerializer.plainText().serialize(text));
+            }
+        }
+    }
+
+    @Test
     void allSevenConfiguredColorsReachTheirFieldsAndTheFourSeparators() {
         var config = new org.bukkit.configuration.file.YamlConfiguration();
         String[] keys = {"absolute_target", "absolute_legs", "relative_target", "relative_legs", "tick", "time"};

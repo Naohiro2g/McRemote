@@ -8,7 +8,8 @@ import org.bukkit.configuration.ConfigurationSection;
 record HudColors(TextColor absoluteTarget, TextColor absoluteLegs,
                  TextColor relativeTarget, TextColor relativeLegs,
                  TextColor tick, TextColor time, TextColor separator,
-                 double directionSaturation, double directionBrightness) {
+                 double directionSaturation, double directionBrightness,
+                 double directionMarkSaturation, double directionMarkBrightness) {
     private static final Hsb ABSOLUTE_TARGET = new Hsb(20, 1.388889, 84.705882);
     private static final Hsb ABSOLUTE_LEGS = new Hsb(21, 11.904762, 65.882353);
     private static final Hsb RELATIVE_TARGET = new Hsb(324, 20.080321, 97.647059);
@@ -19,7 +20,7 @@ record HudColors(TextColor absoluteTarget, TextColor absoluteLegs,
 
     static final HudColors DEFAULT = new HudColors(ABSOLUTE_TARGET.color(), ABSOLUTE_LEGS.color(),
             RELATIVE_TARGET.color(), RELATIVE_LEGS.color(), TIME.color(), TIME.color(), SEPARATOR.color(),
-            DIRECTION.s(), DIRECTION.b());
+            DIRECTION.s(), DIRECTION.b(), DIRECTION.s(), DIRECTION.b());
 
     static HudColors load(ConfigurationSection config, Consumer<String> warning) {
         ConfigurationSection colors = config.getConfigurationSection("hud.colors");
@@ -28,6 +29,7 @@ record HudColors(TextColor absoluteTarget, TextColor absoluteLegs,
             return DEFAULT;
         }
         Hsb direction = read(colors, "direction", DIRECTION, true, warning);
+        Hsb directionMark = read(colors, "direction_mark", DIRECTION, true, warning);
         return new HudColors(
                 read(colors, "absolute_target", ABSOLUTE_TARGET, false, warning).color(),
                 read(colors, "absolute_legs", ABSOLUTE_LEGS, false, warning).color(),
@@ -35,13 +37,22 @@ record HudColors(TextColor absoluteTarget, TextColor absoluteLegs,
                 read(colors, "relative_legs", RELATIVE_LEGS, false, warning).color(),
                 read(colors, "tick", TIME, false, warning).color(),
                 read(colors, "time", TIME, false, warning).color(),
-                read(colors, "separator", SEPARATOR, false, warning).color(), direction.s(), direction.b());
+                read(colors, "separator", SEPARATOR, false, warning).color(), direction.s(), direction.b(),
+                directionMark.s(), directionMark.b());
     }
 
     TextColor directionColor(float yaw) {
+        return compassColor(yaw, directionSaturation, directionBrightness);
+    }
+
+    TextColor directionMarkColor(float yaw) {
+        return compassColor(yaw, directionMarkSaturation, directionMarkBrightness);
+    }
+
+    private static TextColor compassColor(float yaw, double saturation, double brightness) {
         // Minecraft yaw: south=0, west=90. Compass hue: north=0, east=90.
         double hue = (yaw % 360.0 + 540.0) % 360.0;
-        return new Hsb(hue, directionSaturation, directionBrightness).color();
+        return new Hsb(hue, saturation, brightness).color();
     }
 
     private static Hsb read(ConfigurationSection colors, String key, Hsb fallback,
