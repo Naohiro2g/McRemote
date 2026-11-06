@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Direct consumer of Naohiro2g/minecraft-remote-tooling
- * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code 21a2a9a0aed8b4d9c715da46616aad86f1174b4c},
  * {@code packages/protocol/test/fixtures/direction-lightning-v23.1.json}.
  */
 class DirectionLightningFixtureContractTest {

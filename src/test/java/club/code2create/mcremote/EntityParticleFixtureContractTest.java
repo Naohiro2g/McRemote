@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Direct consumer of Naohiro2g/minecraft-remote-tooling
- * {@code 6447f6e8cbfbeeb9d229990b5c4f6e82a5875666},
+ * {@code 21a2a9a0aed8b4d9c715da46616aad86f1174b4c},
  * {@code packages/protocol/test/fixtures/entity-particle-v23.2.1.json}.
  * Every case is mapped to the production handler or registry path.
  */

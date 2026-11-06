@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Fixture-driven contract test against Naohiro2g/minecraft-remote-tooling
- * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code 21a2a9a0aed8b4d9c715da46616aad86f1174b4c},
  * {@code packages/protocol/test/fixtures/events-v23.json}.
  */
 class EventsFixtureContractTest {

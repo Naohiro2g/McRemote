@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Fixture-driven contract test against Naohiro2g/minecraft-remote-tooling
- * {@code 98e42081ec89e9d94742ce4a019750d84bd18f76},
+ * {@code 21a2a9a0aed8b4d9c715da46616aad86f1174b4c},
  * {@code packages/protocol/test/fixtures/sign-v23.json}, the fixture
  * DECISIONS 2026-08-26-05 anchors as the b6 sign exact contract. Drives McRemote's production
  * parser/encoder from the same fixture the Scratch client tests against, instead of duplicating
