@@ -10,17 +10,19 @@ record HudColors(TextColor absoluteTarget, TextColor absoluteLegs,
                  TextColor tick, TextColor time, TextColor separator,
                  double directionSaturation, double directionBrightness,
                  double directionMarkSaturation, double directionMarkBrightness) {
-    private static final Hsb ABSOLUTE_TARGET = new Hsb(20, 1.388889, 84.705882);
-    private static final Hsb ABSOLUTE_LEGS = new Hsb(21, 11.904762, 65.882353);
-    private static final Hsb RELATIVE_TARGET = new Hsb(324, 20.080321, 97.647059);
-    private static final Hsb RELATIVE_LEGS = new Hsb(324.246575, 60.580913, 94.509804);
-    private static final Hsb TIME = new Hsb(98.909091, 85.9375, 75.294118);
-    private static final Hsb SEPARATOR = new Hsb(0, 0, 66.666667);
-    private static final Hsb DIRECTION = new Hsb(0, 100, 100);
+    private static final Hsb ABSOLUTE_TARGET = new Hsb(40, 90, 90);
+    private static final Hsb ABSOLUTE_LEGS = new Hsb(40, 40, 90);
+    private static final Hsb RELATIVE_TARGET = new Hsb(320, 90, 90);
+    private static final Hsb RELATIVE_LEGS = new Hsb(320, 40, 90);
+    private static final Hsb DIRECTION_MARK = new Hsb(0, 75, 100);
+    private static final Hsb DIRECTION = new Hsb(0, 40, 90);
+    private static final Hsb TICK = new Hsb(170, 80, 85);
+    private static final Hsb TIME = new Hsb(120, 80, 85);
+    private static final Hsb SEPARATOR = new Hsb(0, 0, 60);
 
     static final HudColors DEFAULT = new HudColors(ABSOLUTE_TARGET.color(), ABSOLUTE_LEGS.color(),
-            RELATIVE_TARGET.color(), RELATIVE_LEGS.color(), TIME.color(), TIME.color(), SEPARATOR.color(),
-            DIRECTION.s(), DIRECTION.b(), DIRECTION.s(), DIRECTION.b());
+            RELATIVE_TARGET.color(), RELATIVE_LEGS.color(), TICK.color(), TIME.color(), SEPARATOR.color(),
+            DIRECTION.s(), DIRECTION.b(), DIRECTION_MARK.s(), DIRECTION_MARK.b());
 
     static HudColors load(ConfigurationSection config, Consumer<String> warning) {
         ConfigurationSection colors = config.getConfigurationSection("hud.colors");
@@ -29,13 +31,13 @@ record HudColors(TextColor absoluteTarget, TextColor absoluteLegs,
             return DEFAULT;
         }
         Hsb direction = read(colors, "direction", DIRECTION, true, warning);
-        Hsb directionMark = read(colors, "direction_mark", DIRECTION, true, warning);
+        Hsb directionMark = read(colors, "direction_mark", DIRECTION_MARK, true, warning);
         return new HudColors(
                 read(colors, "absolute_target", ABSOLUTE_TARGET, false, warning).color(),
                 read(colors, "absolute_legs", ABSOLUTE_LEGS, false, warning).color(),
                 read(colors, "relative_target", RELATIVE_TARGET, false, warning).color(),
                 read(colors, "relative_legs", RELATIVE_LEGS, false, warning).color(),
-                read(colors, "tick", TIME, false, warning).color(),
+                read(colors, "tick", TICK, false, warning).color(),
                 read(colors, "time", TIME, false, warning).color(),
                 read(colors, "separator", SEPARATOR, false, warning).color(), direction.s(), direction.b(),
                 directionMark.s(), directionMark.b());

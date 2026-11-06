@@ -74,8 +74,8 @@ class HudFrameTest {
                     new Location(world, 0, 64, 0, -170, 80), locale);
             assertEquals(north.direction(), tilted.direction());
             assertEquals(text(north), text(tilted));
-            assertEquals(0xff0000, north.render(HudColors.DEFAULT).children().get(3).color().value());
-            assertEquals(0xff2b00, tilted.render(HudColors.DEFAULT).children().get(3).color().value());
+            assertEquals(0xe68a8a, north.render(HudColors.DEFAULT).children().get(3).color().value());
+            assertEquals(0xe6998a, tilted.render(HudColors.DEFAULT).children().get(3).color().value());
             var parts = north.render(HudColors.DEFAULT).children().get(3).children();
             assertEquals(3, parts.size());
             var bold = net.kyori.adventure.text.format.TextDecoration.BOLD;
@@ -92,9 +92,10 @@ class HudFrameTest {
         for (HudSampler.Point mode : HudSampler.Point.values()) {
             var rendered = sample(null, null, 1234, mode).render(HudColors.DEFAULT);
             boolean target = mode == HudSampler.Point.TARGET;
-            assertEquals(target ? 0xd8d6d5 : 0xa89b94, rendered.color().value());
-            assertEquals(target ? 0xf9c7e5 : 0xf15fb6, rendered.children().get(1).color().value());
-            assertEquals(0x55c01b, rendered.children().get(5).color().value());
+            assertEquals(target ? 0xe6a117 : 0xe6c78a, rendered.color().value());
+            assertEquals(target ? 0xe617a1 : 0xe68ac7, rendered.children().get(1).color().value());
+            assertEquals(0x2bd9bc, rendered.children().get(5).color().value());
+            assertEquals(0x2bd92b, rendered.children().get(7).color().value());
         }
     }
 

@@ -11,21 +11,21 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class HudColorsTest {
     @Test
-    void existingConfigsWithoutColorsKeepTheSevenOriginalFixedColors() {
+    void missingColorsUseTheReleasePalette() {
         List<String> warnings = new ArrayList<>();
         HudColors colors = HudColors.load(new YamlConfiguration(), warnings::add);
-        assertEquals(0xd8d6d5, colors.absoluteTarget().value());
-        assertEquals(0xa89b94, colors.absoluteLegs().value());
-        assertEquals(0xf9c7e5, colors.relativeTarget().value());
-        assertEquals(0xf15fb6, colors.relativeLegs().value());
-        assertEquals(0x55c01b, colors.tick().value());
-        assertEquals(0x55c01b, colors.time().value());
-        assertEquals(0xaaaaaa, colors.separator().value());
+        assertEquals(0xe6a117, colors.absoluteTarget().value());
+        assertEquals(0xe6c78a, colors.absoluteLegs().value());
+        assertEquals(0xe617a1, colors.relativeTarget().value());
+        assertEquals(0xe68ac7, colors.relativeLegs().value());
+        assertEquals(0x2bd9bc, colors.tick().value());
+        assertEquals(0x2bd92b, colors.time().value());
+        assertEquals(0x999999, colors.separator().value());
         assertTrue(warnings.isEmpty());
     }
 
     @Test
-    void distributedHsbDefaultsMatchExistingColorsAndFallbacks() throws Exception {
+    void distributedHsbDefaultsMatchTheReleasePaletteAndFallbacks() throws Exception {
         try (var stream = getClass().getResourceAsStream("/config.yml")) {
             assertNotNull(stream);
             var config = YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
@@ -37,17 +37,23 @@ class HudColorsTest {
 
     @Test
     void directionHueRunsClockwiseFromRedNorthWithoutQuantizingToEightDirections() {
+        var config = new YamlConfiguration();
+        config.set("hud.colors.direction.s", 100);
+        config.set("hud.colors.direction.b", 100);
+        config.set("hud.colors.direction_mark.s", 100);
+        config.set("hud.colors.direction_mark.b", 100);
+        HudColors colors = HudColors.load(config, warning -> fail(warning));
         float[] yaw = {-180, -135, -90, -45, 0, 45, 90, 135};
         int[] rgb = {0xff0000, 0xffbf00, 0x80ff00, 0x00ff40, 0x00ffff, 0x0040ff, 0x8000ff, 0xff00bf};
         for (int i = 0; i < yaw.length; i++) {
-            assertEquals(rgb[i], HudColors.DEFAULT.directionColor(yaw[i]).value());
-            assertEquals(rgb[i], HudColors.DEFAULT.directionMarkColor(yaw[i]).value());
-            assertEquals(rgb[i], HudColors.DEFAULT.directionColor(yaw[i] + 720).value());
-            assertEquals(rgb[i], HudColors.DEFAULT.directionColor(yaw[i] - 720).value());
+            assertEquals(rgb[i], colors.directionColor(yaw[i]).value());
+            assertEquals(rgb[i], colors.directionMarkColor(yaw[i]).value());
+            assertEquals(rgb[i], colors.directionColor(yaw[i] + 720).value());
+            assertEquals(rgb[i], colors.directionColor(yaw[i] - 720).value());
         }
-        assertEquals(0xff2b00, HudColors.DEFAULT.directionColor(-170).value());
-        assertEquals(0xff0004, HudColors.DEFAULT.directionColor(179).value());
-        assertEquals(0xff0400, HudColors.DEFAULT.directionColor(181).value());
+        assertEquals(0xff2b00, colors.directionColor(-170).value());
+        assertEquals(0xff0004, colors.directionColor(179).value());
+        assertEquals(0xff0400, colors.directionColor(181).value());
     }
 
     @Test
@@ -119,7 +125,7 @@ class HudColorsTest {
         List<String> warnings = new ArrayList<>();
         HudColors colors = HudColors.load(config, warnings::add);
         assertEquals(0xffcccc, colors.directionColor(180).value());
-        assertEquals(0xff0000, colors.directionMarkColor(180).value());
+        assertEquals(0xff4040, colors.directionMarkColor(180).value());
         assertEquals(1, warnings.size());
         assertTrue(warnings.getFirst().contains("hud.colors.direction_mark.b"));
     }
@@ -131,7 +137,7 @@ class HudColorsTest {
         config.set("hud.colors.direction.b", 80);
         HudColors muted = HudColors.load(config, warning -> fail(warning));
         assertEquals(0xcc9999, muted.directionColor(180).value());
-        assertEquals(0xff0000, muted.directionMarkColor(180).value());
+        assertEquals(0xff4040, muted.directionMarkColor(180).value());
         config.set("hud.colors.direction.s", 0);
         HudColors gray = HudColors.load(config, warning -> fail(warning));
         for (float yaw : new float[]{0, 60, 90, 135, 180, 270}) {

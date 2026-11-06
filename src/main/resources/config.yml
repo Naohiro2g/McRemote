@@ -12,17 +12,18 @@ hud:
   # Decimals are allowed. Missing values use defaults; invalid values warn and
   # restore the whole affected color to its default. Text shadows are unchanged.
   colors:
-    absolute_target: {h: 20, s: 1.388889, b: 84.705882}
-    absolute_legs: {h: 21, s: 11.904762, b: 65.882353}
-    relative_target: {h: 324, s: 20.080321, b: 97.647059}
-    relative_legs: {h: 324.246575, s: 60.580913, b: 94.509804}
-    tick: {h: 98.909091, s: 85.9375, b: 75.294118}
-    time: {h: 98.909091, s: 85.9375, b: 75.294118}
-    separator: {h: 0, s: 0, b: 66.666667}
+    # Hue distinguishes relative/absolute; higher saturation emphasizes the target.
+    relative_target: {h: 320, s: 90, b: 90}
+    relative_legs: {h: 320, s: 40, b: 90}
+    absolute_target: {h: 40, s: 90, b: 90}
+    absolute_legs: {h: 40, s: 40, b: 90}
     # H follows the actual view direction clockwise: N=0, E=90, S=180, W=270.
-    # Text and # markers have independent S/B. Lower direction.s for pale text.
-    direction: {s: 100, b: 100}
-    direction_mark: {s: 100, b: 100}
+    # Bold # markers and regular direction text have independent S/B.
+    direction_mark: {s: 75, b: 100}
+    direction: {s: 40, b: 90}
+    tick: {h: 170, s: 80, b: 85}
+    time: {h: 120, s: 80, b: 85}
+    separator: {h: 0, s: 0, b: 60}
 # permission nodes and meta key of LuckPerms
 luckperm_permissions:
   online: "mcr.online"  # permission node for online players
