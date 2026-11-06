@@ -8,7 +8,7 @@ import static org.mockito.Mockito.*;
 
 class HudInputTest {
     @Test
-    void defaultConfigurationDoesNotStealEvenSneakingSwapInput() throws Exception {
+    void explicitlyDisabledSwapDoesNotStealEvenSneakingInput() throws Exception {
         CoordinateHud hud = mock(CoordinateHud.class);
         McRemote plugin = plugin(hud, false);
         PlayerSwapHandItemsEvent event = event(true);

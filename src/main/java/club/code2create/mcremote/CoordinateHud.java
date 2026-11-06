@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 /** Game-only first slice of the coordinate/time HUD. No wire methods or observer IDs. */
 final class CoordinateHud implements AutoCloseable {
     static final long UPDATE_INTERVAL_TICKS = 10;
+    static final boolean DEFAULT_TOGGLE_ON_SWAP = true;
 
     private static final class State {
         boolean visible = true;
@@ -36,7 +37,7 @@ final class CoordinateHud implements AutoCloseable {
     }
 
     CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor, HudDisplay display) {
-        this(sessionsFor, display, false);
+        this(sessionsFor, display, DEFAULT_TOGGLE_ON_SWAP);
     }
 
     CoordinateHud(Function<Player, List<RemoteSession>> sessionsFor, HudDisplay display, boolean defaultToggleOnSwap) {

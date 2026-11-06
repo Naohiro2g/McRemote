@@ -111,7 +111,7 @@ mise exec -- java -jar paper.jar nogui
 | `default_build_blocks` | `32768` | LuckPerms が無いときの1操作あたりの対象block数。既存configの明示値は `0` も含めて保持します |
 | `supported_mc_versions` | 配布JARの宣言から生成 | helloはJAR同梱の対応版一覧を使います。この設定は広告を変更しません。既存値は保持し、宣言と違えば起動時にwarningを出します |
 | `hud.enabled` | `true` | ゲーム内に座標・時刻HUDを表示する |
-| `hud.toggle_on_swap` | `false` | 参加時の交換入力によるHUD切替の初期値。本人のコマンドでログアウトまで上書きできる |
+| `hud.toggle_on_swap` | `true` | 参加時の交換入力によるHUD切替の初期値。本人のコマンドでログアウトまで上書きできる |
 
 `mcr.build.blocks` は `world.setBlock`／`world.setBlocks` の1操作で指定する対象block数の上限です。`setBlocks` は両端を含む直方体の体積で数え、元から同じblockだった場所も含めます。
 LuckPerms の継承・contextを含む実効metaを接続時に読み、変更は再接続で反映します。LuckPermsがある場合、meta未設定は `0`（block編集禁止）です。LuckPermsが無い場合はconfigの `default_build_blocks`（配布既定32768）を使います。metaの `0`、負値・不正な整数も編集を禁止します。
@@ -267,9 +267,9 @@ hud:
 
 `toggle`は表示ON/OFFではなく、足元／照準のモード切替です。
 
-オフハンド交換の標準キーはFです。`toggle-on-swap on`にすると、本人のHUD表示中は交換動作を取り消し、足元／照準を切り替えます。Shiftは使いません。HUD非表示中や設定OFFでは通常の交換として動き、他のプラグインが既に取り消した入力は処理しません。各クライアントで交換操作を別のキーへ割り当てることもできます。
+オフハンド交換の標準キーはFです。既定では、本人のHUD表示中は交換動作を取り消し、足元／照準を切り替えます。Shiftは使いません。`/mcr hud toggle-on-swap off`にするかHUDを隠すと、通常の交換として動きます。他のプラグインが既に取り消した入力は処理しません。各クライアントで交換操作を別のキーへ割り当てることもできます。
 
-`config.yml`の`hud.toggle_on_swap`（既定`false`）は参加時の初期値です。各自がコマンドで変更しても他の人へ影響せず、ログアウト・サーバー再起動で初期値に戻ります。表示状態と対象点も一時設定で、ログアウト・再起動で表示ON・足元へ戻ります。設定fileを変更した場合はサーバーを再起動します。
+`config.yml`の`hud.toggle_on_swap`（既定`true`）は参加時の初期値です。各自がコマンドで変更しても他の人へ影響せず、ログアウト・サーバー再起動で初期値に戻ります。既存configに`false`があれば、その設定は保持します。表示状態と対象点も一時設定で、ログアウト・再起動で表示ON・足元へ戻ります。設定fileを変更した場合はサーバーを再起動します。
 
 サーバー全体でMcRemoteのHUDを無効にするには`hud.enabled: false`を設定します。DirectionHUDも併用する場合は、それぞれの表示を必要に応じて選んでください。
 

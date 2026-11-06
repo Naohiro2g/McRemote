@@ -172,6 +172,23 @@ class LegacyConfigKeysTest {
         }
     }
 
+    @Test
+    void hudSwapDefaultsOnAndExplicitOffSurvivesDefaultsInsertion() throws IOException {
+        YamlConfiguration defaults = packaged();
+        assertTrue(defaults.getBoolean("hud.toggle_on_swap"));
+        assertTrue(CoordinateHud.DEFAULT_TOGGLE_ON_SWAP);
+
+        YamlConfiguration missing = operatorConfig();
+        assertTrue(LegacyConfigKeys.addMissingDefaults(missing, defaults).added().contains("hud.toggle_on_swap"));
+        assertTrue(missing.getBoolean("hud.toggle_on_swap"));
+        assertFalse(LegacyConfigKeys.addMissingDefaults(missing, defaults).changed());
+
+        YamlConfiguration explicitOff = operatorConfig();
+        explicitOff.set("hud.toggle_on_swap", false);
+        assertFalse(LegacyConfigKeys.addMissingDefaults(explicitOff, defaults).added().contains("hud.toggle_on_swap"));
+        assertFalse(explicitOff.getBoolean("hud.toggle_on_swap"));
+    }
+
     /** An operator config written before the migration: only the top-level keys Stack renders. */
     private static YamlConfiguration operatorConfig() {
         YamlConfiguration config = new YamlConfiguration();

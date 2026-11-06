@@ -138,7 +138,7 @@ public class McRemote extends JavaPlugin implements Listener {
                 + " hash=" + catalogService.getCatalogHash());
         PluginCommand mcremoteCommand = getCommand("mcremote");
         coordinateHud = hudEnabled
-                ? new CoordinateHud(this::sessionsFor, config.getBoolean("hud.toggle_on_swap", false),
+                ? new CoordinateHud(this::sessionsFor, config.getBoolean("hud.toggle_on_swap", CoordinateHud.DEFAULT_TOGGLE_ON_SWAP),
                         hudColors) : null;
         if (mcremoteCommand != null) {
             PairCommand command = new PairCommand(this, pairingManager, credentialService, coordinateHud);
