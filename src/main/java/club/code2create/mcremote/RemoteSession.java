@@ -473,8 +473,16 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
     }
 
     public void kick(String reason) {
+        kick(reason, reason);
+    }
+
+    void kick(PlayerMessage message) {
+        kick(message.text(attachedPlayer), message.english());
+    }
+
+    private void kick(String displayText, String reason) {
         if (attachedPlayer != null) {
-            attachedPlayer.kick(Component.text(reason));
+            attachedPlayer.kick(Component.text(displayText));
             logger.info("Player " + attachedPlayer.getName() + " was kicked for: " + reason);
             attachedPlayer = null;
         }

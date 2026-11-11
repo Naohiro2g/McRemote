@@ -12,7 +12,6 @@ import org.bukkit.util.StringUtil;
 final class HudCommand {
     private static final List<String> ACTIONS = List.of("on", "off", "toggle", "legs", "target", "status", "toggle-on-swap");
     private static final List<String> SWITCHES = List.of("on", "off");
-    private static final String USAGE = "/mcr hud on|off|toggle|legs|target|status または /mcr hud toggle-on-swap on|off（toggleは足元／照準の切替）";
 
     private HudCommand() {}
 
@@ -22,16 +21,16 @@ final class HudCommand {
             return true;
         }
         if (hud == null) {
-            sender.sendMessage(Component.text("このサーバーではHUDが無効です（hud.enabled）。"));
+            sender.sendMessage(Component.text(PlayerMessage.HUD_DISABLED.text(player)));
             return true;
         }
         if (args.length < 2 || !ACTIONS.contains(args[1].toLowerCase(Locale.ROOT))) {
-            sender.sendMessage(Component.text(USAGE));
+            sender.sendMessage(Component.text(PlayerMessage.HUD_USAGE.text(player)));
             return true;
         }
         if ("toggle-on-swap".equalsIgnoreCase(args[1])) {
             if (args.length != 3 || !SWITCHES.contains(args[2].toLowerCase(Locale.ROOT))) {
-                sender.sendMessage(Component.text(USAGE));
+                sender.sendMessage(Component.text(PlayerMessage.HUD_USAGE.text(player)));
                 return true;
             }
             hud.setToggleOnSwap(player, "on".equalsIgnoreCase(args[2]));
@@ -39,7 +38,7 @@ final class HudCommand {
             return true;
         }
         if (args.length != 2) {
-            sender.sendMessage(Component.text(USAGE));
+            sender.sendMessage(Component.text(PlayerMessage.HUD_USAGE.text(player)));
             return true;
         }
         switch (args[1].toLowerCase(Locale.ROOT)) {

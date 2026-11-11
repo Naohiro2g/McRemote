@@ -21,6 +21,6 @@ enum HudDirection {
     }
 
     String label(Locale locale) {
-        return locale != null && "ja".equals(locale.getLanguage()) ? japanese : english;
+        return PlayerMessage.isJapanese(locale) ? japanese : english;
     }
 }

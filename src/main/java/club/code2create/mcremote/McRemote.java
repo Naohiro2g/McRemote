@@ -570,7 +570,7 @@ public class McRemote extends JavaPlugin implements Listener {
         if (checkBanned(newSession)) {
             logger.warning("Kicking " + newSession.getSocket().getRemoteSocketAddress() +
                     " because the IP address has been banned.");
-            newSession.kick("You've been banned from this server!");
+            newSession.kick(PlayerMessage.BANNED);
             return;
         }
         // CopyOnWriteArrayList.add は原子的なので外部同期は不要。
