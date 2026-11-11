@@ -135,6 +135,7 @@ class CoordinateHudTest {
 
     private static Player player(World world, int x, int y, int z) {
         Player player = mock(Player.class);
+        when(player.locale()).thenReturn(java.util.Locale.JAPAN);
         when(player.getUniqueId()).thenReturn(UUID.randomUUID());
         when(player.getWorld()).thenReturn(world);
         when(player.getLocation()).thenReturn(new Location(world, x, y, z));

@@ -1,6 +1,6 @@
 name: McRemote
 version: ${project.version}
-description: Minecraft Remote Control Plugin
+description: McRemote
 database: false
 main: club.code2create.mcremote.McRemote
 api-version: ${plugin.apiVersion}
@@ -9,8 +9,8 @@ soft-depend:
 commands:
   mcremote:
     aliases: [mcr]
-    description: McRemote pairing, coordinate HUD and admin
-    usage: /mcremote pair <code>（6桁・区切り不要・半角数字 / ASCII digits, separators optional） | hud on|off|toggle|legs|target|status|toggle-on-swap on|off
+    description: McRemote
+    usage: /mcremote pair <code> | hud on|off|toggle|legs|target|status|toggle-on-swap on|off
 permissions:
   mcr.online:
     description: Allows paired McRemote clients to act while the player is online.

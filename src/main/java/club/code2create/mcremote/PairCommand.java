@@ -28,9 +28,6 @@ import net.kyori.adventure.text.Component;
  */
 @NullMarked
 public class PairCommand implements TabExecutor {
-    private static final String USAGE =
-            "Usage: /mcr pair <code> | hud on|off|toggle|legs|target|status | hud toggle-on-swap on|off | credential status|bootstrap|reset CONFIRM-RESET-ALL-CREDENTIALS";
-
     private final McRemote plugin;
     private final PairingManager pairingManager;
     private final CredentialService credentialService;
@@ -58,7 +55,7 @@ public class PairCommand implements TabExecutor {
             return handleCredentialAdmin(sender, args);
         }
         if (args.length < 1 || !"pair".equalsIgnoreCase(args[0])) {
-            sender.sendMessage(Component.text(USAGE));
+            sender.sendMessage(Component.text(PlayerMessage.ROOT_USAGE.text(sender)));
             return true;
         }
         if (!(sender instanceof Player player)) {
@@ -67,27 +64,23 @@ public class PairCommand implements TabExecutor {
             return true;
         }
         if (args.length < 2 || args[1].isBlank()) {
-            sender.sendMessage(Component.text(USAGE));
+            sender.sendMessage(Component.text(PlayerMessage.ROOT_USAGE.text(sender)));
             return true;
         }
 
         String code = normalizeCode(args[1]);
         if (code.length() != 6) {
-            sender.sendMessage(Component.text(USAGE));
+            sender.sendMessage(Component.text(PlayerMessage.ROOT_USAGE.text(sender)));
             return true;
         }
         PairingManager.BindStatus status = pairingManager.bind(code, player.getUniqueId());
-        Component message = switch (status) {
-            case OK -> Component.text(
-                    "ペアリング成功 / Paired. リモコン側の接続が続行されます。");
-            case NOT_FOUND -> Component.text(
-                    "コードが見つかりません / Unknown pair code: " + code);
-            case EXPIRED -> Component.text(
-                    "コードの有効期限切れ / Pair code expired: " + code);
-            case ALREADY_BOUND -> Component.text(
-                    "このコードは既に使用済み / Pair code already used: " + code);
+        PlayerMessage message = switch (status) {
+            case OK -> PlayerMessage.PAIRED;
+            case NOT_FOUND -> PlayerMessage.PAIR_NOT_FOUND;
+            case EXPIRED -> PlayerMessage.PAIR_EXPIRED;
+            case ALREADY_BOUND -> PlayerMessage.PAIR_USED;
         };
-        player.sendMessage(message);
+        player.sendMessage(Component.text(message.text(player, code)));
         return true;
     }
 
@@ -112,43 +105,40 @@ public class PairCommand implements TabExecutor {
 
     private boolean handleCredentialAdmin(CommandSender sender, String[] args) {
         if (!sender.hasPermission("mcremote.admin")) {
-            sender.sendMessage(Component.text("Permission denied: mcremote.admin"));
+            sender.sendMessage(Component.text(PlayerMessage.ADMIN_DENIED.text(sender)));
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(Component.text(USAGE));
+            sender.sendMessage(Component.text(PlayerMessage.ROOT_USAGE.text(sender)));
             return true;
         }
         try {
             switch (args[1].toLowerCase(java.util.Locale.ROOT)) {
                 case "status" -> sender.sendMessage(Component.text(
-                        "Credential domain: " + credentialService.health() + " / "
-                                + credentialService.healthDetail() + " / id="
-                                + credentialService.credentialDomainId()));
+                        PlayerMessage.CREDENTIAL_STATUS.text(sender, credentialService.health(),
+                                credentialService.healthDetail(), credentialService.credentialDomainId())));
                 case "bootstrap" -> {
                     java.util.UUID domain = credentialService.bootstrap();
                     sender.sendMessage(Component.text(
-                            "Credential domain bootstrapped: " + domain));
+                            PlayerMessage.CREDENTIAL_BOOTSTRAPPED.text(sender, domain)));
                 }
                 case "reset" -> {
                     if (args.length != 3
                             || !"CONFIRM-RESET-ALL-CREDENTIALS".equals(args[2])) {
                         sender.sendMessage(Component.text(
-                                "Reset invalidates every long-lived credential. Confirm with: "
-                                        + "/mcremote credential reset CONFIRM-RESET-ALL-CREDENTIALS"));
+                                PlayerMessage.CREDENTIAL_RESET_CONFIRM.text(sender)));
                         return true;
                     }
                     CredentialService.ResetResult result = credentialService.reset();
                     plugin.closeAllLongLivedSessions();
                     sender.sendMessage(Component.text(
-                            "Credential domain reset: " + result.credentialDomainId()
-                                    + " (old state archived, all clients must pair again)"));
+                            PlayerMessage.CREDENTIAL_RESET.text(sender, result.credentialDomainId())));
                 }
-                default -> sender.sendMessage(Component.text(USAGE));
+                default -> sender.sendMessage(Component.text(PlayerMessage.ROOT_USAGE.text(sender)));
             }
         } catch (Exception e) {
             sender.sendMessage(Component.text(
-                    "Credential operation failed closed: " + e.getMessage()));
+                    PlayerMessage.CREDENTIAL_FAILED.text(sender, e.getMessage())));
         }
         return true;
     }
