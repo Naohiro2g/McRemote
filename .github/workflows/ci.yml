@@ -42,6 +42,7 @@ jobs:
           --tests club.code2create.mcremote.SqliteCredentialBackendTest
           --tests club.code2create.mcremote.SqliteCredentialLifecycleTest
           --tests club.code2create.mcremote.CredentialDiagnosticsTest
+          --tests club.code2create.mcremote.SqliteCredentialFileModesTest
           --tests club.code2create.mcremote.PairingManagerTest
       - name: Linux and macOS credential contracts
         if: runner.os != 'Windows'
@@ -54,6 +55,7 @@ jobs:
           --tests club.code2create.mcremote.SqliteCredentialLifecycleTest
           --tests club.code2create.mcremote.CredentialServiceTest
           --tests club.code2create.mcremote.CredentialDiagnosticsTest
+          --tests club.code2create.mcremote.SqliteCredentialFileModesTest
           --tests club.code2create.mcremote.PairingManagerTest
       - name: Windows packaged Paper driver and missing-provider checks
         if: runner.os == 'Windows'

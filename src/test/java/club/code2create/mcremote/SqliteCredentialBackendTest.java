@@ -442,11 +442,14 @@ class SqliteCredentialBackendTest {
         Set<PosixFilePermission> original = null;
         DosFileAttributeView dos = null;
         if (Files.getFileStore(paths.authority()).supportsFileAttributeView("posix")) {
-            original = Files.getPosixFilePermissions(paths.authority());
-            Files.setPosixFilePermissions(paths.authority(), Set.of(PosixFilePermission.OWNER_READ));
-            if (Files.isWritable(paths.authority())) {
-                Files.setPosixFilePermissions(paths.authority(), original);
-                org.junit.jupiter.api.Assumptions.abort("privileged user can write read-only file");
+            // A DB's owner-write bit is now repaired. An existing parent is deliberately not chmod'ed,
+            // so use it to retain the unrepairable storage-failure coverage.
+            original = Files.getPosixFilePermissions(paths.authority().getParent());
+            Files.setPosixFilePermissions(paths.authority().getParent(),
+                    Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
+            if (Files.isWritable(paths.authority().getParent())) {
+                Files.setPosixFilePermissions(paths.authority().getParent(), original);
+                org.junit.jupiter.api.Assumptions.abort("privileged user can write read-only directory");
             }
         } else {
             dos = Files.getFileAttributeView(paths.authority(), DosFileAttributeView.class);
@@ -458,7 +461,7 @@ class SqliteCredentialBackendTest {
                     () -> service.revoke(player, issued.credentialId()));
             assertEquals(CredentialService.Health.UNHEALTHY, service.health());
         } finally {
-            if (original != null) Files.setPosixFilePermissions(paths.authority(), original);
+            if (original != null) Files.setPosixFilePermissions(paths.authority().getParent(), original);
             if (dos != null) dos.setReadOnly(false);
         }
         assertEquals(CredentialService.ResolveStatus.ACTIVE,
