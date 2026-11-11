@@ -7,6 +7,8 @@ import org.bukkit.World;
 import org.bukkit.configuration.MemoryConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
@@ -19,6 +21,32 @@ import static org.mockito.Mockito.*;
 
 /** Production session/reader/auth path with local TCP; no running Paper/world mutation. */
 class PreAuthTransportTest {
+    @ParameterizedTest
+    @ValueSource(strings = {"22.0.0", "24.0.0", "23.3.0"})
+    void protocolMismatchResponseUsesServerErrorCodeAndIsFlushedBeforeClose(String clientProtocol) throws Exception {
+        PreAuthPolicy policy = new PreAuthPolicy(2, 1, 10, 1024, 4096, 10, 20, 2, 10, 2);
+        PreAuthAdmission admission = new PreAuthAdmission(policy);
+        McRemote plugin = plugin(policy, admission);
+        try (var bukkit = mockStatic(Bukkit.class);
+             ServerSocket listener = new ServerSocket(0);
+             Socket client = new Socket("127.0.0.1", listener.getLocalPort());
+             Socket server = listener.accept()) {
+            RemoteSession session = new RemoteSession(plugin, server, admission.acquire());
+            try {
+                client.setSoTimeout(2000);
+                BufferedReader replies = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
+                send(client, 42, "hello", "{\"protocol\":\"" + clientProtocol + "\"}");
+                var response = JsonParser.parseString(awaitReply(session, replies));
+                assertEquals(JsonParser.parseString("""
+                        {"jsonrpc":"2.0","id":42,"error":{"code":-32000,"message":"protocol_mismatch",
+                        "data":{"reason":"protocol_mismatch","server":"%s","client_requires":"%s"}}}
+                        """.formatted(ProtocolInfo.PROTOCOL, clientProtocol)), response);
+                assertFalse(session.isHelloComplete());
+                assertNull(replies.readLine(), "mismatch response must arrive before EOF");
+            } finally { session.close(); }
+        }
+    }
+
     @Test void authRequiredResponseIsFlushedBeforeTransportCloses() throws Exception {
         PreAuthPolicy policy = new PreAuthPolicy(2, 1, 10, 1024, 4096, 10, 20, 2, 10, 2);
         PreAuthAdmission admission = new PreAuthAdmission(policy);

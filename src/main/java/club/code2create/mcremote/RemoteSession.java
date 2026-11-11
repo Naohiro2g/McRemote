@@ -220,7 +220,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
      * hello ネゴシエーション（wire-format-design §6 / versioning-design §8）。接続後の最初の1行を処理する。
      * クライアント主導：クライアントが object params で要求 protocol を名乗り、サーバが §8.2 で判定する。
      *  - hello 以外の最初の method → 拒否して切断（門番）。
-     *  - 非互換 → protocol_mismatch エラーを返して切断（§8.3, error 写像は暫定）。
+     *  - 非互換 → protocol_mismatch エラーを返して切断（§8.3 / wire §7.3）。
      *  - 互換 → flat 応答（§6.2）で版／ワールド定数を返し、以降の method を解禁。
      */
     private void handleHello(ParsedCommand parsed) {
@@ -238,11 +238,11 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
             return;
         }
         if (!ProtocolInfo.isCompatible(clientProtocol)) {
-            // 暫定写像（DECISION_CANDIDATE 2026-06-27, §6.3/§8.3 の対応表確定待ち）。
+            // wire §7.3: 既存のサーバー定義エラーと同じ code、意味は data.reason で運ぶ。
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("server", ProtocolInfo.PROTOCOL);
             data.put("client_requires", clientProtocol);
-            respondError(-32600, "protocol_mismatch", data);
+            respondError(-32000, "protocol_mismatch", data);
             logger.warning("Protocol mismatch: server=" + ProtocolInfo.PROTOCOL + " client=" + clientProtocol);
             requestCloseAfterFlush();
             return;
