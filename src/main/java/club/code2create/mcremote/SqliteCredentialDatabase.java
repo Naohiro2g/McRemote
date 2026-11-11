@@ -89,16 +89,17 @@ final class SqliteCredentialDatabase {
         boolean fresh = false;
         if (create && !exists()) {
             CredentialDiagnostics.run(CredentialDiagnostics.Operation.CREATE_DIRECTORY,
-                    () -> Files.createDirectories(path.getParent()));
+                    () -> CredentialFilePermissions.createDirectories(path.getParent()));
             // CREATE_NEW claims initialization. An interrupted empty DB is corruption, never absence.
             CredentialDiagnostics.run(CredentialDiagnostics.Operation.OPEN_FILE,
-                    () -> Files.createFile(path));
+                    () -> CredentialFilePermissions.createFile(path));
             fresh = true;
         }
         try (Connection connection = open(fresh)) {
             boolean committed = false;
             execute(connection, "BEGIN IMMEDIATE", CredentialDiagnostics.Operation.BEGIN_DATABASE_WRITE);
             try {
+                restrictFiles();
                 if (fresh) {
                     execute(connection, "CREATE TABLE backend_meta (id INTEGER PRIMARY KEY CHECK(id=1), role TEXT NOT NULL)",
                             CredentialDiagnostics.Operation.WRITE_DATABASE);
@@ -147,6 +148,8 @@ final class SqliteCredentialDatabase {
                 CredentialStore.requireRegularFile(sidecar, "SQLite credential sidecar");
             }
         }
+        // Restrict the DB before SQLite creates sidecars from its mode, including on startup/reopen.
+        restrictFiles();
         Connection connection = invoke(CredentialDiagnostics.Operation.OPEN_DATABASE, () -> {
             return PaperSqliteDriver.connect("jdbc:sqlite:" + path.toUri().toASCIIString() + "?mode=rw");
         });
@@ -181,11 +184,27 @@ final class SqliteCredentialDatabase {
                 }
                 return null;
             });
+            restrictFiles();
             return connection;
         } catch (IOException e) {
             try { connection.close(); } catch (SQLException closeFailure) { e.addSuppressed(closeFailure); }
             throw e;
         }
+    }
+
+    private void restrictFiles() throws IOException {
+        CredentialDiagnostics.run(CredentialDiagnostics.Operation.RESTRICT_FILE_PERMISSIONS, () -> {
+            CredentialFilePermissions.restrictFile(path);
+            for (String suffix : new String[]{"-wal", "-shm", "-journal"}) {
+                Path sidecar = Path.of(path + suffix);
+                try {
+                    Files.readAttributes(sidecar, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+                } catch (NoSuchFileException absent) {
+                    continue;
+                }
+                CredentialFilePermissions.restrictFile(sidecar);
+            }
+        });
     }
 
     private void validate(Connection connection) throws IOException {

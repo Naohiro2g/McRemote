@@ -24,6 +24,7 @@ final class CredentialDiagnostics {
         COMPLETE_BOOTSTRAP("authority.complete-bootstrap"),
         CREATE_DIRECTORY("directory.create"),
         OPEN_FILE("file.open-new"),
+        RESTRICT_FILE_PERMISSIONS("file.restrict-permissions"),
         WRITE_FILE("file.write"),
         SYNC_FILE("file.sync"),
         CLOSE_FILE("file.close"),
