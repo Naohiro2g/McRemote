@@ -225,7 +225,7 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
      */
     private void handleHello(ParsedCommand parsed) {
         if (!"hello".equals(parsed.getName())) {
-            respondError(-32600, "expected_hello", null);
+            respondError(-32000, "expected_hello", null);
             logger.warning("Pre-hello method rejected: " + parsed.getName());
             requestCloseAfterFlush();
             return;

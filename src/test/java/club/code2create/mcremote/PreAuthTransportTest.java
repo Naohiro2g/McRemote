@@ -47,6 +47,31 @@ class PreAuthTransportTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"chat.post", "unknown.method"})
+    void expectedHelloUsesServerErrorCodeAndIsFlushedBeforeClose(String method) throws Exception {
+        PreAuthPolicy policy = new PreAuthPolicy(2, 1, 10, 1024, 4096, 10, 20, 2, 10, 2);
+        PreAuthAdmission admission = new PreAuthAdmission(policy);
+        McRemote plugin = plugin(policy, admission);
+        try (var bukkit = mockStatic(Bukkit.class);
+             ServerSocket listener = new ServerSocket(0);
+             Socket client = new Socket("127.0.0.1", listener.getLocalPort());
+             Socket server = listener.accept()) {
+            RemoteSession session = new RemoteSession(plugin, server, admission.acquire());
+            try {
+                client.setSoTimeout(2000);
+                BufferedReader replies = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
+                send(client, 43, method, "[]");
+                assertEquals(JsonParser.parseString("""
+                        {"jsonrpc":"2.0","id":43,"error":{"code":-32000,"message":"expected_hello",
+                        "data":{"reason":"expected_hello"}}}
+                        """), JsonParser.parseString(awaitReply(session, replies)));
+                assertFalse(session.isHelloComplete());
+                assertNull(replies.readLine(), "error must be flushed before EOF");
+            } finally { session.close(); }
+        }
+    }
+
     @Test void authRequiredResponseIsFlushedBeforeTransportCloses() throws Exception {
         PreAuthPolicy policy = new PreAuthPolicy(2, 1, 10, 1024, 4096, 10, 20, 2, 10, 2);
         PreAuthAdmission admission = new PreAuthAdmission(policy);
