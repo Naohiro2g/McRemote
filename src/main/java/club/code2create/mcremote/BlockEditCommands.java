@@ -15,8 +15,6 @@ import java.util.logging.Logger;
 /** protocol 22 structured BlockSpec handlers for world.setBlock/setBlocks. */
 public class BlockEditCommands {
     private static final Logger logger = Logger.getLogger("McR_BlockEdit");
-    private static final int WORLD_LIMIT = 1_000_000;
-    private static final int SKY_LIMIT = 1_000;
 
     private final RemoteSession session;
     private final MiscCommands miscCommands;
@@ -37,7 +35,8 @@ public class BlockEditCommands {
             int z = coordinate(args, 2);
             BlockData data = blockCodec.decode(args.get(3), "params[3]");
             World world = session.getOrigin().getWorld();
-            Location loc = miscCommands.parseRelativeBlockLocation(x, y, z);
+            Location loc = WorldBounds.absolute(session.getOrigin(), x, y, z);
+            if (!WorldBounds.permits(session, world, loc)) return;
             if (!session.hasConstructionPermission()) {
                 session.respondError(-32000, "permission_denied", null);
                 return;
@@ -77,8 +76,9 @@ public class BlockEditCommands {
             int z2 = coordinate(args, 5);
             BlockData data = blockCodec.decode(args.get(6), "params[6]");
             World world = session.getOrigin().getWorld();
-            Location loc1 = miscCommands.parseRelativeBlockLocation(x1, y1, z1);
-            Location loc2 = miscCommands.parseRelativeBlockLocation(x2, y2, z2);
+            Location loc1 = WorldBounds.absolute(session.getOrigin(), x1, y1, z1);
+            Location loc2 = WorldBounds.absolute(session.getOrigin(), x2, y2, z2);
+            if (!WorldBounds.permits(session, world, loc1, loc2)) return;
             if (!session.hasConstructionPermission()) {
                 session.respondError(-32000, "permission_denied", null);
                 return;
@@ -107,12 +107,7 @@ public class BlockEditCommands {
     }
 
     private int coordinate(JsonArray args, int index) {
-        int coordinate = WireParams.integer(args, index);
-        int limit = index % 3 == 1 ? SKY_LIMIT : WORLD_LIMIT;
-        if (coordinate < -limit || coordinate > limit) {
-            throw new IllegalArgumentException("coordinate outside supported range");
-        }
-        return coordinate;
+        return WireParams.integer(args, index);
     }
 
     private boolean checkRange(Location targetLoc) {
