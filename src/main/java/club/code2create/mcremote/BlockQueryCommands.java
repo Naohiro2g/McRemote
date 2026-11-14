@@ -30,7 +30,8 @@ public class BlockQueryCommands {
             int y = WireParams.integer(args, 1);
             int z = WireParams.integer(args, 2);
             World world = session.getOrigin().getWorld();
-            Location loc = miscCommands.parseRelativeBlockLocation(x, y, z);
+            Location loc = WorldBounds.absolute(session.getOrigin(), x, y, z);
+            if (!WorldBounds.permits(session, world, loc)) return;
             if (!preflight(loc)) {
                 return;
             }
