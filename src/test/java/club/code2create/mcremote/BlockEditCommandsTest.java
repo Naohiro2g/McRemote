@@ -172,6 +172,7 @@ class BlockEditCommandsTest {
 
     private static Harness harness(int maxBlocks, org.mockito.MockedStatic<Bukkit> bukkit, RuntimePolicy policy) {
         World world = mock(World.class);
+        WorldBoundsTest.unrestricted(world);
         UUID worldId = UUID.randomUUID();
         when(world.getUID()).thenReturn(worldId);
         bukkit.when(() -> Bukkit.getWorld(worldId)).thenReturn(world);
