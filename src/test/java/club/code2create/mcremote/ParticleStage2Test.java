@@ -279,6 +279,7 @@ class ParticleStage2Test {
             permissionChecks++;
             return permission;
         }
+        @Override public int getBuildRange() { return Integer.MAX_VALUE; }
         @Override public boolean isWithinBuildRange(Location target) { return true; }
         @Override public WorkAdmission.Result admitWork(int units) {
             workCalls++;

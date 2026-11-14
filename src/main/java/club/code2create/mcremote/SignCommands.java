@@ -77,13 +77,13 @@ final class SignCommands {
             int z = WireParams.integer(args, 2);
             SignSpec spec = parseSpec(args.get(3));
 
-            Location target = miscCommands.parseRelativeBlockLocation(x, y, z);
+            Location target = WorldBounds.absolute(session.getOrigin(), x, y, z);
+            if (!WorldBounds.permits(session, target.getWorld(), target)) return;
             if (!session.hasConstructionPermission()) {
                 session.respondError(-32000, "permission_denied", null);
                 return;
             }
-            if (!session.isWithinBuildRange(target)) {
-                session.respondError(-32000, "build_denied", null);
+            if (!BuildPolicyErrors.range(session, target)) {
                 return;
             }
             if (!session.admitSetterWork(1)) {
@@ -164,13 +164,13 @@ final class SignCommands {
             int lineIndex = parseLineIndex(args, 4);
             LineSpec spec = lineSpec(args.get(5), "params[5]");
 
-            Location target = miscCommands.parseRelativeBlockLocation(x, y, z);
+            Location target = WorldBounds.absolute(session.getOrigin(), x, y, z);
+            if (!WorldBounds.permits(session, target.getWorld(), target)) return;
             if (!session.hasConstructionPermission()) {
                 session.respondError(-32000, "permission_denied", null);
                 return;
             }
-            if (!session.isWithinBuildRange(target)) {
-                session.respondError(-32000, "build_denied", null);
+            if (!BuildPolicyErrors.range(session, target)) {
                 return;
             }
             if (!session.admitSetterWork(1)) {

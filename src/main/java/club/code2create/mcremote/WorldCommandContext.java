@@ -12,6 +12,8 @@ interface WorldCommandContext {
 
     boolean isWithinBuildRange(Location target);
 
+    int getBuildRange();
+
     WorkAdmission.Result admitWork(int units);
 
     default void recordParticleWorkBackpressure() { }

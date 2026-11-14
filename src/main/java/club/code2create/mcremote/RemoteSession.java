@@ -577,9 +577,17 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         if (origin == null || target == null) {
             return false;
         }
-        int range = boundUuid == null ? plugin.getDefaultBuildRange()
+        return withinBuildRange(origin, target, getBuildRange());
+    }
+
+    @Override
+    public int getBuildRange() {
+        return boundUuid == null ? plugin.getDefaultBuildRange()
                 : constructionPermissions == null ? 0 : constructionPermissions.buildRange();
-        return withinBuildRange(origin, target, range);
+    }
+
+    public int getBuildBlockLimit() {
+        return constructionPermissions == null ? 0 : constructionPermissions.buildBlocks();
     }
 
     /** Player policy for one setBlock/setBlocks operation, independent of work/tick budgets. */

@@ -76,7 +76,7 @@ class LightningCommandsTest {
         Fixture rangeDenied = fixture();
         rangeDenied.context.rangeAllowed = false;
         rangeDenied.commands.handleStrikeLightning(JsonParser.parseString("[0,999999,0]"));
-        assertEquals("build_denied", rangeDenied.context.reason);
+        assertEquals("build_range_exceeded", rangeDenied.context.reason);
         assertEquals(List.of("construction", "range"), rangeDenied.order);
     }
 
@@ -289,6 +289,7 @@ class LightningCommandsTest {
             return constructionAllowed;
         }
 
+        @Override public int getBuildRange() { return 100; }
         @Override public boolean isWithinBuildRange(Location target) {
             order.add("range");
             return rangeAllowed;

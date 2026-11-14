@@ -42,11 +42,10 @@ public class BlockEditCommands {
                 return;
             }
             if (!checkRange(loc)) {
-                session.respondError(-32000, "build_denied", null);
                 return;
             }
             if (!session.isWithinBuildBlocks(1)) {
-                session.respondError(-32000, "build_denied", null);
+                BuildPolicyErrors.blockCount(session, 1);
                 return;
             }
             if (!session.admitSetterWork(1)) {
@@ -84,12 +83,11 @@ public class BlockEditCommands {
                 return;
             }
             if (!checkRange(loc1) || !checkRange(loc2)) {
-                session.respondError(-32000, "build_denied", null);
                 return;
             }
             long volume = BlockEditVolume.between(x1, y1, z1, x2, y2, z2);
             if (!session.isWithinBuildBlocks(volume)) {
-                session.respondError(-32000, "build_denied", null);
+                BuildPolicyErrors.blockCount(session, volume);
                 return;
             }
             if (!session.admitBulkRequest(volume)) {
@@ -111,7 +109,7 @@ public class BlockEditCommands {
     }
 
     private boolean checkRange(Location targetLoc) {
-        return session.isWithinBuildRange(targetLoc);
+        return BuildPolicyErrors.range(session, targetLoc);
     }
 
     void cancelPending() {

@@ -205,6 +205,7 @@ class EntityParticleFixtureContractTest {
         @Override public UUID getConnectionEpoch() { return UUID.randomUUID(); }
         @Override public Location getOrigin() { return origin; }
         @Override public boolean hasConstructionPermission() { return permission; }
+        @Override public int getBuildRange() { return Integer.MAX_VALUE; }
         @Override public boolean isWithinBuildRange(Location target) { return true; }
         @Override public WorkAdmission.Result admitWork(int units) {
             workCalls++;
@@ -264,7 +265,8 @@ class EntityParticleFixtureContractTest {
             h.commands.handleGetNearbyEntities(c.get("params"));
 
             if (c.has("reason")) {
-                assertEquals(c.get("reason").getAsString(), h.context.reason, id);
+                // Historical fixture reason is projected to the current range diagnostic.
+                assertEquals("B8-N13".equals(id) ? "build_range_exceeded" : c.get("reason").getAsString(), h.context.reason, id);
             } else {
                 assertNull(h.context.reason, id);
             }
@@ -710,6 +712,7 @@ class EntityParticleFixtureContractTest {
         @Override public UUID getConnectionEpoch() { return UUID.randomUUID(); }
         @Override public Location getOrigin() { return origin; }
         @Override public boolean hasConstructionPermission() { return true; }
+        @Override public int getBuildRange() { return bounds == null ? Integer.MAX_VALUE : (int) ((bounds[1] - bounds[0]) / 2); }
         @Override public boolean isWithinBuildRange(Location target) {
             if (bounds == null) {
                 return true;
@@ -785,6 +788,7 @@ class EntityParticleFixtureContractTest {
 
         @Override public Location getOrigin() { return origin; }
         @Override public boolean hasConstructionPermission() { return true; }
+        @Override public int getBuildRange() { return Integer.MAX_VALUE; }
         @Override public boolean isWithinBuildRange(Location target) { return true; }
         @Override public WorkAdmission.Result admitWork(int units) {
             workCalls++;

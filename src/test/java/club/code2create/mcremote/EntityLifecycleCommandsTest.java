@@ -184,7 +184,7 @@ class EntityLifecycleCommandsTest {
 
         h.commands.handleGetNearbyEntities(params("[6,0,0,5,1]"));   // x reaches 11
 
-        assertEquals("build_denied", h.context.reason);
+        assertEquals("build_range_exceeded", h.context.reason);
         assertEquals(0, h.context.setterWorkCalls);
         assertEquals(0, h.searches.get());
     }
@@ -287,7 +287,7 @@ class EntityLifecycleCommandsTest {
 
         h.context.buildRange = 1;
         h.commands.handleSetPose(params("[\"" + handle + "\",\"overworld\",5,0,0,0,0]"));
-        assertEquals("build_denied", h.context.reason);
+        assertEquals("build_range_exceeded", h.context.reason);
         assertEquals(0, h.context.setterWorkCalls);
 
         h.context.buildRange = 1000;
@@ -496,6 +496,7 @@ class EntityLifecycleCommandsTest {
             constructionChecks++;
             return constructionAllowed;
         }
+        @Override public int getBuildRange() { return buildRange; }
         @Override public boolean isWithinBuildRange(Location target) {
             return RemoteSession.withinBuildRange(origin, target, buildRange);
         }

@@ -14,12 +14,20 @@ final class WorldBounds {
                 (double) origin.getBlockY() + y, (double) origin.getBlockZ() + z);
     }
 
-    static boolean permits(RemoteSession session, World world, Location... points) {
+    static boolean permits(WorldCommandContext session, World world, Location... points) {
+        return permits(session, world, true, points);
+    }
+
+    static boolean permitsHorizontal(WorldCommandContext session, World world, Location point) {
+        return permits(session, world, false, point);
+    }
+
+    private static boolean permits(WorldCommandContext session, World world, boolean height, Location... points) {
         int minY = world.getMinHeight();
         int maxY = world.getMaxHeight() - 1;
         WorldBorder border = world.getWorldBorder();
         for (Location point : points) {
-            if (point.getY() < minY || point.getY() > maxY || !border.isInside(point)) {
+            if ((height && (point.getY() < minY || point.getY() > maxY)) || !border.isInside(point)) {
                 Location center = border.getCenter();
                 Map<String, Object> bounds = Map.of("y_min", minY, "y_max", maxY,
                         "world_border", Map.of("center", Map.of("x", center.getX(), "z", center.getZ()),
