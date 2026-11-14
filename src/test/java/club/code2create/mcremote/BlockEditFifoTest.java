@@ -20,6 +20,7 @@ class BlockEditFifoTest {
         for (boolean notification : new boolean[]{false, true}) {
             try (var bukkit = mockStatic(Bukkit.class)) {
                 World world = mock(World.class);
+                WorldBoundsTest.unrestricted(world);
                 UUID worldId = UUID.randomUUID();
                 when(world.getUID()).thenReturn(worldId);
                 bukkit.when(() -> Bukkit.getWorld(worldId)).thenReturn(world);
