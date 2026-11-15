@@ -22,7 +22,7 @@ import static org.mockito.Mockito.*;
 /** Production session/reader/auth path with local TCP; no running Paper/world mutation. */
 class PreAuthTransportTest {
     @ParameterizedTest
-    @ValueSource(strings = {"22.0.0", "24.0.0", "23.3.0"})
+    @ValueSource(strings = {"22.0.0", "24.0.0", "23.4.0"})
     void protocolMismatchResponseUsesServerErrorCodeAndIsFlushedBeforeClose(String clientProtocol) throws Exception {
         PreAuthPolicy policy = new PreAuthPolicy(2, 1, 10, 1024, 4096, 10, 20, 2, 10, 2);
         PreAuthAdmission admission = new PreAuthAdmission(policy);
@@ -133,7 +133,9 @@ class PreAuthTransportTest {
         }
     }
 
-    @Test void protocol2320HelloSucceedsAndAdvertises2321WithoutHoldingPreHelloSlot() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"23.2.0", "23.2.1", "23.3.0"})
+    void compatibleHelloAdvertises2330WithoutHoldingPreHelloSlot(String clientProtocol) throws Exception {
         PreAuthPolicy policy = new PreAuthPolicy(2, 1, 10, 1024, 4096, 10, 20, 2, 10, 2);
         AtomicLong clock = new AtomicLong();
         PreAuthAdmission admission = new PreAuthAdmission(policy, clock::get);
@@ -164,13 +166,13 @@ class PreAuthTransportTest {
             RemoteSession session = new RemoteSession(plugin, server, admission.acquire());
             try {
                 assertNull(admission.acquire());
-                send(client, 1, "hello", "{\"protocol\":\"23.2.0\",\"auth\":{\"token\":\"test-session-token\"}}");
+                send(client, 1, "hello", "{\"protocol\":\"" + clientProtocol + "\",\"auth\":{\"token\":\"test-session-token\"}}");
                 tickUntil(session, session::isHelloComplete);
                 var response = JsonParser.parseString(awaitReply(session,
                         new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8))))
                         .getAsJsonObject();
                 assertFalse(response.has("error"));
-                assertEquals("23.2.1", response.getAsJsonObject("result").get("protocol").getAsString());
+                assertEquals("23.3.0", response.getAsJsonObject("result").get("protocol").getAsString());
                 assertEquals(playerId, session.getBoundUuid());
                 assertTrue(session.isWithinBuildBlocks(256));
                 assertFalse(session.isWithinBuildBlocks(257));
