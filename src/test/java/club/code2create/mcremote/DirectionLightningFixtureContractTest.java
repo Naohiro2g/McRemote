@@ -454,7 +454,8 @@ class DirectionLightningFixtureContractTest {
             String id = item.get("id").getAsString();
             harness.invoke(rangeParams(item.getAsJsonArray("target")));
             if (item.has("reason")) {
-                assertEquals(item.get("reason").getAsString(), harness.reason, id);
+                // Historical fixture says build_denied; this release splits its range cause.
+                assertEquals("B7-L18".equals(id) ? "build_range_exceeded" : item.get("reason").getAsString(), harness.reason, id);
             } else {
                 assertEquals(item.get("accepted").getAsBoolean(), harness.strikeCalls.get() == 1, id);
             }
@@ -779,6 +780,7 @@ class DirectionLightningFixtureContractTest {
         @Override public UUID getConnectionEpoch() { return connection; }
         @Override public Location getOrigin() { return origin; }
         @Override public boolean hasConstructionPermission() { return construction; }
+        @Override public int getBuildRange() { return 100; }
         @Override public boolean isWithinBuildRange(Location target) { return range; }
         @Override public WorkAdmission.Result admitWork(int units) {
             workCalls++;
@@ -909,6 +911,7 @@ class DirectionLightningFixtureContractTest {
                 @Override public boolean hasConstructionPermission() {
                     return constructionAllowed;
                 }
+                @Override public int getBuildRange() { return 100; }
                 @Override public boolean isWithinBuildRange(Location target) {
                     return RemoteSession.withinBuildRange(origin, target, 100);
                 }
@@ -988,6 +991,7 @@ class DirectionLightningFixtureContractTest {
         private ParticleContext(Location origin) { this.origin = origin; }
         @Override public Location getOrigin() { return origin; }
         @Override public boolean hasConstructionPermission() { return true; }
+        @Override public int getBuildRange() { return Integer.MAX_VALUE; }
         @Override public boolean isWithinBuildRange(Location target) { return true; }
         @Override public WorkAdmission.Result admitWork(int units) { return workResult; }
         @Override public void respondResult(Object value) { result = value; }

@@ -71,7 +71,7 @@ class WorldBoundsTest {
             var captured = org.mockito.ArgumentCaptor.forClass(Map.class);
             boolean outside = point[1] < -64 || point[1] > 319 || point[0] > 49 || point[2] < -50;
             if (!outside) {
-                verify(session).respondError(-32000,"build_denied",null);
+                verify(session).respondError(eq(-32000),eq("build_range_exceeded"),any());
                 return;
             }
             verify(session).respondError(eq(-32000),eq("out_of_bounds"),captured.capture());

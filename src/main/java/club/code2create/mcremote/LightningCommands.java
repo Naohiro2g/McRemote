@@ -58,8 +58,7 @@ final class LightningCommands {
             session.respondError(-32000, "permission_denied", null);
             return;
         }
-        if (!session.isWithinBuildRange(target)) {
-            session.respondError(-32000, "build_denied", null);
+        if (!BuildPolicyErrors.range(session, target)) {
             return;
         }
         if (rateAdmission.admit(session.getConnectionEpoch(), playerId)

@@ -82,9 +82,11 @@ final class WorldB5Commands {
             int relativeZ = WireParams.integer(args, 1);
             Location origin = requireOrigin();
             World world = origin.getWorld();
-            int absoluteX = Math.addExact(origin.getBlockX(), relativeX);
-            int absoluteZ = Math.addExact(origin.getBlockZ(), relativeZ);
-            Location location = new Location(world, absoluteX, origin.getY(), absoluteZ);
+            Location location = WorldBounds.absolute(origin, relativeX, 0, relativeZ);
+            location.setY(origin.getY());
+            if (!WorldBounds.permitsHorizontal(session, world, location)) return;
+            int absoluteX = location.getBlockX();
+            int absoluteZ = location.getBlockZ();
             if (!preflightLocation(location)) {
                 return;
             }
@@ -365,8 +367,7 @@ final class WorldB5Commands {
             session.respondError(-32000, "permission_denied", null);
             return false;
         }
-        if (!session.isWithinBuildRange(location)) {
-            session.respondError(-32000, "build_denied", null);
+        if (!BuildPolicyErrors.range(session, location)) {
             return false;
         }
         return true;

@@ -51,6 +51,9 @@ public class BlockQueryCommands {
             // The axis/work admission is deliberately completed before build-origin or world access.
             BlockQueryRegion relative = BlockQueryRegion.parse(params);
             Location origin = session.getOrigin();
+            if (!WorldBounds.permits(session, origin.getWorld(),
+                    WorldBounds.absolute(origin, relative.minX(), relative.minY(), relative.minZ()),
+                    WorldBounds.absolute(origin, relative.maxX(), relative.maxY(), relative.maxZ()))) return;
             BlockQueryRegion absolute = relative.translate(
                     origin.getBlockX(), origin.getBlockY(), origin.getBlockZ());
             Location min = new Location(origin.getWorld(), absolute.minX(), origin.getY(), absolute.minZ());
@@ -79,8 +82,7 @@ public class BlockQueryCommands {
             session.respondError(-32000, "permission_denied", null);
             return false;
         }
-        if (!session.isWithinBuildRange(target)) {
-            session.respondError(-32000, "build_denied", null);
+        if (!BuildPolicyErrors.range(session, target)) {
             return false;
         }
         return true;

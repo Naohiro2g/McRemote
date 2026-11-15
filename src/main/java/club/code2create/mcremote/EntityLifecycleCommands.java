@@ -75,8 +75,7 @@ final class EntityLifecycleCommands {
                 query.center().getY(), query.center().getZ() - query.radius());
         Location high = new Location(world, query.center().getX() + query.radius(),
                 query.center().getY(), query.center().getZ() + query.radius());
-        if (!session.isWithinBuildRange(low) || !session.isWithinBuildRange(high)) {
-            session.respondError(-32000, "build_denied", null);
+        if (!BuildPolicyErrors.range(session, low) || !BuildPolicyErrors.range(session, high)) {
             return;
         }
         long cost;
@@ -185,8 +184,7 @@ final class EntityLifecycleCommands {
         // Paper stores angles as float; periodic normalization keeps finite input within range.
         Location target = new Location(resolved.world(), x, y, z,
                 (float) WireNumbers.normalizeYaw(yaw), (float) pitch);
-        if (!session.isWithinBuildRange(target)) {
-            session.respondError(-32000, "build_denied", null);
+        if (!BuildPolicyErrors.range(session, target)) {
             return;
         }
         if (!session.admitSetterWork(1)) {

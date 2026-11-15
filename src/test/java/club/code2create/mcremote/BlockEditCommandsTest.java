@@ -21,7 +21,7 @@ class BlockEditCommandsTest {
             Harness h = harness(1, bukkit);
             h.commands.handleSetBlocks(JsonParser.parseString("[0,0,0,1,0,0," + STONE + "]"));
             verify(h.session).isWithinBuildBlocks(2L);
-            verify(h.session).respondError(-32000, "build_denied", null);
+            verify(h.session).respondError(eq(-32000), eq("block_count_limit_exceeded"), any());
             verify(h.session, never()).admitSetterWork(anyLong());
             verify(h.world, never()).getBlockAt(anyInt(), anyInt(), anyInt());
         }
@@ -41,7 +41,7 @@ class BlockEditCommandsTest {
         try (var bukkit = mockStatic(Bukkit.class)) {
             Harness h = harness(0, bukkit);
             h.commands.handleSetBlock(JsonParser.parseString("[0,0,0," + STONE + "]"));
-            verify(h.session).respondError(-32000, "build_denied", null);
+            verify(h.session).respondError(eq(-32000), eq("block_count_limit_exceeded"), any());
             verify(h.session, never()).admitSetterWork(anyLong());
             verify(h.world, never()).getBlockAt(anyInt(), anyInt(), anyInt());
         }
@@ -188,6 +188,7 @@ class BlockEditCommandsTest {
         when(session.getPlugin()).thenReturn(plugin);
         when(session.getOrigin()).thenReturn(new Location(world, 200, 0, 200));
         when(session.hasConstructionPermission()).thenReturn(true);
+        when(session.getBuildBlockLimit()).thenReturn(maxBlocks);
         when(session.isWithinBuildRange(any())).thenReturn(true);
         ConstructionPermissions snapshot = new ConstructionPermissions(true, true, 1000, maxBlocks);
         when(session.isWithinBuildBlocks(anyLong())).thenAnswer(call -> snapshot.allowsBlockCount(call.getArgument(0, Long.class)));

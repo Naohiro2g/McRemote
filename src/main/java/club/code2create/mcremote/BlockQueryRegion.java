@@ -75,6 +75,8 @@ final class BlockQueryRegion {
                 axisLength(minZ, maxZ));
     }
 
+    int minY() { return minY; }
+    int maxY() { return maxY; }
     int minX() { return minX; }
     int maxX() { return maxX; }
     int minZ() { return minZ; }

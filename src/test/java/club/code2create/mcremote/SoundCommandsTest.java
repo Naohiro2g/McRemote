@@ -125,7 +125,7 @@ class SoundCommandsTest {
         Harness outside = new Harness();
         outside.context.buildRange = 5;
         outside.commands.handlePlaySound(params("[6,0,0,\"minecraft:block.bell.use\"]"));
-        assertEquals("build_denied", outside.context.reason);
+        assertEquals("build_range_exceeded", outside.context.reason);
         assertEquals(0, outside.context.workCalls);
 
         Harness busy = new Harness(new SoundRateAdmission.Policy(2, 64));
@@ -360,6 +360,7 @@ class SoundCommandsTest {
             permissionChecks++;
             return permission;
         }
+        @Override public int getBuildRange() { return buildRange; }
         @Override public boolean isWithinBuildRange(Location target) {
             return RemoteSession.withinBuildRange(origin, target, buildRange);
         }

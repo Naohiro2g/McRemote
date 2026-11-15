@@ -189,8 +189,7 @@ final class SoundCommands {
             session.respondError(-32000, "permission_denied", null);
             return false;
         }
-        if (!session.isWithinBuildRange(location)) {
-            session.respondError(-32000, "build_denied", null);
+        if (!BuildPolicyErrors.range(session, location)) {
             return false;
         }
         if (rateAdmission.admit(session.getConnectionEpoch()) == SoundRateAdmission.Result.BACKPRESSURE) {
