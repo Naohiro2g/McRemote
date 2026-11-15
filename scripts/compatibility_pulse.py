@@ -64,6 +64,7 @@ def run(args) -> dict:
     try:
         hello = result(rpc.call("hello", {"protocol": PROTOCOL, "auth": {"token": token},
                           "build": {"dimension": "overworld", "origin": [0, 0, 0]}}))
+        assert hello["protocol"] == PROTOCOL
         assert hello["mc_version"] == args.expect_mc
         assert hello["supported_mc_versions"] == targets
         assert hello["dimension"] == "minecraft:overworld"
@@ -86,7 +87,7 @@ def run(args) -> dict:
             rpc.notify("world.setBlocks", [64, y, 64, 95, y + 31, 95, {"block_id": "gold_block", "state": {}}])
             require_null_result("bulk notification barrier", rpc.call("connection.flush", []))
             assert result(rpc.call("world.getBlock", [95, y + 31, 95]))["block_id"] == "minecraft:gold_block"
-            require_reason("default 32769 rejection", rpc.call("world.setBlocks", [0, y, 0, 330, y + 10, 8, stone]), "build_denied")
+            require_reason("default block-count limit rejection", rpc.call("world.setBlocks", [0, y, 0, 330, y + 10, 8, stone]), "block_count_limit_exceeded")
             passed.append("bulk_32768_scheduler_and_notification_flush")
             verify_sign(rpc, height)
             verify_get_sign_and_style(rpc, height)
