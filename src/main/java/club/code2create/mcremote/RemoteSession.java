@@ -395,6 +395,10 @@ public class RemoteSession implements CommandDispatchContext, BuildContextSessio
         if (boundUuid != null) {
             result.put("permissions", buildPermissions(constructionPermissions));
         }
+        Map<String, Object> server = new LinkedHashMap<>();
+        server.put("name", ProtocolInfo.SERVER_NAME);
+        server.put("version", ProtocolInfo.PLUGIN_VERSION);
+        result.put("server", server);
         return result;
     }
 
