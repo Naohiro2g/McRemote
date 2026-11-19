@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import re
 import time
+import zipfile
 
 from live_auto import Rpc, PROTOCOL, result, require_null_result, require_reason, verify_structured_blocks
 from sign_live_auto import verify_sign, verify_get_sign_and_style, verify_update_sign_line
@@ -53,10 +54,20 @@ class RecordedRpc(Rpc):
         self.transcript.append(sanitize({"method": method, "params": params, "notification": True}))
 
 
+def bundled_plugin_identity(jar_path: Path) -> tuple[str, str]:
+    with zipfile.ZipFile(jar_path) as jar:
+        plugin_yml = jar.read("plugin.yml").decode("utf-8")
+    name_match = re.search(r"(?m)^name:\s*(.+?)\s*$", plugin_yml)
+    version_match = re.search(r"(?m)^version:\s*(.+?)\s*$", plugin_yml)
+    assert name_match and version_match, "plugin.yml missing name/version"
+    return name_match.group(1), version_match.group(1)
+
+
 def run(args) -> dict:
     declaration = json.loads(args.targets.read_text())
     targets = declaration["minecraft_versions"]
     assert args.expect_mc in targets
+    plugin_name, plugin_version = bundled_plugin_identity(args.jar)
     before = digest(args.jar)
     token = args.token_file.read_text().strip()
     transcript, passed = [], []
@@ -69,6 +80,7 @@ def run(args) -> dict:
         assert hello["supported_mc_versions"] == targets
         assert hello["dimension"] == "minecraft:overworld"
         assert hello["permissions"]["online"] and hello["permissions"]["offline"]
+        assert hello.get("server") == {"name": plugin_name, "version": plugin_version}, hello
         passed.append("authenticated_hello_and_bundled_targets")
         catalog = result(rpc.call("catalog.get", []))
         assert catalog and hello["catalogHash"]
@@ -80,6 +92,19 @@ def run(args) -> dict:
         verify_structured_blocks(rpc, height)
         passed.append("structured_block_read_write")
         if not args.restart_only:
+            mismatch_rpc = RecordedRpc(args.port, transcript)
+            try:
+                mismatch = mismatch_rpc.call("hello", {"protocol": "23.3.0"})
+                assert mismatch.get("error", {}).get("code") == -32000, mismatch
+                assert mismatch.get("error", {}).get("data") == {
+                    "reason": "protocol_mismatch",
+                    "server": PROTOCOL,
+                    "client_requires": "23.3.0",
+                }, mismatch
+                assert mismatch_rpc._reader.readline() == b""
+            finally:
+                mismatch_rpc.close()
+            passed.append("protocol_mismatch_rejects_23x")
             y = height + 4
             stone = {"block_id": "minecraft:stone", "state": {}}
             require_null_result("32768 setBlocks", rpc.call("world.setBlocks", [64, y, 64, 95, y + 31, 95, stone]))

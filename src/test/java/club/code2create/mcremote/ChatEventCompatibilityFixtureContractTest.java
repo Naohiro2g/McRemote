@@ -41,9 +41,10 @@ class ChatEventCompatibilityFixtureContractTest {
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));
         JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
         assertEquals("mcremote.chat-event-compat.v23.2.1", root.get("schema").getAsString());
-        // Keep the shared fixture pinned; server compatibility is checked separately below.
+        // Keep the shared fixture pinned; protocol 24.0.0 carries the method/DTO contract while
+        // rejecting major 23 clients during hello negotiation.
         assertEquals("23.2.1", root.get("protocol").getAsString());
-        assertTrue(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
+        assertFalse(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
         assertEquals(7, root.getAsJsonObject("chat_post").getAsJsonArray("cases").size());
         assertEquals(22, root.getAsJsonObject("event_batches").getAsJsonArray("cases").size());
         assertEquals(4, root.getAsJsonObject("event_batches").getAsJsonArray("stateful_rejections").size());

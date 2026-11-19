@@ -57,9 +57,9 @@ class DirectionLightningFixtureContractTest {
 
         JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
         assertEquals("mcremote.direction-lightning.v23.1", root.get("schema").getAsString());
-        // The 23.1 contract is carried unchanged by later 23.x minors.
+        // The 23.1 method/DTO contract is carried into 24.0.0, while hello rejects major 23.
         assertEquals("23.1.0", root.get("protocol").getAsString());
-        assertTrue(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
+        assertFalse(ProtocolInfo.isCompatible(root.get("protocol").getAsString()));
 
         List<FixtureCase> cases = new ArrayList<>();
         collectCases(root, "", cases);

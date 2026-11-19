@@ -1,5 +1,10 @@
 package club.code2create.mcremote;
 
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,10 +25,33 @@ public final class ProtocolInfo {
      * 本プラグインが hello で名乗る protocol semver（wire-format-design §6.2）。
      * パッケージ版は gradle.properties の pluginVersion＝こことは別レイヤ。
      */
-    public static final String PROTOCOL = "23.3.0";
+    public static final String PROTOCOL = "24.0.0";
+
+    private static final String[] PLUGIN_IDENTITY = loadPluginIdentity();
+
+    /** hello 応答 {@code server.name}（wire-format-design §6.2 / DECISIONS 2026-11-14-03）。 */
+    public static final String SERVER_NAME = PLUGIN_IDENTITY[0];
+
+    /** hello 応答 {@code server.version}（バンドル済み plugin.yml 由来のプラグイン版）。 */
+    public static final String PLUGIN_VERSION = PLUGIN_IDENTITY[1];
 
     // leading な major.minor.patch（万一接尾辞が付いても捨てる）
     private static final Pattern SEMVER = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)");
+
+    private static String[] loadPluginIdentity() {
+        try (var input = Objects.requireNonNull(ProtocolInfo.class.getResourceAsStream("/plugin.yml"));
+             var reader = new InputStreamReader(input, StandardCharsets.UTF_8)) {
+            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(reader);
+            String name = yaml.getString("name");
+            String version = yaml.getString("version");
+            if (!"McRemote".equals(name) || version == null || version.isBlank()) {
+                throw new IllegalStateException("Bundled plugin.yml name/version is invalid");
+            }
+            return new String[]{name, version.trim()};
+        } catch (Exception e) {
+            throw new IllegalStateException("Bundled plugin.yml identity is unavailable", e);
+        }
+    }
 
     /**
      * クライアントが要求する protocol と本サーバの protocol を §8.2 で突き合わせる。
